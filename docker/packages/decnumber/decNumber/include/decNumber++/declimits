@@ -1,0 +1,176 @@
+/* ------------------------------------------------------------------ */
+/* declimits header                                                   */
+/* ------------------------------------------------------------------ */
+/* Copyright (c) IBM Corporation, 2006.  All rights reserved.         */
+/*                                                                    */
+/* This software is made available under the terms of the IBM         */
+/* alphaWorks License Agreement (distributed with this software as    */
+/* alphaWorks-License.txt).  Your use of this software indicates      */
+/* your acceptance of the terms and conditions of that Agreement.     */
+/*                                                                    */
+/* Please send comments, suggestions, and corrections to the author:  */
+/*   mfc@uk.ibm.com                                                   */
+/*   Mike Cowlishaw, IBM Fellow                                       */
+/*   IBM UK, PO Box 31, Birmingham Road, Warwick CV34 5JL, UK         */
+/* ------------------------------------------------------------------ */
+
+#ifndef _DECLIMITS_
+#define _DECLIMITS_
+
+#include <limits>
+
+#include "cdecfloat"
+
+namespace std {
+       template<>
+       class numeric_limits<decimal::decimal32>
+                : public _Num_float_base {
+       public:
+               static const bool is_specialized = true;
+               static decimal::decimal32 min() throw()
+                       { return DEC32_MIN; }
+               static decimal::decimal32 max() throw()
+                       { return DEC32_MAX; }
+               static const int digits = DEC32_MANT_DIG; 
+               static const int digits10 = digits; 
+               static const int max_digits10 = digits; 
+               static const bool is_signed = true;
+               static const bool is_integer = false;
+               static const bool is_exact = false;
+               static const int radix = 10;
+               static decimal::decimal32 epsilon() throw()
+                       { return DEC32_EPSILON; }
+               static decimal::decimal32 round_error() throw()
+                       { return decimal::decimal32(5ULL, -1); }
+
+               static const int min_exponent = DEC32_MIN_EXP;
+               static const int min_exponent10 = min_exponent;
+               static const int max_exponent = DEC32_MAX_EXP;
+               static const int max_exponent10 = max_exponent; 
+
+               static const bool has_infinity = true;
+               static const bool has_quiet_NaN = true;
+               static const bool has_signaling_NaN = true;
+               static const float_denorm_style has_denorm = denorm_present;
+               static const bool has_denorm_loss = true;
+               static decimal::decimal32 infinity() throw()
+                       { return decimal::decimal32::_GetINF(); }
+               static decimal::decimal32 quiet_NaN() throw()
+                       { return decimal::decimal32::_GetNAN(); }
+               static decimal::decimal32 signaling_NaN() throw()
+                       { return decimal::decimal32::_GetSNAN(); }
+               static decimal::decimal32 denorm_min() throw()
+                       { return decimal::decimal32::_GetDenormalizedMin(); }
+
+               static const bool is_iec559 = true;
+               static const bool is_bounded = true;
+               static const bool is_modulo = false;
+
+               static const bool traps = true;
+               static const bool tinyness_before = true;
+               static const float_round_style round_style
+                       = round_indeterminate;
+       };
+
+       template<>
+       class numeric_limits<decimal::decimal64>
+                : public _Num_float_base {
+       public:
+               static const bool is_specialized = true;
+               static decimal::decimal64 min() throw()
+                       { return DEC64_MIN; }
+               static decimal::decimal64 max() throw()
+                       { return DEC64_MAX; }
+               static const int digits = DEC64_MANT_DIG; 
+               static const int digits10 = digits; 
+               static const int max_digits10 = digits; 
+               static const bool is_signed = true;
+               static const bool is_integer = false;
+               static const bool is_exact = false;
+               static const int radix = 10;
+               static decimal::decimal64 epsilon() throw()
+                       { return DEC64_EPSILON; }
+               static decimal::decimal64 round_error() throw()
+                       { return decimal::decimal64(5ULL, -1); }
+
+               static const int min_exponent = DEC64_MIN_EXP;
+               static const int min_exponent10 = min_exponent;
+               static const int max_exponent = DEC64_MAX_EXP;
+               static const int max_exponent10 = max_exponent; 
+
+               static const bool has_infinity = true;
+               static const bool has_quiet_NaN = true;
+               static const bool has_signaling_NaN = true;
+               static const float_denorm_style has_denorm = denorm_present;
+               static const bool has_denorm_loss = true;
+               static decimal::decimal64 infinity() throw()
+                       { return decimal::decimal64::_GetINF(); }
+               static decimal::decimal64 quiet_NaN() throw()
+                       { return decimal::decimal64::_GetNAN(); }
+               static decimal::decimal64 signaling_NaN() throw()
+                       { return decimal::decimal64::_GetSNAN(); }
+               static decimal::decimal64 denorm_min() throw()
+                       { return DEC64_DEN; }
+
+               static const bool is_iec559 = true;
+               static const bool is_bounded = true;
+               static const bool is_modulo = false;
+
+               static const bool traps = true;
+               static const bool tinyness_before = true;
+               static const float_round_style round_style
+                       = round_indeterminate;
+       };
+
+       template<>
+       class numeric_limits<decimal::decimal128>
+                : public _Num_float_base {
+       public:
+               static const bool is_specialized = true;
+               static decimal::decimal128 min() throw()
+                       { return DEC128_MIN; }
+               static decimal::decimal128 max() throw()
+                       { return DEC128_MAX; }
+               static const int digits = DEC128_MANT_DIG; 
+               static const int digits10 = digits; 
+               static const int max_digits10 = digits; 
+               static const bool is_signed = true;
+               static const bool is_integer = false;
+               static const bool is_exact = false;
+               static const int radix = 10;
+               static decimal::decimal128 epsilon() throw()
+                       { return DEC128_EPSILON; }
+               static decimal::decimal128 round_error() throw()
+                       { return decimal::decimal128(5ULL, -1); }
+
+               static const int min_exponent = DEC128_MIN_EXP;
+               static const int min_exponent10 = min_exponent;
+               static const int max_exponent = DEC128_MAX_EXP;
+               static const int max_exponent10 = max_exponent; 
+
+               static const bool has_infinity = true;
+               static const bool has_quiet_NaN = true;
+               static const bool has_signaling_NaN = true;
+               static const float_denorm_style has_denorm = denorm_present;
+               static const bool has_denorm_loss = true;
+               static decimal::decimal128 infinity() throw()
+                       { return decimal::decimal128::_GetINF(); }
+               static decimal::decimal128 quiet_NaN() throw()
+                       { return decimal::decimal128::_GetNAN(); }
+               static decimal::decimal128 signaling_NaN() throw()
+                       { return decimal::decimal128::_GetSNAN(); }
+               static decimal::decimal128 denorm_min() throw()
+                       { return DEC128_DEN; }
+
+               static const bool is_iec559 = true;
+               static const bool is_bounded = true;
+               static const bool is_modulo = false;
+
+               static const bool traps = true;
+               static const bool tinyness_before = true;
+               static const float_round_style round_style
+                       = round_indeterminate;
+       };
+}
+
+#endif /* ndef _DECLIMITS_ */

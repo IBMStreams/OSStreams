@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<applicationSet xmlns="http://www.ibm.com/xmlns/prod/streams/application/v4200" name="Main.appset" xmlns:tt="http://www.ibm.com/xmlns/prod/streams/spl/tupleType" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <description>Main application set</description>
+
+  <splApplication adlPath="output/Main.adl" applicationDirectory="toolkits/spl_runtime_udpNestedPEBoundary.scenario" applicationScope="Default" avoidRuntimeYield="auto" buildId="" bundle="./Main.sab" checkpointDirectory="/data/ckpt" dataDirectory="/data" name="Main" outputDirectory="output" productVersion="4.3.0.1" standaloneApplicationDirectory="toolkits/spl_runtime_udpNestedPEBoundary.scenario" version="1.0.0">
+    <libraries/>
+    <hostpools>
+      <hostpool index="0" membershipMode="shared" name="$default"/>
+    </hostpools>
+    <tupleTypes>
+      <tupleType index="0">
+        <attribute name="i" type="int32"/>
+        <tuple>
+          <tt:attr name="i" type="int32"/>
+        </tuple>
+      </tupleType>
+      <tupleType index="1">
+        <attribute name="i" type="int32"/>
+        <attribute name="s" type="rstring"/>
+        <tuple>
+          <tt:attr name="i" type="int32"/>
+          <tt:attr name="s" type="rstring"/>
+        </tuple>
+      </tupleType>
+    </tupleTypes>
+    <primitiveOperDefinitions>
+      <primitiveOperDefinition index="0" kind="spl.utility::Custom" runtimeType="SPL_CPlusPlus" toolkitIndex="1"/>
+      <primitiveOperDefinition index="1" kind="spl.relational::Functor" runtimeType="SPL_CPlusPlus" toolkitIndex="1"/>
+      <primitiveOperDefinition index="2" kind="spl.utility::Beacon" runtimeType="SPL_CPlusPlus" toolkitIndex="1"/>
+      <primitiveOperDefinition index="3" kind="spl.adapter::FileSink" runtimeType="SPL_CPlusPlus" toolkitIndex="1">
+        <customMetricIndicies>
+          <customMetricIndex>0</customMetricIndex>
+          <customMetricIndex>1</customMetricIndex>
+        </customMetricIndicies>
+      </primitiveOperDefinition>
+    </primitiveOperDefinitions>
+    <composites>
+      <sourceUris>
+        <uri index="0" path="file:///results/5.results/spl_runtime_udpNestedPEBoundary.scenario/a.spl"/>
+      </sourceUris>
+      <compositeOperDefinitions>
+        <compositeOperDefinition endLine="22" index="0" kind="Par2" numberOfInputPorts="1" numberOfOutputPorts="1" sourceIndex="0" startLine="1" toolkitIndex="0">
+          <description>Par2 Composite</description>
+        </compositeOperDefinition>
+        <compositeOperDefinition endLine="29" index="1" kind="Par1" numberOfInputPorts="1" numberOfOutputPorts="1" sourceIndex="0" startLine="24" toolkitIndex="0">
+          <description>Par1 Composite</description>
+        </compositeOperDefinition>
+        <compositeOperDefinition endLine="73" index="2" kind="Main" numberOfInputPorts="0" numberOfOutputPorts="0" sourceIndex="0" startLine="31" toolkitIndex="0">
+          <description>Main Composite</description>
+        </compositeOperDefinition>
+      </compositeOperDefinitions>
+      <compositeOperInstances>
+        <compositeOperInstance definitionIndex="2" endLine="73" index="6" name="Main" sourceIndex="0" startLine="31">
+          <compositeOperInstance definitionIndex="1" endLine="40" index="7" name="P1" sourceIndex="0" startLine="39">
+            <inputPorts>
+              <port index="0">
+                <incomingConnections>
+                  <connection operIndex="0" operName="Beat" portIndex="0" portKind="output"/>
+                </incomingConnections>
+                <outgoingConnections>
+                  <connection operIndex="8" operName="P1.H2" portIndex="0" portKind="input"/>
+                </outgoingConnections>
+              </port>
+            </inputPorts>
+            <outputPorts>
+              <port index="0">
+                <incomingConnections>
+                  <connection operIndex="3" operName="P1.O" portIndex="0" portKind="output"/>
+                </incomingConnections>
+                <outgoingConnections>
+                  <connection operIndex="1" operName="S" portIndex="0" portKind="input"/>
+                </outgoingConnections>
+              </port>
+            </outputPorts>
+            <compositeOperInstance definitionIndex="0" endLine="27" index="8" name="P1.H2" sourceIndex="0" startLine="26">
+              <inputPorts>
+                <port index="0">
+                  <incomingConnections>
+                    <connection operIndex="7" operName="P1" portIndex="0" portKind="input"/>
+                  </incomingConnections>
+                  <outgoingConnections>
+                    <connection operIndex="4" operName="P1.H2.F2" portIndex="0" portKind="input"/>
+                  </outgoingConnections>
+                </port>
+              </inputPorts>
+              <outputPorts>
+                <port index="0">
+                  <incomingConnections>
+                    <connection operIndex="5" operName="P1.H2.O" portIndex="0" portKind="output"/>
+                  </incomingConnections>
+                  <outgoingConnections>
+                    <connection operIndex="3" operName="P1.O" portIndex="0" portKind="input"/>
+                  </outgoingConnections>
+                </port>
+              </outputPorts>
+              <primitiveOperInstance definitionIndex="0" endLine="20" index="4" name="P1.H2.F2" optimized="true" relocatable="true" restartable="true" singleThreadedOnOutputs="true" sourceIndex="0" startLine="3">
+                <splAnnotation internal="true" tag="logicClause">
+                  <value key="hasState" type="boolean">false</value>
+                  <value key="hasOnProcess" type="boolean">false</value>
+                  <value key="hasOnTuple" type="boolean">true</value>
+                  <value key="hasOnPunct" type="boolean">false</value>
+                </splAnnotation>
+                <inputPorts>
+                  <port encoding="LE" index="0" isMutable="true" name="I" transport="TCP" tupleTypeIndex="0">
+                    <connections>
+                      <connection operIndex="8" operName="P1.H2" portIndex="0" portKind="input"/>
+                    </connections>
+                  </port>
+                </inputPorts>
+                <outputPorts>
+                  <port encoding="LE" index="0" isMutable="true" name="F2" streamName="P1.H2.F2" transport="TCP" tupleTypeIndex="1" viewable="true">
+                    <connections>
+                      <connection operIndex="5" operName="P1.H2.O" portIndex="0" portKind="input"/>
+                    </connections>
+                  </port>
+                </outputPorts>
+                <envVars/>
+                <resources>
+                  <poolLocation poolIndex="0"/>
+                </resources>
+                <runtimeConstants>
+                  <runtimeConstant name="lit$0" value="&quot;&quot;"/>
+                  <runtimeConstant name="lit$1" value="true"/>
+                  <runtimeConstant name="lit$2" value="false"/>
+                  <runtimeConstant name="lit$3" value="&quot;_&quot;"/>
+                  <runtimeConstant name="lit$4" value="&quot;:&quot;"/>
+                  <runtimeConstant name="lit$5" value="0"/>
+                </runtimeConstants>
+                <sharedObject class="P1::H2::F2">
+                  <wrapper>none</wrapper>
+                  <uri>bin/P1.H2.F2.so</uri>
+                </sharedObject>
+                <tracing level="debug"/>
+              </primitiveOperInstance>
+              <primitiveOperInstance definitionIndex="1" endLine="21" index="5" name="P1.H2.O" optimized="true" relocatable="true" restartable="true" singleThreadedOnOutputs="true" sourceIndex="0" startLine="21">
+                <inputPorts>
+                  <port encoding="LE" index="0" isMutable="false" name="F2" transport="TCP" tupleTypeIndex="1">
+                    <connections>
+                      <connection operIndex="4" operName="P1.H2.F2" portIndex="0" portKind="output"/>
+                    </connections>
+                  </port>
+                </inputPorts>
+                <outputPorts>
+                  <port encoding="LE" index="0" isMutable="true" name="O" streamName="P1.H2" transport="TCP" tupleTypeIndex="1" viewable="true">
+                    <connections>
+                      <connection operIndex="8" operName="P1.H2" portIndex="0" portKind="output"/>
+                    </connections>
+                  </port>
+                </outputPorts>
+                <envVars/>
+                <resources>
+                  <poolLocation poolIndex="0"/>
+                </resources>
+                <runtimeConstants/>
+                <sharedObject class="P1::H2::O">
+                  <wrapper>none</wrapper>
+                  <uri>bin/P1.H2.O.so</uri>
+                </sharedObject>
+                <tracing level="debug"/>
+              </primitiveOperInstance>
+            </compositeOperInstance>
+            <primitiveOperInstance definitionIndex="1" endLine="28" index="3" name="P1.O" optimized="true" relocatable="true" restartable="true" singleThreadedOnOutputs="true" sourceIndex="0" startLine="28">
+              <inputPorts>
+                <port encoding="LE" index="0" isMutable="false" name="H2" transport="TCP" tupleTypeIndex="1">
+                  <connections>
+                    <connection operIndex="8" operName="P1.H2" portIndex="0" portKind="output"/>
+                  </connections>
+                </port>
+              </inputPorts>
+              <outputPorts>
+                <port encoding="LE" index="0" isMutable="true" name="O" streamName="P1" transport="TCP" tupleTypeIndex="1" viewable="true">
+                  <connections>
+                    <connection operIndex="7" operName="P1" portIndex="0" portKind="output"/>
+                  </connections>
+                </port>
+              </outputPorts>
+              <envVars/>
+              <resources>
+                <poolLocation poolIndex="0"/>
+              </resources>
+              <runtimeConstants/>
+              <sharedObject class="P1::O">
+                <wrapper>none</wrapper>
+                <uri>bin/P1.O.so</uri>
+              </sharedObject>
+              <tracing level="debug"/>
+            </primitiveOperInstance>
+          </compositeOperInstance>
+          <primitiveOperInstance definitionIndex="2" endLine="37" index="0" name="Beat" optimized="true" relocatable="true" restartable="true" singleThreadedOnOutputs="true" sourceIndex="0" startLine="33">
+            <outputPorts>
+              <port encoding="LE" index="0" isMutable="false" name="Beat" streamName="Beat" transport="TCP" tupleTypeIndex="0" viewable="true">
+                <connections>
+                  <connection operIndex="7" operName="P1" portIndex="0" portKind="input"/>
+                </connections>
+              </port>
+            </outputPorts>
+            <envVars/>
+            <resources>
+              <poolLocation poolIndex="0"/>
+            </resources>
+            <runtimeConstants>
+              <runtimeConstant name="lit$0" value="24"/>
+            </runtimeConstants>
+            <sharedObject class="Beat">
+              <wrapper>none</wrapper>
+              <uri>bin/Beat.so</uri>
+            </sharedObject>
+            <partitions isolation="true"/>
+            <tracing level="debug"/>
+          </primitiveOperInstance>
+          <primitiveOperInstance definitionIndex="0" endLine="66" index="1" name="S" optimized="true" relocatable="true" restartable="true" singleThreadedOnOutputs="true" sourceIndex="0" startLine="42">
+            <splAnnotation internal="true" tag="logicClause">
+              <value key="hasState" type="boolean">true</value>
+              <value key="hasOnProcess" type="boolean">false</value>
+              <value key="hasOnTuple" type="boolean">true</value>
+              <value key="hasOnPunct" type="boolean">false</value>
+            </splAnnotation>
+            <inputPorts>
+              <port encoding="LE" index="0" isMutable="true" name="P1" transport="TCP" tupleTypeIndex="1">
+                <connections>
+                  <connection operIndex="7" operName="P1" portIndex="0" portKind="output"/>
+                </connections>
+              </port>
+            </inputPorts>
+            <outputPorts>
+              <port encoding="LE" index="0" isMutable="true" name="S" streamName="S" transport="TCP" tupleTypeIndex="1" viewable="true">
+                <connections>
+                  <connection operIndex="2" operName="Out" portIndex="0" portKind="input"/>
+                </connections>
+              </port>
+            </outputPorts>
+            <envVars/>
+            <resources>
+              <poolLocation poolIndex="0"/>
+            </resources>
+            <runtimeConstants>
+              <runtimeConstant name="lit$0" value="0"/>
+              <runtimeConstant name="lit$1" value="0"/>
+              <runtimeConstant name="lit$2" value="0"/>
+              <runtimeConstant name="lit$3" value="0"/>
+            </runtimeConstants>
+            <sharedObject class="S">
+              <wrapper>none</wrapper>
+              <uri>bin/S.so</uri>
+            </sharedObject>
+            <tracing level="debug"/>
+          </primitiveOperInstance>
+          <primitiveOperInstance definitionIndex="3" endLine="71" index="2" name="Out" optimized="true" relocatable="true" restartable="true" singleThreadedOnOutputs="true" sourceIndex="0" startLine="68">
+            <inputPorts>
+              <port encoding="LE" index="0" isMutable="false" name="S" transport="TCP" tupleTypeIndex="1">
+                <connections>
+                  <connection operIndex="1" operName="S" portIndex="0" portKind="output"/>
+                </connections>
+              </port>
+            </inputPorts>
+            <envVars/>
+            <resources>
+              <poolLocation poolIndex="0"/>
+            </resources>
+            <runtimeConstants>
+              <runtimeConstant name="lit$0" value="&quot;out.dat&quot;"/>
+              <runtimeConstant name="lit$1" value="1"/>
+            </runtimeConstants>
+            <sharedObject class="Out">
+              <wrapper>none</wrapper>
+              <uri>bin/Out.so</uri>
+            </sharedObject>
+            <tracing level="debug"/>
+          </primitiveOperInstance>
+        </compositeOperInstance>
+      </compositeOperInstances>
+    </composites>
+    <toolkits>
+      <toolkit index="0" name="spl_runtime_udpNestedPEBoundary.scenario" uri="file:///results/5.results/spl_runtime_udpNestedPEBoundary.scenario" version="1.0.0"/>
+      <toolkit index="1" name="spl" uri="file:///opt/ibm/streams/toolkits/spl" version="1.4.0"/>
+    </toolkits>
+    <customMetrics>
+      <customMetric index="0" kind="Counter" name="nFilesOpened">
+        <description>The number of files opened by the `FileSink` operator.</description>
+      </customMetric>
+      <customMetric index="1" kind="Counter" name="nTupleWriteErrors">
+        <description>
+ The number of tuple writes that had an error on the file stream after the write completed. 
+Due to buffering, write failures might not be detected immediately. 
+You can use `param flush : 1u;` to ensure quicker detection, but with a (possibly large) performance penalty. 
+After a failure is detected, all future writes fail unless the error condition is cleared or the file is closed. 
+
+For more information, see the **writeFailureAction** parameter.
+</description>
+      </customMetric>
+    </customMetrics>
+    <parallelRegions>
+      <parallelRegion index="0" name="P1">
+        <parallelOperator operIndex="7">
+          <splitter iportIndex="0" kind="RoundRobin"/>
+        </parallelOperator>
+        <parallelWidth>
+          <constantWidth>2</constantWidth>
+        </parallelWidth>
+      </parallelRegion>
+      <parallelRegion index="1" name="P1.H2">
+        <parallelOperator operIndex="8">
+          <splitter iportIndex="0" kind="RoundRobin"/>
+        </parallelOperator>
+        <parallelWidth>
+          <constantWidth>4</constantWidth>
+        </parallelWidth>
+      </parallelRegion>
+      <parallelRegion index="2" name="P1.H2.F2">
+        <parallelOperator operIndex="4">
+          <splitter iportIndex="0" kind="RoundRobin"/>
+        </parallelOperator>
+        <parallelWidth>
+          <constantWidth>3</constantWidth>
+        </parallelWidth>
+      </parallelRegion>
+    </parallelRegions>
+  </splApplication>
+
+</applicationSet>

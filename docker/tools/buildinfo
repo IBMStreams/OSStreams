@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# CLI
+#
+if [ ! $# = 1 ]; then
+  echo "Usage: $0 WORKDIR"
+  exit 1
+fi
+
+# Enforce the proper UMASK
+#
+umask 0022
+
+# Grab the git information
+#
+BRANCH=$(git branch | grep \* | cut -d ' ' -f 2)
+MESSAG=$(git log HEAD -1 --pretty=format:'%H|%s|%an|%ad' | sed 's/"/\\"/g' | tr "\n" " ")
+PARSER='\([^|]*\)|\([^|]*\)|\([^|]*\)|\([^|]*\)$'
+OUTPUT='"commit": "\1", "message": "\2", "author": "\3", "date": "\4"'
+GITINFO="{ \"branch\": \"${BRANCH}\", $(echo ${MESSAG} | sed "s/${PARSER}/${OUTPUT}/") }"
+
+# Gather the build information
+#
+DATE=$(date +%F)
+TIME=$(date +%H:%M:%S)
+BLDI="{ \"date\": \"${DATE}\", \"time\": \"${TIME}\" }"
+
+# Generate the JSON
+#
+RESULT="{ \"build\": ${BLDI}, \"git\": ${GITINFO} }"
+JQ=$(which jq)
+
+if [ -n "${JQ}" ]; then
+  echo ${RESULT} | ${JQ} '.' > $1/build.json
+else
+  echo ${RESULT} > $1/build.json
+fi

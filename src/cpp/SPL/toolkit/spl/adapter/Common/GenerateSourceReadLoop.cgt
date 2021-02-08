@@ -1,0 +1,297 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+# Generate the main Source read loop body
+# parsing strict/permissive/fast
+# hasDelayField true if timings present
+# format bin/block/line/txt/csv
+# eolChar1 first char for EOL marker
+# eolChar2 second char for EOL marker (can be undef)
+# blockSize read size for block format
+# outputPort Output Port 0
+# separator separator parameter (SPL Format) (can be undef)
+# readPunctuations true/false (only in bin mode)
+# ignoreExtraCSVValues true if extra fields are okay on CSV input
+# numAttrs number of attributes to generate
+# @genAttrs attributes to generate
+# hasAssignments 1 if any output attribute has an assignment expression
+# generateConsistentRegionSupport true to generate consistent region support
+
+my $isFileSource = $model->getContext()->getKind() eq 'spl.adapter::FileSource';
+my $isParse = $model->getContext()->getKind() eq 'spl.utility::Parse';
+my $hasHeaderLine = $model->getParameterByName("hasHeaderLine");
+my $firstAttrName = $numAttrs > 0 ? $genAttrs[0]->getName() : "";
+my $binary = $format eq "bin" || $format eq "block";
+my $readFrom = "fs";
+$readFrom = "sbfs" if $binary;
+my $opKind = $model->getContext()->getKind();
+my $oneTuplePerFile = ($opKind eq "spl.adapter::FileSource" &&
+                       $format eq "block" && !$blockSize);
+my $dataSize = ($oneTuplePerFile ? 64*1024 : $blockSize);
+my $twoEOLChars = defined $eolChar2;
+my $type = $outputPort->getSPLTupleType();
+my $sepExpr = "','";
+if ($separator) {
+    my $sepValue = $separator->getValueAt(0);
+    my $sepType = $sepValue->getSPLType();
+    if ($sepType eq 'rstring') {
+        $sepExpr = $sepValue->getCppExpression();
+        $sepExpr =~ /SPL::rstring\(\"(.*)\".*\)/;
+        $sepExpr = "'$1'";
+    } else {
+       $sepExpr = "(unsigned char)" . $sepValue->getSPLExpression();
+    }
+}
+%>
+
+<%if ($parsing eq "permissive") {%>
+    std::string errString;
+<%}%>
+<%if ($oneTuplePerFile) {%>
+    std::list<blob> blobList;
+    uint64_t blobSize = 0;
+<%}%>
+bool failedRead = false;
+if (getPE().getShutdownRequested()) SPLAPPTRC(L_DEBUG, "shutdown requested", SPL_OPER_DBG);
+while(!getPE().getShutdownRequested()<%=$readPunctuations ? " && !_sawFinal" : ""%>) {
+   <%if ($isParse) {%>
+     <%if ($generateConsistentRegionSupport) {%>
+       {
+         SPLAPPTRC(L_TRACE, "Requesting CR permit", SPL_OPER_DBG);
+         ConsistentRegionPermit crPermit(_crContext);
+         AutoMutex am(_crMutex);
+     <%}%>
+
+       if (_reset) {
+         swapStreams();
+         _reset = false;
+       }
+
+       <%if ($generateConsistentRegionSupport) {%>
+         _position = _fs->tellg();
+         _blobSource->discardFront();
+       <%}%>
+    <%if ($binary) {%>
+        std::iostream& fs = *_fs;
+        SPL::StreamByteBuffer& sbfs = *_sbfs;
+    <%} else {%>
+        std::istream& fs = *_fs;
+    <%}%>
+  <%}%>
+
+  <%if ($hasHeaderLine) {%>
+    while (fs && (_headerLineCount > 0)) {
+      SPLAPPTRC(L_DEBUG, "reading header", SPL_OPER_DBG);
+      std::string s;
+      // In C++98, istream has operator !, but not operator bool.
+      // We want the negation of operator !, so we use this
+      // weird double-bang.
+      if (!!std::getline(fs, s)) {
+	if (_reset) {
+	  break;
+	}
+        else {
+          --_headerLineCount;
+          SPLAPPTRC(L_DEBUG, _headerLineCount << " header lines remain", SPL_OPER_DBG);
+          <%if ($isParse) {%>
+            _position = fs.tellg();
+          <%}%>
+        }
+      }
+      if (_headerLineCount == 0) {
+        SPLAPPTRC(L_DEBUG, "Completed headerLine loop", SPL_OPER_DBG);
+      }
+    }
+  <%}%>
+<%if ($isFileSource && $generateConsistentRegionSupport) {%>
+
+  <%if ($needsCRPermit) {%>
+  {
+    ConsistentRegionPermit crp(_crContext);
+  <%}%>
+    {
+      AutoMutex am(_crMutex);
+      if (_position == EOF) {
+        SPLAPPTRC(L_DEBUG, "Break at _position == EOF", SPL_OPER_DBG);
+	_reset = false;
+        break;
+      }
+      if (_reset) {
+        SPLAPPTRC(L_DEBUG, "Seeking to " << _position, SPL_OPER_DBG);
+        std::ios_base::iostate oldState = fs.exceptions();
+        <%if ($binary) {%>
+          fs.exceptions(std::iostream::failbit | std::iostream::badbit);
+        <%} else {%>
+          fs.exceptions(std::istream::failbit | std::istream::badbit);
+        <%}%>
+        fs.seekg(_position);
+        fs.exceptions(oldState);
+      }
+      _reset = false;
+<%}%>
+
+    _tupleNumber++;
+  <%unless ($isParse && $generateConsistentRegionSupport) {%>
+    if (SPL::safePeek(fs) == EOF) {
+      SPLAPPTRC(L_DEBUG, "Break at safePeek(fs) == EOF", SPL_OPER_DBG);
+      break;
+    }
+  <%}%>
+
+    bool doSubmit = true;
+    try {
+        <%if ($format eq "line") {%>
+            SPL::rstring& t = tuple$.get_<%=$firstAttrName%>();
+            std::getline (fs, t, '<%=$eolChar1%>');
+            <%if ($twoEOLChars) {%>
+                while (!getPE().getShutdownRequested() &&
+                       !fs.eof() && fs.peek() != '<%=$eolChar2%>') {
+                    std::string s;
+                    std::getline (fs, s, '<%=$eolChar1%>');
+                    t += '<%=$eolChar1%>';
+                    t += s;
+                }
+                (void) fs.get(); // read second character
+            <%}%>
+            <%if ($isParse && $generateConsistentRegionSupport) {%>
+              if (fs.fail() || (fs.eof() && t.empty())) doSubmit = false;
+            <%} else {%>
+              if (fs.fail() || (fs.eof() && t.empty())) break;
+            <%}%>
+        <%} elsif ($format eq "block") {%>
+            SPL::blob& b = tuple$.get_<%=$firstAttrName%>();
+            unsigned rSize;
+            std::auto_ptr<char> data(new char[<%=$dataSize%>]);
+            <%=$readFrom%>.getFixedCharSequence(data.get(), <%=$dataSize%>, rSize);
+            <%if (!$oneTuplePerFile) {%>
+                b.adoptData(reinterpret_cast<unsigned char*>(data.release()), rSize);
+            <%} else {%>
+                // Accumulate the data so it can be output as one tuple.
+                SPL::blob newBlob = blob();
+                blobList.push_back(newBlob);
+                blobList.back().adoptData(reinterpret_cast<unsigned char*>(data.release()), rSize);
+                blobSize += rSize;
+                if (SPL::safePeek(fs) != EOF) {
+                  doSubmit = false;
+                } else {
+                  // Output the accumulated data as one tuple.
+                  doSubmit = true;
+                  unsigned char *toData = new unsigned char[blobSize > 0 ? blobSize : 1];
+                  b.adoptData(toData, blobSize);
+                  for (std::list<blob>::iterator it = blobList.begin(); it != blobList.end(); it++) {
+                    uint64_t size;
+                    unsigned char const *fromData = it->getData(size);
+                    memcpy(toData, fromData, size);
+                    toData += size;
+                  }
+                }
+            <%}%>
+        <%} elsif ($format eq "txt" || $format eq "csv") {%>
+            // ignore comments and empty lines
+            fs >> SPL::skipSpaceTabReturnNewLines;
+            while (fs.peek() == '#') {
+                std::string dummy;
+                std::getline (fs, dummy);
+                fs >> SPL::skipSpaceTabReturnNewLines;
+            }
+            <%unless ($isParse && $generateConsistentRegionSupport) {%>
+              if (SPL::safePeek(fs)==EOF) break;
+            <%}%>
+            failedRead = false;
+            <%if ($hasDelayField) {%>
+                <%=$readFrom%> >> delay;
+                CHECK_ERROR(SPL_APPLICATION_RUNTIME_FAILED_READ_DELAY(_tupleNumber));
+                char sep;
+                fs >> SPL::skipSpaceTabs >> sep;
+                <%if ($parsing ne "fast") {%>
+                    if (!fs || sep != ','){
+                        DO_ERROR(SPL_APPLICATION_RUNTIME_FAILED_READ_CHAR(",", SPL::printableCharacter(sep), _tupleNumber, "after reading the delay time"));
+		    }
+                <%}%>
+                getPE().blockUntilShutdownRequest(delay);
+            <%}
+            if ($format eq "txt") { # expecting a tuple%>
+                @include "../Common/GenerateTxtRead.cgt"
+            <%} else { # csv format one field at a time%>
+                @include "../Common/GenerateCsvRead.cgt"
+            <%}%>
+        <%} elsif ($format eq "bin") {%>
+            @include "../Common/GenerateBinRead.cgt"
+        <%}%>
+        @include "../Common/GenerateSourceAssignments.cgt"
+<%if ($isFileSource) {%>
+    } catch (const SPLRuntimeException& e) {
+        // Add the filename & tuple number
+        DO_ERROR_FILESOURCE(
+            SPL_APPLICATION_RUNTIME_FILE_SOURCE_SINK_FILENAME_TUPLE(_tupleNumber, pathName, e.getExplanation()));
+<%}%>
+    } catch (const std::exception& e) {
+        DO_ERROR(SPL_APPLICATION_RUNTIME_EXCEPTION(e.what()));
+        _numInvalidTuples.incrementValueNoLock();
+        doSubmit = false;
+    } catch (...) {
+        DO_ERROR(SPL_APPLICATION_RUNTIME_UNKNOWN_EXCEPTION);
+        _numInvalidTuples.incrementValueNoLock();
+        doSubmit = false;
+    }
+    if (doSubmit) {
+      <%if ($isParse && $generateConsistentRegionSupport) {%>
+        if (!_reset) {
+          <%if ($hasHeaderLine) {%>
+            if (_headerLineCount > 0) {
+              --_headerLineCount;
+            }
+          else {
+        <%}%>
+      <%}%>
+        submit (tuple$, 0);
+        SPLAPPTRC(L_TRACE, "Submitted tuple " << _tupleNumber, SPL_OPER_DBG);
+      <%if ($isParse && $generateConsistentRegionSupport) {%>
+        <%if ($hasHeaderLine) {%>
+          }
+        <%}%>
+        }
+      <%}%>
+    }
+  <%if ($isParse && $generateConsistentRegionSupport) {%>
+      }
+      SPLAPPTRC(L_TRACE, "Releasing CR permit", SPL_OPER_DBG);
+      if (_draining) {
+        SPLAPPTRC(L_TRACE, "Getting mutex before signalling flushed", SPL_OPER_DBG);
+        AutoMutex am(_crMutex);
+        SPLAPPTRC(L_DEBUG, "Signalling flushed", SPL_OPER_DBG);
+        if (_flushWaiters > 0) {
+           _flushed.broadcast();
+        }
+        _isFlushed = true;
+        SPLAPPTRC(L_TRACE, "Waiting for resume", SPL_OPER_DBG);
+        _resume.wait(_crMutex);
+        SPLAPPTRC(L_DEBUG, "Resuming", SPL_OPER_DBG);
+      }
+  <%}%>
+<%if ($isFileSource && $generateConsistentRegionSupport) {%>
+        if (_crContext->isStartOfRegion()) {
+            if (SPL::safePeek(fs) == EOF) {
+	        _position = EOF;
+            }
+        }
+    }
+  <%if ($needsCRPermit) {%>
+  } // release consistent region permit
+  <%}%>
+<%}%>
+}

@@ -1,0 +1,225 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use warnings;
+use Getopt::Std;
+use Cwd qw(realpath abs_path getcwd);
+use File::Basename;
+use XML::Simple;
+$XML::Simple::PREFERRED_PARSER = "XML::Parser";
+
+use FindBin;
+use lib "${FindBin::Bin}";
+use lib "${FindBin::Bin}/impl/bin";
+use lib "${FindBin::Bin}/../system/impl/bin";
+
+use SPL::Helper;
+use SPL::Msg; # load message constants
+
+use File::Path qw(mkpath);
+use IO::File;
+
+sub getOperKind();
+sub getOperName();
+sub getOperPath();
+sub createTemplate($);
+sub createOpModel($);
+sub createGenerator($$);
+
+#### MAIN
+my %opts;
+my @options = ('help|h', 'kind|k=s', 'silent|s',
+               'directory|i=s', 'brief-opmodel');
+SPLGetOptionsLong(\&SPL::Msg::SMO_USAGE, \%opts, @options);
+
+my $briefOpm = $opts{'brief-opmodel'};
+
+my $dist = realpath(dirname($0));
+my $operDir = $opts{'directory'} ? $opts{'directory'} : "";
+my $dirBase = $operDir ? basename($operDir) : basename(getcwd());
+
+# is the directory there?
+if ($operDir ne "" && !-d $operDir) {
+    eval {
+        mkpath($operDir); # try to create the directory
+    };
+    SPLDie(1, SPL::Msg::CANNOT_CREATE_DIRECTORY($operDir)) if ($@ ne "");
+}
+
+# set the template operator
+my $template;
+my $opkind = undef;
+if ($opts{'kind'}) {
+    $opkind = $opts{'kind'};
+} else {
+    $opkind = getOperKind();
+}
+if($opkind eq "c++") {
+    $template = "template/CppOp/CppOp";
+} elsif($opkind eq "java") {
+    $template = "template/JavaOp/JavaOp";
+} elsif($opkind eq "generic") {
+    $template = "template/GenericOp/GenericOp";
+} else {
+    SPLDie(1, SPL::Msg::INVALID_OPERATOR_KIND($opkind));
+}
+
+
+$template = "${dist}/../system/impl/${template}";
+# mixed mode preprocessor
+my $mxmp = "${dist}/../system/impl/bin/spl-mixedmode-processor";
+
+if($opts{'kind'} eq "java") {
+    createOpModel(getOperPath());
+} else {
+    my $ifile = createTemplate("h");
+    my $cfile = createTemplate("cpp");
+    SPLDie(1, SPL::Msg::INT_IMPL_DIFFER($ifile, $cfile)) unless($ifile eq $cfile);
+    createOpModel($ifile);
+    createGenerator("h", $ifile);
+    createGenerator("cpp", $ifile);
+
+    # Check if the directory name matches the operator name
+    my $oper = basename($ifile);
+    if($oper ne $dirBase) {
+        my ($bext) = ($dirBase =~ m/.*\.(.*)$/);
+        SPLDie(1, SPL::Msg::INVALID_CWD($dirBase, $oper)) unless($oper eq $bext);
+    }
+}
+
+exit 0;
+
+# Get the kind of the operator from the model file
+sub getOperKind()
+{
+    my $modelFile = getOperPath() . ".xml";
+    if (-e  $modelFile) {
+        my $model = undef;
+        my $xms = XML::Simple->new (ForceArray => 1, KeepRoot => 0);
+        eval {
+            my $fh = IO::File->new($modelFile);
+            $model = $xms->XMLin($fh);
+            $fh->close();
+        };
+        SPLDie(1, SPL::Msg::CANNOT_DETERMINE_MODEL_FILE_TYPE($modelFile)) if ($@ ne "");
+        if ($model->{javaOperatorModel}) {
+            $opts{'kind'} = "java";
+        } else {
+            $opts{'kind'} = "generic";
+        }
+    } else {
+        $opts{'kind'} = "generic";
+    }
+}
+
+# Get the name of the operator from the directory structure
+sub getOperName()
+{
+    my ($oper) = ($dirBase =~ m/.*\.([^\.]+)$/);
+    $oper = $dirBase if(not $oper and $dirBase ne "/");
+    SPLDie(1, SPL::Msg::CANNOT_DERIVE_OPNAME()) unless($oper);
+    SPLDie(1, SPL::Msg::INVALID_OPERATOR_NAME($oper)) unless $oper =~ /^[A-Za-z_][A-Za-z_0-9]*$/;
+    return $oper;
+}
+
+# Get the path to the operator, excluding the extension
+sub getOperPath()
+{
+    return getOperName() unless($operDir);
+    return "$operDir/" . getOperName();
+}
+
+# Create template, if it does not exist already
+# @param ext extension, one of "h" or "cpp"
+# @return path to the created temaplte, excluding the _<ext>.cgt
+sub createTemplate($)
+{
+    my $ext = $_[0]; # extension
+    my $kind = ($ext eq "h") ? SPL::Msg::INTERFACE() : SPL::Msg::IMPLEMENTATION();
+
+    my @files;
+    if($operDir) {
+        @files = <${operDir}/*_${ext}.cgt>;
+    } else {
+        @files = <*_${ext}.cgt>;
+    }
+
+    if(scalar(@files)==0) {
+        my $oper = getOperName();
+        my $file = "${oper}_${ext}.cgt";
+        $file = "${operDir}/${file}" if($operDir);
+        SPLStdOutLn(SPL::Msg::CANNOT_FIND_TEMPLATE($kind, $file)) unless ($opts{'silent'});
+        unless($opts{'silent'}) {
+            my $r;
+            do {
+                SPLStdOut(SPL::Msg::PROMPT_FOR_TEMPLATE_CREATION());
+                $r = <>; chomp($r);
+            } while($r ne "y" and $r ne "n");
+            exit 1 if($r eq "n");
+        }
+        system("cp ${template}_${ext}.cgt ${file}");
+        system("chmod u+rw ${file}");
+        push @files, $file;
+    }
+
+    my $rdir = $operDir ? "${operDir}/" : "";
+    SPLDie(1, SPL::Msg::MULTIPLE_TEMPLATE_FILES($kind, $rdir, $ext)) if(scalar(@files)>1);
+    my ($file) = ($files[0] =~ m/(.*)_${ext}\.cgt/);
+    return $file;
+}
+
+# Create operator model
+# @param template path to the operator template, excluding the _<ext>.cgt
+sub createOpModel($)
+{
+    my $xml = $_[0];
+    my $file = "${xml}.xml";
+    if(not -f $file) {
+        SPLStdOutLn(SPL::Msg::CANNOT_FIND_OPMODEL($file)) unless ($opts{'silent'});
+        my $r = "y";
+        unless($opts{'silent'}) {
+            do {
+                SPLStdOut(SPL::Msg::PROMPT_FOR_TEMPLATE_CREATION());
+                $r = <>; chomp($r);
+            } while($r ne "y" and $r ne "n");
+        }
+        if($r eq "y") {
+            if($briefOpm) {
+                system("cp ${template}-cleaned.xml ${file}");
+            } else {
+                system("cp ${template}.xml ${file}");
+            }
+            system("chmod u+rw ${file}");
+        }
+    }
+}
+
+# Create operator code generator
+# @param ext extension, one of "h" or "cpp"
+# @param template path to the operator template, excluding the _<ext>.cgt
+sub createGenerator($$)
+{
+    my $ext = $_[0]; # extension
+    my $file = $_[1] . "_${ext}";
+    SPLStdOutLn(SPL::Msg::GENERATING_PM_FILE($file))
+        unless ($opts{'silent'});
+    # dependency-scan: ignore the following line
+    0 == system("${mxmp} -t OperatorInstanceModel ${file}")
+        or SPLDie(1, SPL::Msg::CANNOT_CREATE_PM_FILE($file));
+}

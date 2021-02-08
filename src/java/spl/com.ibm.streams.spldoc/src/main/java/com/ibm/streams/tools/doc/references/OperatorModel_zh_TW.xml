@@ -1,0 +1,516 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<reference id="spldoc_reference_operator_model">
+<title>SPL 運算子模型</title>
+<refbody>
+<section id="overview">
+<p>
+運算子模型可用於說明 C++ 初始運算子或 Java 初始運算子。可呈現在 Java 運算子模型中的元素集是可呈現在 C++ 運算子模型中之元素集的嚴格子集，用於 JVM 相關配置的特殊元素除外。
+</p>
+</section>
+<section id="context">
+<title outputclass="splhead-1">環境定義</title>
+<p>
+環境定義元素說明作為一個整體而套用至運算子且不與特定參數或運算子的埠相關聯的內容。
+它還包括在運算子模型中的其他位置參照的一般定義。
+</p>
+<dl>
+  <dlentry id="context__description">
+    <dt>說明</dt>
+    <dd>說明元素是選用項目，用來提供運算子的概觀。</dd>
+  </dlentry>
+  <dlentry id="context__metrics">
+    <dt>度量</dt>
+    <dd>度量元素是選用項目，包含由運算子公開的度量清單。
+它是作為度量元素的清單進行建構，其中每一個度量元素都包含名稱、說明及類型。
+<dl>
+        <dlentry id="context__metrics_kind_counter">
+          <dt>類型：計數器</dt>
+          <dd>代表其值既不是遞減也不是遞增的度量。
+          </dd>
+        </dlentry>
+        <dlentry id="context__metrics_kind_gauge">
+          <dt>類型：量規</dt>
+          <dd>代表可以自由變更其值（亦即，可以增加或減少）的度量。
+</dd>
+        </dlentry>
+        <dlentry id="context__metrics_kind_time">
+          <dt>類型：時間</dt>
+          <dd>代表用來表示時間點的度量。
+          </dd>
+        </dlentry>
+      </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="context__customliterals">
+    <dt>自訂文字</dt>
+    <dd>customLiterals 元素是選用項目，用來擷取可能出現在運算子之參數配置中的 ID。
+它是作為列舉元素的清單進行建構。例如，來源運算子可能支援不同的來源格式，在這種情況下，我們可以具有名為 FileFormat 的列舉（將包含值 <tt>{csv、xml、bin}</tt>）。
+    </dd>
+  </dlentry>
+  <dlentry id="context__customoutputfunctions">
+    <dt>自訂輸出函數（僅適用於 C++）</dt>
+    <dd>customOutputFunctions 元素是選用項目，用來擷取某個運算子在其輸出屬性指派中所使用的輸出函數原型。
+它是作為 customOutputFunction 元素的清單進行建構，其中每一個列舉都包含一個名稱及輸出函數原型的清單。
+例如，「聚集」運算子可能支援關聯式聚集，在這種情況下，我們可以具有名為 RelationalAggs 的列舉（將包含輸出函數 <tt>{Min、Max、Avg、Sum 等}</tt>）。
+    </dd>
+  </dlentry>
+  <dlentry id="context__dependencies">
+    <dt>相依關係（選用）</dt>
+    <dd>一連串的一個以上程式庫元素，每一個元素都代表一種程式庫相依關係。程式庫元素格式與用於運算子模型的格式完全相同。
+     <dl>
+        <dlentry id="context__dependencies__description">
+          <dt>說明（選用）</dt>
+          <dd>程式庫的說明
+          </dd>
+        </dlentry>
+        <dlentry id="context__dependencies__managedlibrary">
+          <dt>受管理程式庫</dt>
+          <dd>指定個別程式庫構件的詳細資料。路徑可以包含內嵌在 @ 符號之間的環境變數（例如：<tt>@FOO_FFT_HOME@/lib</tt>），這將在編譯時期由 SPL 編譯器充分予以解析。
+            <dl>
+              <dlentry id="context__dependencies__managedlibrary__lib">
+                <dt>lib（選用）</dt>
+                <dd>指定要傳遞至 C++ 編譯器之 <tt>-l</tt> 引數的名稱（例如，<tt>fft</tt> 在傳遞至鏈結器時，將轉換為 <tt>-lfft</tt>）</dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__libpath">
+                <dt>libPath（選用）</dt>
+                <dd>指定要傳遞至 C++ 編譯器之 <tt>-L</tt> 引數的路徑。
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__includepath">
+                <dt>includePath（選用）</dt>
+                <dd>指定要傳遞至 C++ 編譯器之 <tt>-I</tt> 引數的路徑。
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__command">
+                <dt>command（選用）</dt>
+                <dd>程式的路徑，該程式將予以執行以擷取 <tt>includePath、libPath</tt> 及 <tt>lib</tt> 資訊。如果該程式的路徑是相對路徑，則假定其根目錄是運算子模型目錄。
+該程式會執行 3 次，每次都帶有不同的引數，即 <tt>lib、libPath</tt> 和 <tt>includePath</tt>。將讀取這些執行中的標準輸出，並且每一行（已修整空格）都將新增至 <tt>lib、libPath</tt> 和 <tt>includePath</tt> 元素的其中一個，視執行的類型而定。
+以 # 開頭的行將予以忽略。假定相對路徑的根目錄為運算子模型 XML 文件所在的目錄。
+</dd>
+              </dlentry>
+            </dl>
+          </dd>
+        </dlentry>
+    </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="context__providessinglethreadedexecutioncontext">
+    <dt>提供單一執行緒執行環境定義（僅適用於 C++）</dt>
+    <dd><p><tt>providesSingleThreadedContext</tt> 元素針對執行流程來說明運算子的執行緒作業語意。
+運算子只在下列情況下，才提供單一執行緒執行環境定義：
+      <ul>
+        <li>它不執行並行提交呼叫，除非以並行方式呼叫了它的處理程序方法。</li>
+        <li>在觸發了提交的處理程序呼叫完成之前，它的提交呼叫已完成。</li>
+      </ul>
+    </p>
+    <p>來源運算子與非來源運算子都具有處理程序方法，並且上述定義在廣域範圍內套用。
+依據此定義，如果某個運算子所提交的呼叫不是由處理程序呼叫觸發（例如，由時間型事件觸發的呼叫），則該運算子不提供單一執行緒執行環境定義。請注意，此定義不需要在用來執行處理程序呼叫（已觸發了提交）的同一執行緒下執行提交呼叫（僅管一般情況下它們在同一執行緒下執行）。
+</p>
+    <p>此內容有數個有效值：
+<ul>
+  <li><tt>Never：</tt> 此運算子的實例永不提供單一執行緒執行環境定義。</li>
+  <li><tt>Always：</tt> 此運算子的實例一律提供單一執行緒執行環境定義。</li>
+  <li><tt>WindowBound：</tt> 此運算子的不指定時間型視窗收回原則或時間型視窗觸發原則的實例，將提供單一執行緒執行環境定義。</li>
+  <li><tt>WindowEvictionBound：</tt> 此運算子的不指定時間型視窗收回原則的實例，將提供單一執行緒執行環境定義。</li>
+  <li><tt>WindowTriggerBound：</tt> 此運算子的不指定時間型視窗觸發原則的實例，將提供單一執行緒執行環境定義。</li>
+  <li><tt>WindowPartitionEvictionBound：</tt> 此運算子的實例使用一個執行緒來實作分割區收回。
+如果是從 onWindowPartitionEvictionSelection 事件提交值組，請使用此設定。</li>
+</ul>
+    </p>
+<p>
+作為範例，請考量<tt>過濾</tt>運算子。除非正在並行呼叫其處理程序方法，否則<tt>過濾</tt>運算子不會發出並行提交呼叫。它的提交呼叫是由送入的值組進行觸發。
+當它透過處理程序呼叫接收值組時，如果接收到的值組傳遞過濾條件，則它會發出提交呼叫，並且該提交呼叫會先完成，然後觸發該提交呼叫的處理程序呼叫才會完成。
+因此，<tt>過濾</tt>運算子的所有實例都提供單一執行緒環境定義，並且設定 <tt>Always</tt> 是適當的。
+</p>
+<p>
+實作附註：<tt>providesSingleThreadedContext</tt> 元素用於啟用 SPL 執行時期，以避免不必要的執行緒同步化。
+針對所有運算子，將此內容設定為值 Never 是安全的，它將在運算子不提供單一執行緒環境定義時，阻止執行可減少同步化負荷的最佳化作業。
+如果指定除 Never 外的其他值，並且該值與運算子所實作的執行緒作業語意不一致，則將導致未定義的行為。
+</p>
+    </dd>
+  </dlentry>
+  <dlentry id="context__incrementalcompilationstrategy">
+    <dt>增量編譯策略（僅適用於 C++）</dt>
+    <dd><p>指定編譯器應如何管理運算子的增量編譯。選項如下：<ul>
+         <li><tt>SourceDependent</tt>：在這種模式下，如果運算子的 SPL 原始碼或程式碼產生器已過時，則編譯器將只重新產生運算子原始檔。
+這是預設模式。</li>
+         <li><tt>ResultDependent：</tt> 在這種模式下，編譯器一律產生運算子原始檔，但只在原始檔與編譯之前所存在的檔案不同時，才會更新原始檔。
+如果運算子程式碼產生器依賴於外部配置，並且這些外部配置不是由 SPL 原始碼中給定的參數化進行擷取，請使用這種模式。
+</li>
+       </ul>
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__allowCustomLogic">
+    <dt>容許自訂邏輯（僅適用於 C++）</dt>
+    <dd><p>這個選用元素指定是否容許使用運算子，來具有用來指定 <tt>onTuple</tt> 或 <tt>onPunct</tt> 處理狀態的 logic 子句。當設定為 false 時，不能為給定的運算子指定任何 logic 子句。
+如果缺少這個元素，則預設值為 true。
+</p></dd>
+   </dlentry>
+   <dlentry id="context__codetemplate">
+    <dt>程式碼範本</dt>
+    <dd><p>這個選用元素為運算子指定一個以上的程式碼範本。
+這些將顯示在 IDE 的環境定義機密內容協助功能表與 SPLDOC 文件中。
+每一個程式碼範本都有一個名稱屬性（用來為其命名）、一個說明元素（用來對其進行說明）和一個值元素（這是一個字串，其中包含範本的程式碼樣板）。
+在 IDE 中使用範本時，會將程式碼樣板內嵌到原始碼中。
+格式為 ${name} 的程式碼部分用於指示必須由使用者進行自訂的組件。
+IDE 將使用 ${} 內指定的 ID 來指示可自訂的部分。
+Barrier 運算子的一個範例如下所示：
+</p>
+<p>
+<!-- START NON-TRANSLATABLE -->
+<codeblock>
+&lt;codeTemplates>
+  &lt;codeTemplate name="Barrier">
+    &lt;description>Basic Barrier template&lt;/description>
+    &lt;template>
+      &lt;![CDATA[
+        stream&lt;${schema}> ${outputStream} = Barrier(${inputStream1};${inputStream2})
+        {
+          param
+            ${parameter}: ${parameterExpression};
+          output
+            ${outputStream}: ${outputExpression};
+          ${cursor}
+        }
+      ]]&gt;
+    &lt;template>
+  &lt;/codeTemplate>
+&lt;/codeTemplates>
+</codeblock>
+<!-- END NON-TRANSLATABLE -->
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__splexpressiontree">
+    <dt>SPL 表示式樹狀結構（僅適用於 C++）</dt>
+    <dd><p>這是一個選用元素，用來控制 SPL 表示式樹狀結構的產生，以供在一般 C++ 初始運算子中使用。
+</p>
+      <ul>
+      <li><tt>param</tt> - 如果設定為 <tt>true</tt>，則將為參數產生 SPL 表示式樹狀結構。</li>
+      <li><tt>output</tt> - 如果設定為 <tt>true</tt>，則將為輸出產生 SPL 表示式樹狀結構。</li>
+      <li><tt>cppCode</tt> - 如果設定為 <tt>true</tt>，則將透過使用範本的 C++ 程式碼，來增強所產生之運算子實例 XML 中的每一個節點。
+此 C++ 程式碼可用於產生 SPL 表示式的 C++ 程式碼。例如，針對 SPL 程式碼：
+<p>
+<codeblock>
+param predicates : {a = "a" == In.letter, b = "b" == In.letter};
+</codeblock>
+</p>
+<p>
+所產生的 SPL 表示式樹狀結構包括：
+</p>
+<p>
+<!-- START NON-TRANSLATABLE -->
+<codeblock>
+&lt;expressionTree cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})">
+  &lt;literal cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})" type="1">
+    &lt;tuple count="2" cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})" type="1">
+      &lt;attr id="a">
+        &lt;value cppCode="({Lhs} == {Rhs})" type="2">
+          &lt;expn cppCode="({Lhs} == {Rhs})">
+            &lt;binary cppCode="({Lhs} == {Rhs})" op="==" type="2">
+              &lt;lhs cppCode="SPL::rstring("a")">
+                &lt;literal cppCode="SPL::rstring("a")" type="0">"a"&lt;/literal>
+              &lt;/lhs>
+              &lt;rhs cppCode="iport$0.get_letter()">
+                &lt;attribute attribute="letter" cppCode="iport$0.get_letter()" type="0">
+                  &lt;lhs cppCode="iport$0">
+                    &lt;stream cppCode="iport$0" name="In" port="0" type="3"/>
+                  &lt;/lhs>
+                &lt;/attribute>
+              &lt;/rhs>
+            &lt;/binary>
+          &lt;/expn>
+        &lt;/value>
+      &lt;/attr>
+</codeblock>
+<!-- END NON-TRANSLATABLE -->
+</p>
+<p>
+範本（例如 <tt>{Lhs}、{attr:0}</tt>）用於確保已正確定義了程式碼替換。
+</p>
+<p>
+這些表示式代表 SPL 表示式，但卻以可輕鬆瀏覽的形式予以提供。
+Perl 物件衍生自 <tt>SPL::Operator::Instance::ExpressionTree</tt>，並且具有種類、類型和方法，以存取表示式的欄位。
+<tt>ExpressionTreeVisitor</tt> 是提供的一種訪客型樣，以容許輕鬆瀏覽表示式樹狀結構。
+如需相關資訊，請參閱《IBM Streams Processing Language 程式碼產生 API 文件》<i></i>。
+</p>
+      </li>
+      </ul>
+    </dd>
+   </dlentry>
+   <dlentry id="context__capability">
+    <dt>作業系統功能（僅適用於 C++）</dt>
+    <dd><p>這個選用的元素清單指定運算子的特殊專用權。
+IBM Streams 透過功能元素來支援 Linux 功能模型。
+您可以包括任意數目的元素，以指定運算子所需的確切專用權。
+例如，<tt>&lt;capability&gt;CAP_NET_RAW+eip&lt;/capability&gt;</tt> 指示運算子需要存取原始 Socket 的許可權。
+請注意，必須配置 IBM Streams 實例，以容許透過特殊作業系統功能來執行 PE 程序。
+</p></dd>
+   </dlentry>
+</dl>
+</section>
+
+<section id="input_port_set">
+<title outputclass="splhead-1">輸入埠集</title>
+<p>
+輸入埠以埠集的形式進行定義。埠集是共用相同配置之固定數目的埠。
+這會避免對不同的埠重複使用相同的配置。埠集可以是開放式的，在這種情況下，它可以包含零個以上具有相同配置的埠。
+一個 inputPorts 元素包含零個以上 inputPortSet 元素，後跟一個選用的 inputPortOpenSet 元素。
+</p>
+<dl>
+  <dlentry id="input_port_set__cardinality">
+    <dt>基數</dt>
+    <dd>定義埠集所代表的埠數目。此內容適用於非開放式埠集。
+    </dd>
+  </dlentry>
+  <dlentry  id="input_port_set__optional">
+    <dt>選用項目</dt>
+    <dd>這是一個布林值，用來指定輸入埠集是否是選用的。
+    </dd>
+  </dlentry>
+    <dlentry  id="input_port_set__controlport">
+    <dt>控制埠</dt>
+    <dd>選用的 controlPort 元素會告知編譯器，在此埠上接收的值組將只用於控制運算子，並且在此埠上處理值組時，將不提交任何值組。
+如果未指定，則值為 false。當在運算子圖形中發現迴圈時，SPL 編譯器將發出警告，因為這可以導致死鎖或無限遞迴。
+如果將 controlPort 設定為 true，則將告知編譯器此埠將不提交其他值組，並且這是預期的（且無害的）回饋迴圈，因此將不對此埠發生任何警告。
+</dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowingmode">
+    <dt>視窗作業模式</dt>
+    <dd>windowingMode 元素為埠指定有效的視窗作業配置。選項包括 NonWindowed、Windowed 和 OptionallyWindowed。
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowpunctuationinputmode">
+    <dt>視窗標點符號輸入模式</dt>
+    <dd>
+windowPunctuationInputMode 元素指定輸入埠的標點符號語意。有效的選項為：
+<ul>
+<li><tt>Expecting</tt> - 此埠預期視窗標點符號，以讓運算子正常運作，因此必須為其提供已添加標點符號的串流。</li>
+<li><tt>Oblivious</tt> - 此埠不需要標點符號，以讓運算子正常工作，因此對可與其進行連接的連線沒有任何限制。</li>
+<li><tt>WindowBound</tt> - 如果此埠具有標點符號型視窗，則此埠是一個 Expecting 埠v，否則就是一個 Oblivious 埠。</li>
+</ul>
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowexpressionmode">
+    <dt>視窗表示式模式</dt>
+    <dd>此元素告知編譯器哪種類型的視窗作業表示式是有效的。如果未指定，則預設值為 <tt>Constant</tt>。<ul>
+      <li><tt>Constant</tt> - <tt>計數</tt>、<tt>時間</tt>和<tt>差異</tt>中的表示式必須是可在編譯時期進行求值的常數，或不參照輸入值組屬性的執行時期表示式。</li>
+      <li><tt>AttributeFree</tt> - 表示式不能參照輸入值組屬性。可以使用諸如時間 <tt>((int32) getSubmissionTimeValue("timeParam"))</tt> 的表示式。若為差異，則只容許第二個引數是執行時期無屬性表示式。
+第一個引數仍是來自輸入串流的屬性。</li>
+    </ul>
+   </dd><!-- windowexpressionmode -->
+  </dlentry>
+  <dlentry id="input_port_set_rewriteallowedforwindowexpression">
+    <dt>容許重新撰寫視窗表示式（僅適用於 C++）</dt>
+    <dd>如果設定為 true，則此布林值會告知編譯器它可以採用 <tt>rewriteAllowed</tt> 元素重新撰寫出現在參數值中之表示式的方式，來重新撰寫視窗表示式。如需 rewriteAllowed 元素的相關資訊，請參閱<tt>參數</tt>。如果未指定 <tt>rewriteAllowedForWindowExpression</tt> 元素，則依預設，值設為 false。
+<tt>rewriteAllowedForWindowExpression</tt> 在 C++ 初始運算子要將值作為文字進行檢查時，必須是 false（或予以省略）。
+</dd>
+  </dlentry>
+  <dlentry id="input_port_set_tuplemutationallowed">
+    <dt>容許值組變更</dt>
+    <dd>tupleMutationAllowed 元素定義已連接至輸入埠的處理邏輯（這包括與運算子的處理函數相關聯的邏輯以及與作為 SPL 程式碼中指定之 onTuple 子句的一部分而完成的處理相關聯的邏輯），是否可以變更送入的值組。
+對於希望修改其接收之值組的運算子，可以將此元素設定為 true。
+</dd>
+  </dlentry>
+</dl>
+
+</section>
+<section  id="output_port_set">
+  <title outputclass="splhead-1">輸出埠集</title>
+  <p>
+輸出埠以埠集的形式進行定義，這與輸入埠類似。埠集是共用相同配置之固定數目的埠。
+這會避免對不同的埠重複使用相同的配置。埠集可以是開放式的，在這種情況下，它可以包含零個以上具有相同配置的埠。
+一個 outputPorts 元素包含零個以上 outputPortSet 元素，後跟一個選用的 outputPortOpenSet 元素。
+</p>
+  <dl>
+  <dlentry  id="output_port_set__cardinality">
+    <dt>基數</dt>
+    <dd>定義埠集所代表的埠數目。此內容適用於非開放式埠集。
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__optional">
+    <dt>選用項目</dt>
+    <dd>這是一個布林值，用來指定輸出埠集是否是選用的。
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set_expressionmode">
+    <dt>表示式模式（僅適用於 C++）</dt>
+    <dd>
+expressionMode 元素說明對此埠執行之屬性指派的有效語法。
+請注意，CustomLiteral 的 expressionMode 值不適用於輸出埠，並將導致編譯錯誤。
+表示式模式的有效值為：
+<ul>
+<li><tt>Attribute：</tt> 這表示對此埠的輸出屬性執行的指派，需要是串流屬性。
+例如：output <tt>Out : x = In.y;</tt>，但不是 <tt>x = In.y.z</tt>。</li>
+<li><tt>AttributeFree：</tt> 這表示對此埠的輸出屬性執行的指派，不能參照任何輸入串流屬性。
+例如：output <tt>Out : x = 3 + random(3);</tt>，但不是 <tt>x = In.x + 3</tt>。</li>
+<li><tt>Constant：</tt> 這表示對此埠的輸出屬性執行的指派，需要在編譯時期可求值為一個常數。
+例如：output <tt>Out : x = 3 + pow(2, 3);</tt>，但不是 <tt>x = random(3)</tt>。</li>
+<li><tt>Expression：</tt> 這是最靈活的表示式模式，任何正確類型的 SPL 表示式都可以顯示為針對此埠的輸出屬性的指派。例如：輸出 <tt> Out : x = A.y + B.z;</tt>。</li>
+<li><tt>Nonexistent：</tt> 這表示不能在此埠的 SPL 原始碼中指定輸出屬性指派。</li>
+</ul>
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set__autoassignment">
+    <dt>自動指派</dt>
+    <dd>
+<tt>autoAssignment</tt> 元素定義是否從輸入埠的屬性中，自動指派尚未指派的屬性。
+如果設定為 true，則 SPL 編譯器將重新撰寫（在編譯時期）運算子呼叫，猶如未指派的輸出屬性在輸出區段中具有明確指派那樣。對於每一個遺漏指派的輸出屬性，將會向其指派一個具有相同名稱及類型的輸入屬性，或指派一個具有相同名稱且類型為 <tt>T</tt>，而且輸出屬性類型為 <tt>optional&lt;T&gt;</tt> 的輸入屬性。如果沒有此類輸入屬性，或者如果有多個此類輸入屬性，則將在編譯時期報告錯誤。請注意，Constant 的 expressionMode 值與 autoAssignment 值 true 不相容。這種組合將導致編譯錯誤。</dd>
+  </dlentry>
+  <dlentry id="output_port_set__completeassignment">
+    <dt>完成指派</dt>
+    <dd>
+<tt>completeAssignment</tt> 元素定義是否需要指派所有輸出埠屬性，以具有有效的運算子呼叫。
+在編譯時期，將對此進行檢查。如果某個運算子的此元素設定為 true，且在對此運算子的給定實例執行自動指派步驟（如果已要求的話）之後只有部分輸出屬性具有指派，則將報告錯誤。
+</dd>
+  </dlentry>
+  <dlentry id="output_port_set__rewriteallowed">
+    <dt>容許重新撰寫（僅適用於 C++）</dt>
+    <dd>
+<tt>rewriteAllowed</tt> 元素指定是否容許編譯器來重新撰寫出現在此埠的輸出屬性指派中的表示式。
+</dd>
+  </dlentry>
+  <dlentry id="output_port_set__outputfunctions">
+    <dt>輸出函數</dt>
+    <dd>
+outputFunctions 元素定義可出現在輸出屬性指派中的有效自訂輸出函數。
+它是選用項目。在呈現時，它包含兩個子元素：type 元素，用來定義自訂輸出函數類型的名稱（如在 RelationalAggs 中一樣）；和 default 元素，用來定義要在自動指派輸出屬性時使用的預設輸出函數。
+對於正在使用的自訂輸出函數類型（如在 RelationalAggs 的 Last 那樣），此值應該是有效的函數名稱。
+請注意，如果使用者程式碼指定某個輸出屬性指派，但卻不含用於某個埠（預期一個輸出函數）的輸出函數，則將自動插入預設輸出函數。
+</dd>
+  </dlentry>
+    <dlentry id="output_port_set__finalpunctuationoutputscope">
+    <dt>最終標點符號埠範圍</dt>
+    <dd>
+<tt>finalPunctuationPortScope</tt> 元素是選用項目，用來指定 SPL 語言執行時期將用於最終標點符號轉遞的輸入埠集。
+依預設，具有輸入埠及輸出埠的運算子會將最終標點符號從其輸入埠自動轉遞至其輸出埠。
+這是透過在所有輸入埠上接收到最終標點符號時，在輸出埠上產生最終標點符號來達成的。
+finalPunctuationPortScope 可用來限制用於轉遞最終標點符號的輸入埠集。
+透過將用於轉遞的輸入埠集設定為空集合，還可以使用此元素來關閉最終標點符號的自動轉遞功能。
+在此情況下，運算子開發人員負責確保輸出埠取得最終標點符號。
+</dd>
+  </dlentry>
+  <dlentry id="output_port_set__windowpunctuationoutputmode">
+    <dt>視窗標點符號輸出模式</dt>
+    <dd>
+windowPunctuationOutputMode 指定輸出埠的視窗標點符號語意。選項為：
+<ul>
+<li><tt>Generating</tt> - 此埠會產生視窗標點符號。</li>
+<li><tt>Free</tt> - 此埠不使用視窗標點符號。</li>
+<li><tt>Preserving</tt> - 此埠會保留接收到的視窗標點符號。如果某個運算子具有多個輸入埠，則必須指定 windowPunctuationInputPort 元素，才能識別正在保留哪一個輸入埠的標點符號。
+</li>
+</ul>
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__tuplemutationallowed">
+    <dt>容許值組變更</dt>
+    <dd>
+<tt>tupleMutationAllowed</tt> 元素定義此運算子是否容許下游運算子透過提交呼叫變更提交至此埠的輸出值組。
+如果設定為 true，則運算子的處理邏輯應該預期其提交至此埠的值組因提交呼叫而進行了修改。
+</dd>
+  </dlentry>
+  <dlentry id="output_port_set__windowpunctuationinputport">
+    <dt>視窗標點符號輸入埠</dt>
+    <dd>
+如上所述，<tt>windowPunctuationInputPort</tt> 元素會將某個輸入埠與負責保留輸出埠的某個標點符號建立關聯。
+僅當輸出埠的視窗標點符號模式是 Preserving 時，才可以指定此元素。
+windowPunctuationInputPort 可以設定為 -1，這與遺漏 windowPunctuationInputPort 元素具有相同的語意。
+請特別注意，視窗標點符號的標點符號轉遞不是由 SPL 語言執行時期自動執行的（與最終標點符號不同），並且運算子模型用於通知 SPL 編譯器該運算子正在實作的行為。
+如需相關資訊，請參閱《IBM Streams Processing Language 工具箱開發參考》<i></i>。
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__outputassignmentportscope">
+    <dt>輸出指派埠範圍</dt>
+    <dd>
+<tt>outputAssignmentPortScope</tt> 會選擇性地限制哪些輸入埠屬性可以出現在對此埠的輸出指派中。
+如果指定了某個範圍，則只有該範圍所指定的埠中的屬性才可以出現在該埠的輸出指派中。
+</dd>
+  </dlentry>
+</dl>
+</section>
+
+<section id="parameters">
+<title outputclass="splhead-1">參數</title>
+<p>
+parameters 元素說明可用於對運算子進行配置的有效參數。
+它還說明了此類參數配置的有效語法。
+</p>
+<dl>
+  <dlentry id="parameters__allowany">
+    <dt>容許任何項</dt>
+    <dd>此元素是一個布林旗標，用來判定某個運算子是否可以採用任意參數，而沒有任何限制。
+運算子可以採用任意參數，卻仍指定其他參數及相關聯的限制。
+</dd><!-- Allow Any -->
+  </dlentry>
+  <dlentry id="parameters__parameter">
+    <dt>參數</dt>
+    <dd><p>每一個 parameter 元素都包含數個子元素。
+    </p>
+      <dl>
+       <dlentry id="parameters__parameter__name">
+         <dt>名稱</dt>
+         <dd><tt>name</tt> 元素是參數將顯示在 SPL 原始碼中的名稱。
+例如，<tt>函子</tt>運算子可以具有 <tt>filter</tt> 參數。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__description">
+         <dt>說明</dt>
+         <dd>這是此參數的選用說明。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__optional">
+         <dt>選用項目</dt>
+         <dd>這是一個布林值，用來指定此參數是否是選用項目。值 false 表示必須在 SPL 原始碼中指定該參數。
+</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__rewriteallowed">
+         <dt>容許重新撰寫（僅適用於 C++）</dt>
+         <dd>此布林參數容許編譯器透過將文字（包括從編譯時期求值步驟產生的那些文字）替換為在執行時期載入其值的變數，來重新撰寫出現在此參數值中的表示式。
+這容許編譯器為其參數配置稍有不同的運算子產生簡略程式碼。
+在特定情況下，運算子程式碼產生器可能要查看參數值，以根據找到的特定值來產生不同的程式碼，或執行編譯時期驗證。
+例如，<tt>format: csv</tt> 可能會導致為來源運算子產生特殊化程式碼。在此類情況下，應該關閉表示式重新撰寫功能。
+</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__expressionmode">
+         <dt>表示式模式</dt>
+         <dd>
+           <ul>
+             <li><tt>Attribute</tt> - 將參數值限制為串流屬性。</li>
+             <li><tt>AttributeFree</tt> - 參數值是不包含對串流屬性之參照的表示式。
+</li>
+             <li><tt>Constant（僅適用於 C++）</tt> - 參數值需要可在編譯時期求值為一個常數。</li>
+             <li><tt>CustomLiteral</tt> - 將參數值限制為來自其中一個自訂文字列舉（定義於模型的環境定義區段中）的有效值
+</li>
+             <li><tt>Expression（僅適用於 C++）</tt> - 這是最靈活的表示式模式，任何正確類型的 SPL 表示式在該模式中都可以顯示為參數值。
+</li>
+           </ul>
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__type">
+         <dt>類型</dt>
+         <dd>參數的 <tt>type</tt> 是其值的 SPL 類型（例如 <tt>list&lt;ustring></tt>）或自訂文字名稱（例如 <tt>SourceFormat</tt>）。還可以省略 type，在這種情況下，任何 SPL 類型都將符合。
+參數的 type 子元素可以具有空值，這與遺漏 type 元素具有相同的語意。
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__cardinality">
+         <dt>基數</dt>
+         <dd>參數所接受的值數目上限。如果省略或者值為 -1，則假定值的數目無界限。
+參數值的數目必須與基數相符。cardinality 子元素可以採用值 -1，這與遺漏 cardinality 元素具有相同的語意。
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__portScope">
+         <dt>埠範圍（僅適用於 C++）</dt>
+         <dd>此元素用來將出現在參數值中的串流屬性限制為特定的輸入埠或限制為輸入埠清單。
+埠索引從 0 開始。當省略時，表示對串流屬性沒有任何限制。
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__customOutputFunction">
+         <dt>自訂輸出函數（僅適用於 C++）</dt>
+         <dd>參數的這個選用元素會指定環境定義元素中定義之自訂輸出函數的名稱，並在參數的編譯期間，讓定義於該集中的函數變成可見。
+運算子負責使用該參數來產生涉及到自訂輸出函數的正確 C++ 程式碼，所採用的方式與它在用於 output 子句時所採用的方式相同。
+</dd>
+       </dlentry>
+      </dl>
+    </dd><!-- Parameter -->
+  </dlentry>
+</dl> <!-- Parameters -->
+</section>
+</refbody>
+</reference>

@@ -1,0 +1,312 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use SortCommon;
+    SortCommon::verify($model);
+    my $inputPort = $model->getInputPortAt(0);
+    my $outputPort = $model->getOutputPortAt(0);
+    my $inTupleName = $inputPort->getCppTupleName();
+    my $inTupleType = $inputPort->getCppTupleType();
+    my $outTupleType = $outputPort->getCppTupleType();
+    my $hasGlobalOrder = 1;
+    my @localOrders = ();
+    my $globalOrder = "ascending";
+    my $orderParam = $model->getParameterByName("order");
+    my $sortByParam = $model->getParameterByName("sortBy");
+    my $partitionByParam = $model->getParameterByName("partitionBy");
+    if($orderParam) {
+        my $numOrderValues = $orderParam->getNumberOfValues();
+        my $numSortByValues = $sortByParam->getNumberOfValues();
+        if($numOrderValues==1) {
+            $hasGlobalOrder = 1;
+            $globalOrder = $orderParam->getValueAt(0)->getSPLExpression();
+        } else {
+            $hasGlobalOrder = 0;
+            foreach my $value (@{$orderParam->getValues()}) {
+                push @localOrders, $value->getSPLExpression();
+            }
+        }
+    }
+    my $partitionByInitializer = SPL::CodeGen::getParameterCppInitializer($partitionByParam);
+    my $window = $inputPort->getWindow();
+    my $windowCppInitializer = SPL::CodeGen::getPartitionedWindowCppInitializer($window, "IPort0Type*", "LRU");
+    my $isPunctWindow = ($window->isTumbling() and ($window->getEvictionPolicyType() ==
+                                                    $SPL::Operator::Instance::Window::PUNCT));
+    my $tsz = $inputPort->getWindow()->hasTriggerPolicy() ?
+        $inputPort->getWindow()->getTriggerPolicySize()->getCppExpression() : undef;
+
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Runtime/Operator/OperatorMetrics.h>
+#include <SPL/Runtime/Utility/LogTraceMessage.h>
+
+MY_OPERATOR::MY_OPERATOR()
+  : MY_BASE_OPERATOR(), _window(<%=$windowCppInitializer%>),
+    _partitionCount(getContext().getMetrics().getCustomMetricByName("nCurrentPartitions"))
+{
+<%if($tsz){%>
+    if (<%=$tsz%> != 1)
+        SPLTRACEMSG(L_ERROR, SPL_APPLICATION_RUNTIME_INVALID_COUNT_BASED_TRIGGER_SIZE(<%=$tsz%>), SPL_OPER_DBG);
+<%}%>
+<%if($window->isTumbling()){%>
+    _window.registerBeforeWindowFlushHandler(this);
+    <%if($isPunctWindow){%>
+        _window.registerOnEmptyWindowPunctEvent(this);
+    <%}%>
+<%} elsif ($window->isTimeInterval) {%>
+    _window.registerBeforeWindowCloseHandler(this);
+    _window.registerOnWindowInitialFullHandler(this);
+    _window.registerOnWindowTriggerHandler(this);
+<%} else {%>
+    _window.registerAfterTupleInsertionHandler(this);
+    _window.registerBeforeTupleEvictionHandler(this);
+<%}%>
+<%if($window->hasPartitionEvictionPolicy()) {%>
+    _window.registerOnWindowPartitionEviction(this);
+<%}%>
+    _partitionCount.setValueNoLock(0);
+}
+
+MY_OPERATOR::~MY_OPERATOR()
+{
+<%if (!$window->isTimeInterval()) {%>
+    _window.deleteWindowObjects();
+<%}%>
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+<%if ($isInConsistentRegion || $ckptKind ne "none") {%>
+    AutoMutex am(_mutex);
+<% } else {%>
+    AutoPortMutex apm(_mutex, *this);
+<% } %>
+    IPort0Type const & <%=$inTupleName%> =
+        static_cast<IPort0Type const&>(tuple);
+<%if($partitionByParam) {%>
+    PartitionByType partition(<%=$partitionByInitializer%>);
+
+    _window.insert(Creator<WindowType::TupleType>::create(<%=$inTupleName%>), partition);
+<%} else {%>
+    _window.insert(Creator<WindowType::TupleType>::create(<%=$inTupleName%>));
+<%}%>
+    _partitionCount.setValueNoLock (_window.getWindowStorage().size());
+
+}
+
+<%if($isPunctWindow){%>
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+<%if ($isInConsistentRegion || $ckptKind ne "none") {%>
+    AutoMutex am(_mutex);
+<% } else {%>
+    AutoPortMutex apm(_mutex, *this);
+<% } %>
+    if(punct==Punctuation::WindowMarker)
+        _window.insert(punct);
+}
+void MY_OPERATOR::onEmptyWindowPunctEvent(WindowEventType::WindowType & window)
+{
+    submit(Punctuation::WindowMarker, 0);
+}
+<%}%>
+<%if ($window->isTumbling()) {%>
+void MY_OPERATOR::beforeWindowFlushEvent(WindowEventType::WindowType & window,
+                                         WindowEventType::PartitionType const & partition)
+<%} elsif ($window->isTimeInterval()) {%>
+void MY_OPERATOR::onWindowTriggerEvent(WindowEventType::WindowType & window,
+                                       WindowEventType::PartitionType const & partition)
+<%}%>
+<%if ($window->isTumbling() || $window->isTimeInterval()) {%>
+{
+     WindowType::DataType & gdata = window.getWindowData(partition);
+     TupleComparer comparer(*this);
+     std::sort(gdata.begin(), gdata.end(), comparer);
+     for(size_t i=0, iu=gdata.size(); i<iu; ++i) {
+         submit(*gdata[i], 0);
+         Allocator<WindowType::TupleType>::deallocate(gdata[i]);
+     }
+     submit(Punctuation::WindowMarker, 0);
+     _partitionCount.setValueNoLock(0);
+}
+<%}%>
+<%if ($window->isTimeInterval()) {%>
+void MY_OPERATOR::beforeWindowFlushEvent(WindowEventType::WindowType & window,
+                                         WindowEventType::PartitionType const & partition)
+{
+    SPLAPPTRC(L_DEBUG, window.toString() << " partition " << partition, SPL_OPER_DBG);
+}
+
+<%}
+if ($window->isSliding()) {%>
+void MY_OPERATOR::afterTupleInsertionEvent(WindowEventType::WindowType & window,
+                                           WindowEventType::TupleType & tuple,
+                                           WindowEventType::PartitionType const & partition)
+{
+    // A new tuple has been inserted into the last position in the window
+    // data.  The other tuples are already sorted.  This code moves the
+    // last tuple to the correct place so that all the tuples in the
+    // data are sorted.
+
+    typedef WindowType::DataType DataType;
+    DataType & data = _window.getWindowData(partition);
+    DataType::reverse_iterator end = data.rend();
+    DataType::reverse_iterator it = data.rbegin();
+
+    // c++11: use std::move and move assignment instead of copy assignment.
+    // Save a copy of the new tuple.
+    WindowType::TupleType newTuple = *it;
+
+    // Slide tuples greater than the new one to make room for the new
+    // one in its rightful place.
+    while ((++it != end) && compareTuples(newTuple, *it)) {
+        *(it - 1) = *it;
+    }
+
+    // copy the new tuple into its place
+    *(it - 1) = newTuple;
+}
+
+void MY_OPERATOR::beforeTupleEvictionEvent(WindowEventType::WindowType & window,
+                                           WindowEventType::TupleType& tuple,
+                                           WindowEventType::PartitionType const & partition)
+{
+    submit(*tuple, 0);
+    Allocator<WindowType::TupleType>::deallocate(tuple);
+    _partitionCount.setValueNoLock (_window.getWindowStorage().size());
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+    if(punct==Punctuation::FinalMarker) {
+        <%if ($isInConsistentRegion || $ckptKind ne "none") {%>
+        AutoMutex am(_mutex);
+        <% } else {%>
+        AutoPortMutex apm(_mutex, *this);
+        <% } %>
+        // flush before final punctuation
+        typedef WindowType::StorageType StorageType;
+        StorageType & storage = _window.getWindowStorage();
+        StorageType::iterator sit = storage.begin();
+        StorageType::iterator seit = storage.end();
+        for(; sit!=seit; ++sit)
+        {
+            WindowEventType::PartitionType const & partition = sit->first;
+            typedef WindowType::DataType DataType;
+            DataType & data = _window.getWindowData(partition);
+            DataType::iterator dit=data.begin();
+            DataType::iterator deit=data.end();
+            for(; dit!=deit; ++dit)
+                submit(**dit, 0);
+        }
+        // once the final punct is sent, the port will not let anything else go
+    }
+}
+<%}%>
+
+<%if($window->hasPartitionEvictionPolicy()) {%>
+void MY_OPERATOR::onWindowPartitionEviction(WindowEventType::WindowType & window,
+                                            WindowEventType::PartitionIterator const& begin,
+                                            WindowEventType::PartitionIterator const& end)
+{
+    // We have a window being evicted.   Clean up
+    WindowEventType::PartitionIterator it;
+    for (it = begin; it != end; it++) {
+        // delete the tuples
+        WindowType::DataType & data = window.getWindowData(it.partition());
+        for(uint32_t i=0, iu=data.size(); i<iu; ++i) {
+            Allocator<WindowType::TupleType>::deallocate(data[i]);
+        }
+    }
+}
+<%}%>
+
+bool MY_OPERATOR::compareTuples(WindowType::TupleType const & l,
+                                WindowType::TupleType const & r)
+{
+    IPort0Type const & lhs = Referencer<WindowType::TupleType>::dereference(l);
+    IPort0Type const & rhs = Referencer<WindowType::TupleType>::dereference(r);
+
+<%my $i=0; for my $value (@{$sortByParam->getValues()}) {%>
+    <%=$value->getCppType()%> lhs_<%=$i%>;
+    <%=$value->getCppType()%> rhs_<%=$i%>;
+<%++$i;}%>
+
+    {
+        MY_BASE_OPERATOR::IPort0Type const & <%=$inTupleName%> = lhs;
+<%my $i=0; for my $value (@{$sortByParam->getValues()}) {%>
+        lhs_<%=$i%> = <%=$value->getCppExpression()%>;
+<%++$i;}%>
+    }
+
+    {
+        MY_BASE_OPERATOR::IPort0Type const & <%=$inTupleName%> = rhs;
+<%my $i=0; for my $value (@{$sortByParam->getValues()}) {%>
+        rhs_<%=$i%> = <%=$value->getCppExpression()%>;
+<%++$i;}%>
+    }
+
+<%my $i=0; for my $value (@{$sortByParam->getValues()}) {
+    my $order = ($hasGlobalOrder) ? $globalOrder : $localOrders[$i];
+    my $lt = ($order eq "ascending") ? "<" : ">";
+    my $gt = ($order eq "ascending") ? ">" : "<";
+%>
+    if(lhs_<%=$i%> <%=$lt%> rhs_<%=$i%>) {
+        return true;
+    } else if(lhs_<%=$i%> <%=$gt%> rhs_<%=$i%>) {
+        return false;
+    }
+<%++$i;}%>
+    return false;
+}
+
+void MY_OPERATOR::drain()
+{
+    SPLAPPTRC(L_DEBUG, "drain", SPL_OPER_DBG);
+    _window.drain();
+}
+
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    SPLAPPTRC(L_DEBUG, "checkpoint " << ckpt.getSequenceId(), SPL_OPER_DBG);
+    _window.checkpoint(ckpt);
+}
+
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    SPLAPPTRC(L_DEBUG, "reset " << ckpt.getSequenceId(), SPL_OPER_DBG);
+    _window.reset(ckpt);
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    AutoMutex am(_mutex);
+
+    SPLAPPTRC(L_DEBUG, "resetToInitialState", SPL_OPER_DBG);
+    _window.resetToInitialState();
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

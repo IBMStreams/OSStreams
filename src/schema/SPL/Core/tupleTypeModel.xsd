@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/tupleType"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/tupleType"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<xs:element name="tuple" type="tupleType"/>
+
+<!-- The tuple type.  -->
+<xs:complexType name="tupleType">
+  <xs:sequence>
+    <!-- The attributes in the tuple.  -->
+    <xs:element name="attr" type="attrType" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The optional type.  -->
+<xs:complexType name="optionalType">
+  <xs:choice minOccurs="0" maxOccurs="1">
+    <xs:element name="list" type="listOrSetType"/>
+    <xs:element name="set" type="listOrSetType"/>
+    <xs:element name="map" type="mapType"/>
+    <xs:element name="tuple" type="tupleType"/>
+  </xs:choice>
+  <!-- type must be present if element is a scalar -->
+  <xs:attribute name="type" type="xs:string"/>
+</xs:complexType>
+
+<!-- The attribute type.  -->
+<xs:complexType name="attrType">
+  <xs:choice minOccurs="0" maxOccurs="1">
+    <xs:element name="list" type="listOrSetType"/>
+    <xs:element name="set" type="listOrSetType"/>
+    <xs:element name="map" type="mapType"/>
+    <xs:element name="tuple" type="tupleType"/>
+    <xs:element name="optional" type="optionalType"/>
+  </xs:choice>
+  <!-- name of the attribute -->
+  <xs:attribute name="name" type="xs:token" use="required"/>
+  <!-- type must be present if element is a scalar -->
+  <xs:attribute name="type" type="xs:string"/>
+</xs:complexType>
+
+<!-- The type type for nested types.  -->
+<xs:complexType name="typeType">
+  <xs:choice minOccurs="0" maxOccurs="1">
+    <xs:element name="list" type="listOrSetType"/>
+    <xs:element name="set" type="listOrSetType"/>
+    <xs:element name="map" type="mapType"/>
+    <xs:element name="tuple" type="tupleType"/>
+    <xs:element name="optional" type="optionalType"/>
+  </xs:choice>
+</xs:complexType>
+
+<!-- The listOrSet type.  -->
+<xs:complexType name="listOrSetType">
+  <xs:choice minOccurs="0" maxOccurs="1">
+    <xs:element name="list" type="listOrSetType"/>
+    <xs:element name="set" type="listOrSetType"/>
+    <xs:element name="map" type="mapType"/>
+    <xs:element name="tuple" type="tupleType"/>
+    <xs:element name="optional" type="optionalType"/>
+  </xs:choice>
+  <!-- bound for bounded list/set -->
+  <xs:attribute name="bound" type="xs:long"/>
+  <!-- elementType must be present if element type is scalar -->
+  <xs:attribute name="elementType" type="xs:string"/>
+</xs:complexType>
+
+<!-- The map type.  -->
+<xs:complexType name="mapType">
+  <xs:sequence minOccurs="0" maxOccurs="1">
+    <!-- The key type, if not scalar -->
+    <xs:element name="key" type="typeType" minOccurs="0" maxOccurs="1"/>
+    <!-- The value type associated with the key, if not scalar -->
+    <xs:element name="value" type="typeType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+  <!-- bound for bounded map -->
+  <xs:attribute name="bound" type="xs:long"/>
+  <!-- keyType must be present if key type is scalar -->
+  <xs:attribute name="keyType" type="xs:string"/>
+  <!-- valueType must be present if value type is scalar -->
+  <xs:attribute name="valueType" type="xs:string"/>
+</xs:complexType>
+
+</xs:schema>

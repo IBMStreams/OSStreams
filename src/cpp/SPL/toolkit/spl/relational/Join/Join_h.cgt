@@ -1,0 +1,269 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use JoinCommon;
+    JoinCommon::verify($model);
+
+    # windowing/partition support
+    my $partitionByLHSParam = $model->getParameterByName("partitionByLHS");
+    my @partitionByLHSTypes = SPL::CodeGen::getParameterCppTypes($partitionByLHSParam);
+    my $numOutputs = $model->getNumberOfOutputPorts();
+    my $inputPortLHS = $model->getInputPortAt(0);
+    my $windowLHS = $inputPortLHS->getWindow();
+
+    my $partitionLHSCppType = ($partitionByLHSParam)
+        ? SPL::CodeGen::emitClass($model, 'PartitionByLHSType', @partitionByLHSTypes) : "int32_t";
+    my $cppLHSTupleType = "IPort0Type*";
+
+    my $windowLHSCppType = ($partitionByLHSParam)
+        ? SPL::CodeGen::getWindowCppType($windowLHS, $cppLHSTupleType, 'PartitionByLHSType')
+        : SPL::CodeGen::getWindowCppType($windowLHS, $cppLHSTupleType);
+    my $windowEventLHSCppType = ($partitionByLHSParam)
+        ? SPL::CodeGen::getWindowEventCppType($windowLHS, $cppLHSTupleType, 'PartitionByLHSType')
+        : SPL::CodeGen::getWindowEventCppType($windowLHS, $cppLHSTupleType);
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+    if ($isInConsistentRegion or $ckptKind ne "none") {
+        # instantiate window with incremental checkpointing capability
+        $windowLHSCppType = ($partitionByLHSParam)
+            ? SPL::CodeGen::getWindowCppType($windowLHS, $cppLHSTupleType, 'PartitionByLHSType', 'SPL::IncrDeque')
+            : SPL::CodeGen::getWindowCppType($windowLHS, $cppLHSTupleType, '', 'SPL::IncrDeque');
+         $windowEventLHSCppType = ($partitionByLHSParam)
+            ? SPL::CodeGen::getWindowEventCppType($windowLHS, $cppLHSTupleType, 'PartitionByLHSType', 'SPL::IncrDeque')
+            : SPL::CodeGen::getWindowEventCppType($windowLHS, $cppLHSTupleType, '', 'SPL::IncrDeque');
+    }
+
+    my $partitionByRHSParam = $model->getParameterByName("partitionByRHS");
+    my @partitionByRHSTypes = SPL::CodeGen::getParameterCppTypes($partitionByRHSParam);
+    my $inputPortRHS = $model->getInputPortAt(1);
+    my $windowRHS = $inputPortRHS->getWindow();
+    my $cppRHSTupleType = "IPort1Type*";
+    my $partitionRHSCppType = ($partitionByRHSParam)
+        ? SPL::CodeGen::emitClass($model, 'PartitionByRHSType', @partitionByRHSTypes) : "int32_t";
+    my $windowRHSCppType = ($partitionByRHSParam)
+        ? SPL::CodeGen::getWindowCppType($windowRHS, $cppRHSTupleType, 'PartitionByRHSType')
+        : SPL::CodeGen::getWindowCppType($windowRHS, $cppRHSTupleType);
+    my $windowEventRHSCppType = ($partitionByRHSParam)
+        ? SPL::CodeGen::getWindowEventCppType($windowRHS, $cppRHSTupleType, 'PartitionByRHSType')
+        : SPL::CodeGen::getWindowEventCppType($windowRHS, $cppRHSTupleType);
+    if ($isInConsistentRegion or $ckptKind ne "none") {
+        # instantiate window with incremental checkpointing capability
+        $windowRHSCppType = ($partitionByRHSParam)
+            ? SPL::CodeGen::getWindowCppType($windowRHS, $cppRHSTupleType, 'PartitionByRHSType', 'SPL::IncrDeque')
+            : SPL::CodeGen::getWindowCppType($windowRHS, $cppRHSTupleType, '', 'SPL::IncrDeque');
+        $windowEventRHSCppType = ($partitionByRHSParam)
+            ? SPL::CodeGen::getWindowEventCppType($windowRHS, $cppRHSTupleType, 'PartitionByRHSType', 'SPL::IncrDeque')
+            : SPL::CodeGen::getWindowEventCppType($windowRHS, $cppRHSTupleType, '', 'SPL::IncrDeque');
+    }
+
+    my $algorithm = $model->getParameterByName("algorithm");
+    $algorithm = !defined ($algorithm) ? "inner" :
+                        $algorithm->getValueAt(0)->getSPLExpression();
+
+    # equality stuff - must be same types for both
+    my $equalityLHS = $model->getParameterByName("equalityLHS");
+    my @equalityTypes = SPL::CodeGen::getParameterCppTypes($equalityLHS);
+    my $equalityCppType = ($equalityLHS) ?
+        SPL::CodeGen::emitClass($model, 'IndexKeyType', @equalityTypes) : "int32_t";
+    my @includes;
+    push @includes, "#include <SPL/Runtime/Common/Metric.h>";
+
+    if ($isInConsistentRegion) {
+        push @includes, "#include <SPL/Runtime/Operator/State/ConsistentRegionContext.h>";
+    }
+%>
+
+#if 0
+// This is needed to support hash join with shared_ptr tuples.
+// TODO put this somewhere more appropriate
+#include <tr1/functional>
+#include <boost/shared_ptr.hpp>
+
+namespace std { namespace tr1 {
+template<class T>
+class hash<boost::shared_ptr<T> > {
+public:
+    size_t operator()(const boost::shared_ptr<T>& key) const {
+        return hash<void*>()(key.get());
+    }
+};
+}}
+#endif
+
+<%SPL::CodeGen::headerPrologue($model, \@includes);%>
+
+
+class MY_OPERATOR : public MY_BASE_OPERATOR,
+                    public StateHandler
+{
+public:
+    typedef <%=$partitionLHSCppType%> PartitionByLHSType;
+    typedef <%=$windowLHSCppType%> WindowLHSType;
+    typedef <%=$windowEventLHSCppType%> WindowEventLHSType;
+    typedef WindowLHSType::TupleType WindowLHSTupleType;
+
+    class WindowLHSHandler : public WindowEventLHSType {
+    public:
+      WindowLHSHandler(MY_OPERATOR & op) : op_(op) {}
+      void beforeTupleEvictionEvent (WindowType & window, TupleType & tuple,
+                                     PartitionType const & partition)
+        { op_.evictLHS (tuple);}
+      void afterTupleEvictionEvent (WindowType & window, TupleType & tuple,
+                                    PartitionType const & partition)
+        { SPL::Allocator<TupleType>::deallocate(tuple); }
+      <%if ($windowLHS->hasPartitionEvictionPolicy()) {%>
+        void onWindowPartitionEviction(WindowType & window,
+                                       PartitionIterator const& begin,
+                                       PartitionIterator const& end);
+      <%}%>
+
+    private:
+      MY_OPERATOR & op_;
+      static const uint32_t portNumber_ = 0;
+    };
+
+    typedef <%=$partitionRHSCppType%> PartitionByRHSType;
+    typedef <%=$windowRHSCppType%> WindowRHSType;
+    typedef <%=$windowEventRHSCppType%> WindowEventRHSType;
+    typedef WindowRHSType::TupleType WindowRHSTupleType;
+
+    class WindowRHSHandler : public WindowEventRHSType {
+    public:
+      WindowRHSHandler(MY_OPERATOR & op) : op_(op) {}
+      void beforeTupleEvictionEvent (WindowType & window, TupleType & tuple,
+                                     PartitionType const & partition)
+        { op_.evictRHS (tuple);}
+      void afterTupleEvictionEvent (WindowType & window, TupleType & tuple,
+                                    PartitionType const & partition)
+        { SPL::Allocator<TupleType>::deallocate(tuple); }
+      <%if ($windowRHS->hasPartitionEvictionPolicy()) {%>
+        void onWindowPartitionEviction(WindowType & window,
+                                       PartitionIterator const& begin,
+                                       PartitionIterator const& end);
+      <%}%>
+
+    private:
+      MY_OPERATOR & op_;
+      static const uint32_t portNumber_ = 1;
+    };
+
+    <%if ($equalityLHS) {%>
+        typedef <%=$equalityCppType%> EqualityKeyType;
+
+        <%if ($partitionByLHSParam) {%>
+            typedef std::tr1::unordered_map<PartitionByLHSType, std::deque<WindowLHSTupleType> >
+                LHSEqType;
+        <%} else {%>
+            typedef std::deque<WindowLHSTupleType> LHSEqType;
+        <%}%>
+        <%if ($partitionByRHSParam) {%>
+            typedef std::tr1::unordered_map<PartitionByRHSType, std::deque<WindowRHSTupleType> >
+                RHSEqType;
+        <%} else {%>
+            typedef std::deque<WindowRHSTupleType> RHSEqType;
+        <%}%>
+        typedef std::tr1::unordered_map<EqualityKeyType, LHSEqType> LHSEqMapType;
+        typedef std::tr1::unordered_map<EqualityKeyType, RHSEqType> RHSEqMapType;
+    <%}%>
+
+    typedef std::tr1::unordered_map<WindowLHSTupleType, uint64_t> TupleMapLHSType;
+    typedef std::tr1::unordered_map<WindowRHSTupleType, uint64_t> TupleMapRHSType;
+    typedef std::vector<WindowLHSTupleType> TupleVectorLHSType;
+    typedef std::vector<WindowRHSTupleType> TupleVectorRHSType;
+
+    MY_OPERATOR();
+    ~MY_OPERATOR();
+
+    inline void submit(Tuple & tuple, uint32_t port) {
+        MY_BASE_OPERATOR::submit(tuple, port);
+        if (port == 0) _submitted = true;
+    }
+
+    inline void submit(Punctuation const & punct, uint32_t port)
+    {   MY_BASE_OPERATOR::submit(punct, port); }
+
+    virtual void process(Tuple const & tuple, uint32_t port);
+
+    virtual void prepareToShutdown() {}
+
+    // StateHandler implementation
+    void drain();
+    void checkpoint(Checkpoint & ckpt);
+    void reset(Checkpoint & ckpt);
+    void resetToInitialState();
+
+private:
+    void evictLHS (WindowLHSTupleType & tuple);
+    void evictRHS (WindowRHSTupleType & tuple);
+    void cleanLHS (WindowLHSTupleType & tuple);
+    void cleanRHS (WindowRHSTupleType & tuple);
+    void resetSubmitted()
+    { _submitted = false; }
+
+    template <typename T>
+    static void deserialize (SPL::Checkpoint & ckpt, std::deque<T> & value, std::vector<T> const & tupleVector);
+    template <typename T>
+    static void serialize (SPL::Checkpoint & ckpt, std::deque<T> const & value, std::tr1::unordered_map<T, uint64_t> const & tupleMap);
+
+    template <typename Key, typename Value, typename T>
+    static void deserialize (SPL::Checkpoint & ckpt, std::tr1::unordered_map<Key, Value> & map, std::vector<T> const & tupleVector);
+    template <typename Key, typename Value, typename T>
+    static void serialize (SPL::Checkpoint & ckpt, std::tr1::unordered_map<Key, Value> const & map, std::tr1::unordered_map<T, uint64_t> const & tupleMap);
+
+    template <typename T>
+    static void deserializeMatches (SPL::Checkpoint& ckpt, std::tr1::unordered_set<T> & matches, std::vector<T> const & tupleVector);
+    template <typename T>
+    static void serializeMatches (SPL::Checkpoint& ckpt, std::tr1::unordered_set<T> const & matches, std::tr1::unordered_map<T, uint64_t> const & tupleMap);
+
+    template<typename T, typename G, typename D, typename S>
+    static void populateTupleMap (SPL::Window<T,G,D,S> & window, std::tr1::unordered_map<T, uint64_t> & tupleMap);
+    template<typename T, typename G, typename D, typename S>
+    static void populateTupleVector (SPL::Window<T,G,D,S> & window, std::vector<T> & tupleVector);
+
+    WindowLHSType    _windowLHS;
+    WindowLHSHandler _winLHSHandler;
+    WindowRHSType    _windowRHS;
+    WindowRHSHandler _winRHSHandler;
+    Mutex            _mutex;
+    bool             _submitted;
+
+    <%if ($equalityLHS) {%>
+        LHSEqMapType _LHSEq;
+        RHSEqMapType _RHSEq;
+    <%}
+    if ($algorithm ne "inner") {%>
+        <%if ($algorithm eq "outer" || $algorithm eq "leftOuter") {%>
+            std::tr1::unordered_set<WindowLHSTupleType> _MatchedLHS;
+        <%}%>
+        <%if ($algorithm eq "outer" || $algorithm eq "rightOuter") {%>
+            std::tr1::unordered_set<WindowRHSTupleType> _MatchedRHS;
+        <%}%>
+    <%}%>
+    <% if ($numOutputs == 1) {%>
+        <%if ($algorithm eq "outer" || $algorithm eq "leftOuter") {%>
+            IPort1Type _ClearedRHS;
+        <%} if ($algorithm eq "outer" || $algorithm eq "rightOuter") {%>
+            IPort0Type _ClearedLHS;
+        <%}%>
+    <%}%>
+    bool _emptyCountLHS;
+    bool _emptyCountRHS;
+    Metric& _lhsPartitionCount;
+    Metric& _rhsPartitionCount;
+    <%if ($isInConsistentRegion) {%>ConsistentRegionContext * const _crContext;<%}%>
+};
+<%SPL::CodeGen::headerEpilogue($model);%>

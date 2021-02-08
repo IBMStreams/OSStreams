@@ -1,0 +1,286 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use Cwd qw(abs_path realpath);
+use File::Basename ;
+use Getopt::Long qw(:config no_ignore_case bundling) ;
+
+sub usage
+{
+   print "Usage: " . basename(abs_path($0)) . " [--help] [--clean] [--infile infile.xlf]\n";
+   print "\n";
+   print "Create dat file for the passed-in xlf file (and all associated translated .xlf files)\n";
+   print "The .dat file created is created in the same directory as the source .xlf file\n";
+   print "All name.lang.xlf files in the same directory as the --infile file are processed\n";
+   print "\n";
+   print "--help           : Print this help information\n";
+   print "--clean          : Runs clean of the generated files for the input file\n";
+   print "--infile filename: filename is the xlf file containing the message definitions\n";
+   print "                   file name must be at least directory qualified (e.g. ./filename)\n";
+}
+
+my $SOURCE_PATH = $ENV{'SOURCE_PATH'};
+
+########################################
+# XLIFF
+########################################
+my @XLIFFJARS = glob "$SOURCE_PATH/build/targets/icu4j-tools/*.jar";
+if (@XLIFFJARS == 0) {
+    print STDERR "Package icu4j-tools must be built.\n";
+    exit 1;
+}
+if (@XLIFFJARS != 1) {
+    print STDERR "Too many versions for package icu4j-tools.\n";
+    exit 1;
+}
+my $XLIFFJAR = $XLIFFJARS[0];
+my $XLIFFXSDDIR = "$SOURCE_PATH/etc/xliff";
+
+########################################
+# Message generator
+########################################
+my @MSGGENJARS = glob "$SOURCE_PATH/build/targets/streams.build.messagegenerator/*.jar";
+if (@MSGGENJARS == 0) {
+    print STDERR "Missing dependent package message-generator.\n";
+    exit 1;
+}
+if (@MSGGENJARS != 1) {
+    print STDERR "Too many versions for dependent package message-generator.\n";
+    exit 1;
+}
+my $QUOTEFIXJAR = $MSGGENJARS[0];
+
+################## MAIN ###############
+
+sub buildTxtFile($$$);
+sub buildResFile($);
+
+# Parameters
+my $HELP = 0;
+my $VERBOSE = 0;
+my $CLEAN = 0;
+my $INFILE;
+my $OUTDIR;
+
+my $result = GetOptions("h|help"     => \$HELP,
+                        "v|verbose"  => \$VERBOSE,
+                        "c|clean"    => \$CLEAN,
+                        "i|infile:s" => \$INFILE,
+                        "o|outdir:s" => \$OUTDIR);
+
+if (!$result || $HELP)
+{
+    usage() ;
+    exit($result ? 0 : 1) ;
+}
+
+
+if (!$INFILE || !-f $INFILE || !$OUTDIR || !-d $OUTDIR)
+{
+    usage() ;
+    exit(1) ;
+}
+
+# Determine temporary directory for intermediate files
+my $rootdir;
+my $basename;
+my $tempdir;
+my $datfile;
+if ($INFILE =~ /(.*)\/([^\/]*).xlf$/)
+{
+    $rootdir = $OUTDIR;
+    $basename = $2;
+    $tempdir = "$rootdir/$basename";
+    $datfile = "$rootdir/$basename.dat";
+}
+else
+{
+    die "Input file $INFILE is not a valid xlf file\n";
+}
+
+print "***** Source and Target files:\n" if $VERBOSE;
+print "Root dir         = $rootdir\n" if $VERBOSE;
+print "Base Name        = $basename\n" if $VERBOSE;
+print "Temp build dir   = $tempdir\n" if $VERBOSE;
+print "Target .dat file = $datfile\n" if $VERBOSE;
+
+# Pre-cleanup
+system("rm -rf $tempdir");
+
+if ($CLEAN)
+{
+    exit 0;
+}
+
+
+# Temporary directories and files
+system("rm -rf $tempdir");
+system("mkdir -p $tempdir");
+
+# list of .res files
+my $reslist = "$tempdir/res.lst";
+open(RESLIST, ">$reslist") || die $!;
+
+# Determine if there are any translated xlf files
+# The base xlf file is always 'root' res
+my %xlflist = ();
+$xlflist{$INFILE} = 'root';
+print RESLIST "root.res ";
+print RESLIST "en.res ";
+
+opendir(DIR, $rootdir) or die $!;
+while (my $file = readdir(DIR))
+{
+    # Trim white space
+    $file =~ s/^\s+//;
+    $file =~ s/\s+$//;
+
+    # Ignore . or ..
+    next if ($file =~ m/^\./);
+    # Ignore empty
+    next if (!$file || $file eq "");
+
+    if ($file =~ /^$basename.([^.]*).xlf$/)
+    {
+       $xlflist{"$rootdir/$file"} = $1;
+        print RESLIST $xlflist{"$rootdir/$file"} . ".res ";
+    }
+}
+
+close RESLIST;
+
+# Process the xlf files
+my $cmd;
+my $output;
+my $rc;
+
+foreach my $key (keys(%xlflist))
+{
+    print "***** Processing XLF file $key... basename=$basename\n" if $VERBOSE;
+    my $tempkey=$key;
+    my($keyfile, $keydir, $keyext) = fileparse($tempkey);
+    print "***** key file name is $keyfile\n" if $VERBOSE;
+    if ( $basename eq 'StreamsRuntimeMessages' && ($xlflist{$key} eq 'it' || $xlflist{$key} eq 'fr') ) {
+        my $CorrectedFileName="$tempdir/$keyfile";
+        $cmd="java -cp $QUOTEFIXJAR com.ibm.streams.build.messagegenerator.CQuoteConverter $tempkey $CorrectedFileName $XLIFFXSDDIR/xliff-core-1.1.xsd";
+
+        print "***** Running $cmd \n" if $VERBOSE;
+        $rc = system($cmd);
+         print "***** Return code $rc \n" if $VERBOSE;
+        if ($rc)
+        {
+            print STDERR "Error fixing up single quotes in $tempkey, return code is $rc:\n";
+            exit 1;
+        }
+
+        $tempkey = $CorrectedFileName;
+    }
+
+
+    # Check for unescaped quotes in input file
+    $cmd = "egrep -n [a-zA-Z0-9]\\'[a-zA-Z0-9] $tempkey | egrep -v \'<!--|--!>\'";
+    print "Running command $cmd\n";
+    $rc = system($cmd);
+    # The result of this egrep command is a return code of 0 if there are matches, or 1 if there are no matches.
+    if (!$rc)
+    {
+        print STDERR "ERROR:  unescaped single quotes found in msg file $tempkey.  Fix them.\n";
+        exit 1;
+    }
+    print "Validated file $tempkey - no unescaped quotes.\n";
+
+    #############
+    # xlf -> txt
+    #############
+     print "Processing file $tempkey; language: $xlflist{$key};  \n" if $VERBOSE;
+
+    if ($xlflist{$key} eq 'root') {
+        buildTxtFile(1, $key, "");
+        buildResFile("root");
+        buildTxtFile(0, $key, "en");
+        buildResFile("en");
+    } elsif ( $tempkey eq $key ) {
+        buildTxtFile(0, $key, $xlflist{$key});
+        buildResFile($xlflist{$key});
+    } else {
+        buildTxtFile(0, $tempkey, $xlflist{$key});
+        buildResFile($xlflist{$key});
+    }
+}
+
+# Once you have processed all of the xlf files, you can
+# create the (single) .dat file
+
+################
+# *.res -> .dat
+################
+$cmd = "pkgdata -s $tempdir -d $rootdir -T $tempdir -p $basename $reslist";
+print "***** Running res->dat command:\n" if $VERBOSE;
+print "$cmd\n";
+$output = `$cmd`;
+$rc = $? >> 8;
+if ($rc)
+{
+    print STDERR "res->dat command failed:\n";
+    print STDERR "$output\n";
+    exit 1;
+}
+
+# Cleanup
+system("rm -rf $tempdir");
+exit 0;
+
+sub buildTxtFile($$$)
+{
+    my ($isRoot, $file, $lang) = @_;
+    $cmd = "java -cp $XLIFFJAR com.ibm.icu.dev.tool.localeconverter.XLIFF2ICUConverter -s " . abs_path(dirname($file)) . " -d $tempdir";
+    if ($isRoot) {
+        $cmd .= " -c root -r";
+    } else {
+        $cmd .= " -t $lang";
+    }
+    $cmd .= " " . basename($file);
+
+    print "***** Running xlf->txt command:\n" if $VERBOSE;
+    print "$cmd\n";
+    $output = `$cmd`;
+    $rc = $? >> 8;
+    if ($rc)
+    {
+        print STDERR "xlf->txt command failed:\n";
+        print STDERR "$output\n";
+        exit 1;
+    }
+}
+
+sub buildResFile($)
+{
+    my ($lang) = @_;
+    $cmd = "genrb -s $tempdir -d $tempdir $lang.txt";
+    print "***** Running txt->res command:\n" if ($VERBOSE);
+    print "$cmd\n";
+    $output = `$cmd`;
+    $rc = $? >> 8;
+    if ($rc)
+    {
+        print STDERR "txt->res command failed:\n";
+        print STDERR "$output\n";
+        exit 1;
+    }
+}

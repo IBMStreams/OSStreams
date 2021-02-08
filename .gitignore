@@ -1,0 +1,14 @@
+*.classpath
+*.idea
+*.iml
+*.project
+*.pyc
+*.swp
+*~
+
+._*
+.nfs*
+
+/build
+/site
+/velocity.log*

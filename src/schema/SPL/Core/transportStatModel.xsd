@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/transportStat"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:common="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/transportStat"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/common"
+           schemaLocation="commonModel.xsd"/>
+
+<xs:element name="transportStatModel" type="transportStatModelType"/>
+
+<xs:complexType name="transportStatModelType">
+  <xs:sequence>
+    <xs:element name="productVersion" type="common:versionType"/>
+    <!-- CPU kind description -->
+    <xs:element name="cpuKind" type="xs:string"/>
+    <!-- CPU's MIPS rate -->
+    <xs:element name="bogoMips" type="xs:unsignedLong"/>
+    <!-- One transport profile for each transport, max 3 profiles -->
+    <xs:element name="transportProfile" type="transportProfileType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- profile for each transport protocal -->
+<xs:complexType name="transportProfileType">
+  <xs:sequence>
+    <!-- transportKind contains name of transport protocol -->
+    <xs:element name="transportKind" type="transportKindType"/>
+    <!-- each tuplePerf contains a unique tuple size -->
+    <xs:element name="tuplePerf" type="tuplePerfType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Supported transport protocols -->
+<xs:simpleType name="transportKindType">
+   <xs:restriction base="xs:string">
+      <xs:enumeration value="tcp"/>
+      <xs:enumeration value="llm_rum_tcp"/>
+      <xs:enumeration value="llm_rum_ib"/>
+   </xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="tuplePerfType">
+  <xs:sequence>
+     <!-- tuple size (power of 2) in bytes -->
+    <xs:element name="size" type="xs:unsignedLong"/>
+     <!-- max rate (bytes/sec) -->
+    <xs:element name="rate" type="xs:unsignedLong"/>
+     <!-- % CPU utilization of sender -->
+    <xs:element name="senderUtil">
+      <xs:simpleType>
+        <xs:restriction base="xs:integer">
+          <xs:minInclusive value="0"/>
+          <xs:maxInclusive value="100"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:element>
+     <!-- % CPU utilization of receiver -->
+    <xs:element name="receiverUtil">
+      <xs:simpleType>
+        <xs:restriction base="xs:integer">
+          <xs:minInclusive value="0"/>
+          <xs:maxInclusive value="100"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:element>
+  </xs:sequence>
+</xs:complexType>
+
+</xs:schema>

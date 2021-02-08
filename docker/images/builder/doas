@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+function join { local IFS="$1"; shift; echo "$*"; }
+
+#
+# Arguments
+#
+
+if [ $# -lt 4 ]
+then
+  echo "Usage: $0 AS_UID AS_GID SOURCE_PATH"
+  exit 1
+fi
+
+AS_UID=$1
+AS_GID=$2
+SOURCE=$3
+
+#
+# Add the builder user and group
+#
+
+sed -i.tmp "/:${AS_GID}:/d" /etc/group && rm -f /etc/group.tmp
+groupadd -g ${AS_GID} builder >/dev/null 2>&1
+useradd -M -g ${AS_GID} -u ${AS_UID} -s /bin/bash builder >/dev/null 2>&1
+
+#
+# Export SOURCE_PATH
+#
+
+export DOCKER=1
+export SOURCE_PATH=${SOURCE}
+
+#
+# Run the command
+#
+
+shift 3
+CMDLINE=$(join " " $@)
+
+if [ -z "${CMDLINE}" ]; then
+  cd ${SOURCE}
+  su builder
+else
+  cd ${SOURCE}
+  su builder -c "${CMDLINE}"
+fi

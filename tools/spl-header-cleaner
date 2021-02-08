@@ -1,0 +1,57 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use warnings;
+use Getopt::Std;
+use Cwd qw(realpath abs_path getcwd);
+use File::Temp qw/ tempfile tempdir /;
+
+use FindBin;
+use File::Basename;
+use lib $FindBin::Bin;
+
+my $help;
+my %opts;
+
+##### MAIN
+$help="usage: $0 <file-name>\n";
+
+getopts('h',\%opts) or die("\n$help\n");
+if($opts{'h'}) {print $help; exit 0;}
+
+my $file = $ARGV[0];
+my ($fh, $tmpfile) = tempfile(UNLINK => 1, SUFFIX => ".sth");
+open(TMPFILE, ">$tmpfile") or die "cannot open file for writing: $!";
+open(FILE, "<$file") or die "cannot open file for reading: $!";
+
+while(my $line=<FILE>)
+{
+    # throw away the include line totally
+    next if $line =~ /#include.*Utility\/Visibility\.h/;
+    $line =~ s/PUSH_DLL_PUBLIC//g;
+    $line =~ s/POP_DLL_PUBLIC//g;
+    $line =~ s/PUSH_DLL_HIDDEN//g;
+    $line =~ s/POP_DLL_HIDDEN//g;
+    $line =~ s/DLL_PUBLIC//g;
+    $line =~ s/DLL_HIDDEN//g;
+    print TMPFILE $line;
+}
+close(FILE);
+close(TMPFILE);
+system("cp $tmpfile $file");

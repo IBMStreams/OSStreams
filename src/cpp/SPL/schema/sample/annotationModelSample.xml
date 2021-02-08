@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<annotation name="parallel" xmlns="http://www.ibm.com/xmlns/prod/streams/spl/annotation">
+  <tuple type="tuple&lt;int32 width, list&lt;tuple&lt;enum{Beat,port0} port, list&lt;enum{i}&gt; attributes&gt;&gt; partitionBy&gt;">
+    <attr name="width" type="int32">3</attr>
+    <attr name="partitionBy" type="list&lt;tuple&lt;enum{Beat,port0} port, list&lt;enum{i}&gt; attributes&gt;&gt;">
+      <list elementType="tuple&lt;enum{Beat,port0} port, list&lt;enum{i}&gt; attributes&gt;">
+        <value>
+          <tuple type="tuple&lt;enum{Beat,port0} port, list&lt;enum{i}&gt; attributes&gt;">
+            <attr name="port" type="enum{Beat,port0}">Beat</attr>
+            <attr name="attributes" type="list&lt;enum{i}&gt;">
+              <list elementType="enum{i}">
+                <value>i</value>
+              </list>
+            </attr>
+          </tuple>
+        </value>
+      </list>
+    </attr>
+  </tuple>
+</annotation>

@@ -1,0 +1,420 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use ParseCommon;
+    ParseCommon::verify($model);
+    my $format = $model->getParameterByName("format");
+    my $hasDelayField = $model->getParameterByName("hasDelayField");
+    my $parsing = $model->getParameterByName("parsing");
+    my $eolMarker = $model->getParameterByName("eolMarker");
+    my $blockSize = $model->getParameterByName("blockSize");
+    my $separator = $model->getParameterByName("separator");
+    my $defaultTuple = $model->getParameterByName("defaultTuple");
+    my $hasHeaderLine = $model->getParameterByName("hasHeaderLine");
+    my $readPunctuations = $model->getParameterByName("readPunctuations");
+    my $ignoreExtraCSVValues = $model->getParameterByName("ignoreExtraCSVValues");
+    my $outputPort = $model->getOutputPortAt(0);
+
+    my $tupleType = $outputPort->getCppTupleType();
+    my $inputPort = $model->getInputPortAt(0);
+    my $inTupleName = $inputPort->getCppTupleName();
+    my $inputTupleType = $inputPort->getCppTupleType();
+
+    my $parseInput = $model->getParameterByName("parseInput");
+
+    if ($parseInput) {
+        $parseInput = $parseInput->getValueAt(0)->getCppExpression();
+    } else {
+        # input must be just one blob attribute
+        $parseInput = "$inTupleName.get_" . $inputPort->getAttributeAt(0)->getName() . "()";
+    }
+
+    # Apply defaults
+    $format = $format ? $format->getValueAt(0)->getSPLExpression() : "csv";;
+    my $readPunctuations = $model->getParameterByName("readPunctuations");
+    $ignoreExtraCSVValues = $ignoreExtraCSVValues ? $ignoreExtraCSVValues->getValueAt(0)->getSPLExpression() eq "true" : 0;
+
+    my ($eolChar1, $eolChar2) = ('\n', undef);
+    ($eolChar1, $eolChar2) = AdapterHelper::extractEolChars ($eolMarker) if ($eolMarker);
+
+    $hasDelayField = $hasDelayField ? $hasDelayField->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    $parsing = $parsing ? $parsing->getValueAt(0)->getSPLExpression() : "strict";
+
+    # other corrections
+    my $hasHeaderExpn = $hasHeaderLine->getValueAt(0) if $hasHeaderLine;
+    $hasHeaderLine = $hasHeaderLine->getValueAt(0)->getCppExpression() if $hasHeaderLine;
+    $blockSize = $blockSize->getValueAt(0)->getCppExpression() if $blockSize;
+    my $binary = $format eq "bin" || $format eq "block";
+    $defaultTuple = $defaultTuple->getValueAt(0)->getCppExpression() if ($defaultTuple);
+
+    # compute which attributes we will generate
+    my $numAttrs = $outputPort->getNumberOfAttributes();
+    my $hasAssignments = 0;
+    my @genAttrs;
+    for (my $i = 0; $i < $numAttrs; $i++) {
+        my $attr = $outputPort->getAttributeAt($i);
+        if ($attr->hasAssignment()) {
+            $hasAssignments = 1;
+            next;
+        }
+        push @genAttrs, $attr;
+    }
+
+    # this is how many are left
+    $numAttrs = scalar(@genAttrs);
+
+    # Consistent region support
+    my $crContext = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $generateConsistentRegionSupport = $crContext ? 1 : 0;
+    my $isStart = $crContext ? $crContext->isStartOfRegion() : 0;
+    my $needsCRPermit = 1;
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Toolkit/IOHelper.h>
+#include <SPL/Toolkit/RuntimeException.h>
+#include <SPL/Runtime/Operator/OperatorMetrics.h>
+
+using namespace std;
+using namespace boost::iostreams;
+
+@include "../../adapter/Common/GenerateSourceReadLoopErrorChecks.cgt"
+
+MY_OPERATOR::MY_OPERATOR()
+: _filt_str (), _fs(),
+   _finished(false),
+   _draining(false),
+   _reset(false),
+   _position(),
+<%if ($readPunctuations) {%>
+   _sawFinal (false),
+<%}%>
+   _numInvalidTuples(getContext().getMetrics().getCustomMetricByName("nInvalidTuples"))
+<%if ($defaultTuple) {%>
+   ,_defaultTuple (<%=$defaultTuple%>)
+<%}%>
+   ,_mutex()
+   ,_flushed()
+   ,_resume()
+<%if ($generateConsistentRegionSupport) {%>
+   ,_crContext()
+<%}%>
+   <%if ($hasHeaderLine) {%>
+   ,_headerLineCount()
+   <%}%>
+   ,_isFlushed(false)
+   ,_flushWaiters(0)
+{
+    initStream();
+    _numInvalidTuples.setValueNoLock(0);
+    <%if ($generateConsistentRegionSupport) {%>
+    _crContext = static_cast<ConsistentRegionContext *>
+          (getContext().getOptionalContext(CONSISTENT_REGION));
+    <%}%>
+
+    <%if ($hasHeaderLine) {%>
+      initHeaderLineCount();
+    <%}%>
+}
+
+<%if ($hasHeaderLine) {%>
+void MY_OPERATOR::initHeaderLineCount () {
+  <%if (SPL::CodeGen::Type::isBoolean($hasHeaderExpn->getSPLType())) {%>
+    if (<%=$hasHeaderLine%>) {
+      _headerLineCount = 1;
+    }
+  <%} else {%>
+    _headerLineCount = <%=$hasHeaderLine%>;
+  <%}%>
+}
+<%}%>
+
+void MY_OPERATOR::initStream() {
+  _filt_str.reset(new boost::iostreams::filtering_streambuf<boost::iostreams::input_seekable>(BlobSourceV2(), 1, 4));
+  <%if ($binary) {%>
+    _fs.reset(new std::iostream(_filt_str.get()));
+  <%} else {%>
+    _fs.reset(new std::istream(_filt_str.get()));
+  <%}%>
+  _fs->imbue(locale::classic());
+  _blobSource = _filt_str->component<BlobSourceV2>(0);
+  <%if ($binary) {%>
+    _sbfs.reset(new SPL::StreamByteBuffer(*_fs));
+  <%}%>
+  <%unless ($generateConsistentRegionSupport) {%>
+    _blobSource->setAutoDiscard();
+  <%}%>
+}
+
+void MY_OPERATOR::initPendingStream() {
+  _filt_str_pending.reset(new boost::iostreams::filtering_streambuf<boost::iostreams::input_seekable>(BlobSourceV2(), 1, 4));
+  <%if ($binary) {%>
+    _fs_pending.reset(new std::iostream(_filt_str_pending.get()));
+  <%} else {%>
+    _fs_pending.reset(new std::istream(_filt_str_pending.get()));
+  <%}%>
+  _fs_pending->imbue(locale::classic());
+  _blobSource = _filt_str_pending->component<BlobSourceV2>(0);
+  <%if ($binary) {%>
+    _sbfs_pending.reset(new SPL::StreamByteBuffer(*_fs_pending));
+  <%}%>
+  <%unless ($generateConsistentRegionSupport) {%>
+    _blobSource->setAutoDiscard();
+  <%}%>
+}
+
+void MY_OPERATOR::swapStreams() {
+  _filt_str = _filt_str_pending;
+  _fs = _fs_pending;
+  <%if ($binary) {%>
+    _sbfs = _sbfs_pending;
+  <%}%>
+}
+
+void MY_OPERATOR::process(uint32_t)
+{
+    SPLAPPTRC(L_DEBUG, "Parse startup...", SPL_OPER_DBG);
+    <%=$tupleType%> tuple$;
+    <%print "double delay;" if $hasDelayField;%>
+
+    Mutex& _crMutex = _mutex;
+
+    _tupleNumber = 0;
+
+@include "../../adapter/Common/GenerateSourceReadLoop.cgt"
+
+    <%if (!$readPunctuations && !$generateConsistentRegionSupport) {%>
+        submit (Punctuation::WindowMarker, 0);
+        submit (Punctuation::FinalMarker, 0);
+    <%}%>
+
+    _finished = true;
+    SPLAPPTRC(L_DEBUG, "Parse exiting...", SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads (1);
+}
+
+void MY_OPERATOR::process (Tuple& tuple, uint32_t port)
+{
+    <%=$inputTupleType%>& <%=$inTupleName%> = static_cast<<%=$inputTupleType%>&>(tuple);
+    _blobSource->addBlob (<%=$parseInput%>);
+}
+
+void MY_OPERATOR::process (const Punctuation& punct, uint32_t port)
+{
+    if (punct == Punctuation::FinalMarker) {
+
+        _blobSource->setNonBlockingMode();
+
+        // We have to wait until all the data has been read before returning
+        ProcessingElement& pe = getPE();
+        while(!pe.getShutdownRequested() && !_finished) {
+           pe.blockUntilShutdownRequest(0.1);
+        }
+    }
+
+}
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    _blobSource->shutDown();
+}
+
+<% if ($generateConsistentRegionSupport) { %>
+
+// How the parse operator handles drain/checkpoint:  The goal is to read
+// as much of the input as possible.  It is possible that the boundaries
+// of the input data tuples do not correspond to the boundaries of the
+// output tuples, so there will be some residual data.  In the drain method,
+// we read as much of the input as is possible.  When the end of the available
+// input data is reached, the BlobSource will block.  We wait in for that
+// block in the drain method.
+// We unblock the read, setting the failbit in the stream, so that the
+// reads will exit.  The exit handlers for all the reads have checks to
+// see whether the read failed and the _draining flag is set.  In that case,
+// they ignore the failures.  When the failed reads complete, the parsing
+// thread will signal _flushed and then wait for signal _resume.
+// may be taken.
+void MY_OPERATOR::drain()
+{
+    // Wait for the blob source to be blocked.
+    SPLAPPTRC(L_DEBUG, "drain", SPL_OPER_DBG);
+    _blobSource->waitForBlock();
+    SPLAPPTRC(L_TRACE, "drain: waitForBlock completed", SPL_OPER_DBG);
+    flushBlobSource(true);
+    SPLAPPTRC(L_TRACE, "drain complete", SPL_OPER_DBG);
+}
+
+// When a checkpoint is taken, the last read has failed because insufficient
+// data in the buffer.
+// While the parsing thread is waiting, in the checkpoint method we seek back
+// in the stream to the start of the failed read, and read it again.  This
+// is stored as a blob in the checkpoint.  We then seek back to the start of
+// the failed read again, and signal _resume so that the parsing thread
+// continues.
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt)
+{
+    SPLAPPTRC(L_DEBUG, "checkpoint " << ckpt.getSequenceId(), SPL_OPER_DBG);
+
+    // The final read completed.  Now back up the stream and read the
+    // residue again.
+    SPLAPPTRC(L_DEBUG, "Reading residue", SPL_OPER_DBG);
+    _fs->clear();
+    _fs->seekg(_position);
+    _blobSource->setNonBlockingMode();
+    std::stringstream residue;
+    char readChar;
+    while (_fs->get(readChar)) {
+      residue.put(readChar);
+    }
+    std::string blobContent = residue.str();
+    SPLAPPTRC(L_DEBUG, "Read " << blobContent.length() << " chars", SPL_OPER_DBG);
+    bool hasBlob = false;
+    if (blobContent.length() > 0) {
+      SPL::blob checkpointBlob(reinterpret_cast<const unsigned char*>(blobContent.c_str()), blobContent.length());
+      hasBlob = true;
+      ckpt << hasBlob;
+      ckpt << checkpointBlob;
+    }
+    else {
+      hasBlob = false;
+      ckpt << hasBlob;
+    }
+    <%if ($hasHeaderLine) {%>
+    ckpt << _headerLineCount;
+    <%}%>
+
+    // Seek back so the next real read will read the residue.
+    _fs->clear();
+    _fs->seekg(_position);
+    _blobSource->setBlockingMode ();
+    {
+      SPLAPPTRC(L_TRACE, "Resetting draining", SPL_OPER_DBG);
+      _draining = false;
+      SPLAPPTRC(L_TRACE, "Signalling resume", SPL_OPER_DBG);
+      _resume.signal();
+    }
+
+    SPLAPPTRC(L_TRACE, "checkpoint complete", SPL_OPER_DBG);
+}
+
+// When a reset happens, the parsing thread may be at any point in its
+// cycle.  What we need to do is to force a failed read, as we did in
+// checkpoint.  In this case, the parser thread will block at the attempt
+// to acquire the ConsistentRegionPermit.
+//
+// We need to destroy the istream currently being used, and create a new
+// one, with a new BlobSource initially containing only the residual
+// data from the checkpoint.  We don't have any way to know when the
+// parser thread has blocked, and we cannot safely destroy the istream until
+// then.  So we create a new istream (_fs_pending, and its support also with
+// suffix (_pending).  When the parser thread resumes, at the top of its
+// loop it well check for the _reset flag, and start using the new istream
+// if _reset is set.
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    SPLAPPTRC(L_DEBUG, "reset " << ckpt.getSequenceId(), SPL_OPER_DBG);
+
+    // Clear the BlobSource.  Read a blob from the checkpoint,
+    // and add it to the BlobSource.
+    {
+      AutoMutex am(_mutex);
+      resetBlobSource();
+    }
+
+    bool hasBlob = false;
+    SPL::blob residue;
+    ckpt >> hasBlob;
+    if (hasBlob) {
+      ckpt >> residue;
+    }
+    <%if ($hasHeaderLine) {%>
+      ckpt >> _headerLineCount;
+    <%}%>
+
+    if (residue.getSize() > 0) {
+      SPLAPPTRC(L_DEBUG, "Adding blob of size " << residue.getSize(), SPL_OPER_DBG);
+      _blobSource->addBlob(residue);
+    }
+
+    SPLAPPTRC(L_TRACE, "reset complete", SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    SPLAPPTRC(L_DEBUG, "resetToInitialState", SPL_OPER_DBG);
+
+    // Clear the BlobSource.
+    {
+      AutoMutex am(_mutex);
+      resetBlobSource();
+    }
+
+    <%if ($hasHeaderLine) {%>
+      initHeaderLineCount();
+    <%}%>
+
+    SPLAPPTRC(L_TRACE, "resetToInitialState complete", SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::resetBlobSource() {
+    SPLAPPTRC(L_TRACE, "Resetting blob source", SPL_OPER_DBG);
+    _reset = true;
+    _fs->setstate(std::ios::failbit);
+    _blobSource->reset();
+    _position = 0;
+    SPLAPPTRC(L_TRACE, "Reset blob source", SPL_OPER_DBG);
+
+    initPendingStream();
+}
+
+<% } %>
+
+void MY_OPERATOR::flushBlobSource(bool setFailBit)
+{
+    SPLAPPTRC(L_TRACE, "Flushing blob source", SPL_OPER_DBG);
+    if (setFailBit) {
+       _fs->setstate(std::ios::failbit);
+    }
+    _draining = true;
+
+    // Tell blob source to unblock and return a failed read.
+    _isFlushed = false;
+    _blobSource->flush();
+    SPLAPPTRC(L_TRACE, "Flushed blob source", SPL_OPER_DBG);
+
+    // Wait until the reader has completed a read.
+    SPLAPPTRC(L_TRACE, "Start flush wait", SPL_OPER_DBG);
+    waitForFlush();
+    SPLAPPTRC(L_TRACE, "Completed flush wait", SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::waitForFlush() {
+    AutoMutex am(_mutex);
+    ++_flushWaiters;
+    ProcessingElement& pe = getPE();
+    while (!_isFlushed && !pe.getShutdownRequested()) {
+      _flushed.wait(_mutex);
+    }
+    --_flushWaiters;
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

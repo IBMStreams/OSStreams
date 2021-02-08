@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns="http://www.ibm.com/xmlns/prod/streams/api/state"
+            targetNamespace="http://www.ibm.com/xmlns/prod/streams/api/state"
+            elementFormDefault="qualified"
+            attributeFormDefault="unqualified">
+
+<!-- Time measured in seconds -->
+<xsd:simpleType name="timeInSeconds">
+  <xsd:annotation>
+    <xsd:documentation>This defines a type that represents a timestamp
+    measured in seconds since the epoch (January 1, 1970 00:00:00 UTC).
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:restriction base="xsd:unsignedLong"></xsd:restriction>
+</xsd:simpleType>
+
+<!-- baseType -->
+<xsd:complexType name="baseType" abstract="true">
+  <xsd:annotation>
+    <xsd:documentation>
+      The base type used for SPL types.
+    </xsd:documentation>
+  </xsd:annotation>
+</xsd:complexType>
+
+<!-- primitiveType -->
+<xsd:complexType name="primitiveType" abstract="true">
+  <xsd:annotation>
+    <xsd:documentation>
+      The base type used for primitive SPL types.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:complexContent>
+    <xsd:extension base="baseType">
+    </xsd:extension>
+  </xsd:complexContent>
+</xsd:complexType>
+
+<!-- simplePrimitiveType -->
+<xsd:complexType name="simplePrimitiveType" abstract="true">
+  <xsd:annotation>
+    <xsd:documentation>
+      The base type used for primitive simple SPL types.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:complexContent>
+    <xsd:extension base="primitiveType">
+    </xsd:extension>
+  </xsd:complexContent>
+</xsd:complexType>
+
+<!-- signedLongType -->
+<xsd:complexType name="longType">
+  <xsd:annotation>
+    <xsd:documentation>
+      A signed long data type. This is equivalent to a int64 in SPL.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:complexContent>
+    <xsd:extension base="simplePrimitiveType">
+      <xsd:attribute name="value" type="xsd:long" use="required"/>
+    </xsd:extension>
+  </xsd:complexContent>
+</xsd:complexType>
+
+</xsd:schema>

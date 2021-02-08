@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+function join { local IFS="$1"; shift; echo "$*"; }
+
+#
+# Arguments
+#
+
+if [ $# -lt 4 ]
+then
+  echo "Usage: $0 AS_UID AS_GID WORKDIR"
+  exit 1
+fi
+
+AS_UID=$1
+AS_GID=$2
+WRKDIR=$3
+
+#
+# Add the runtime user and group
+#
+
+sed -i.tmp "/:${AS_GID}:/d" /etc/group && rm -f /etc/group.tmp
+groupadd -g ${AS_GID} runtime >/dev/null 2>&1
+useradd -M -g ${AS_GID} -u ${AS_UID} -s /bin/bash runtime >/dev/null 2>&1
+
+#
+# Run the command
+#
+
+export DOCKER=1
+
+shift 3
+CMDLINE=$(join " " $@)
+
+cd ${WRKDIR}
+su runtime -c "${CMDLINE}"

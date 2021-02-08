@@ -1,0 +1,341 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.XML$XMLParse.html">
+The `XMLParse` operator accepts a single input stream and generates tuples as a result.
+
+# Checkpointed data
+
+When the `XMLParse` operator is checkpointed in a consistent region, any partially parsed input data and logic state variables (if present) are saved in checkpoint.
+When the `XMLParse` operator is checkpointed in an autonomous region, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `XMLParse` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+When in a consistent region, the operator checkpoints and resets any partially parsed input data.
+Logic state variables (if present) are also automatically checkpointed and resetted.
+
+# Checkpointing behavior in an autonomous region
+
+When the `XMLParse` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its internal state to its initial state, and restores logic state variables (if present) from the last checkpoint.
+
+When the `XMLParse` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Exceptions
+
+The `XMLParse` operator throws an exception in the following cases:
+* If the XML is invalid.
+* If the **parsing** parameter is `strict` and there is an invalid conversion of XML data to SPL attributes.
+
+</description>
+      <iconUri size="16">xmlparse_16.gif</iconUri>
+      <iconUri size="32">xmlparse_32.gif</iconUri>
+      <metrics>
+        <metric>
+          <name>nInvalidTuples</name>
+          <description>The number of tuples that failed to convert from XML to an SPL tuple.</description>
+          <kind>Counter</kind>
+        </metric>
+      </metrics>
+      <customLiterals>
+        <enumeration>
+          <name>ParseOption</name>
+          <value>strict</value>
+          <value>permissive</value>
+        </enumeration>
+        <enumeration>
+          <name>Flatten</name>
+          <value>none</value>
+          <value>attributes</value>
+          <value>elements</value>
+        </enumeration>
+      </customLiterals>
+      <customOutputFunctions>
+        <customOutputFunction>
+          <name>XMLPathFunctions</name>
+          <function>
+            <description>Passthrough function</description>
+            <prototype><![CDATA[<any T> T AsIs(T)]]></prototype>
+          </function>
+          <function>
+            <description>Extracts a scalar value from a nodeset that contains a single node.</description>
+            <prototype><![CDATA[public rstring XPath(rstring xpathExpn)]]></prototype>
+          </function>
+          <function>
+            <description>Extracts a list of scalars from XML.</description>
+            <prototype><![CDATA[public list<rstring> XPathList(rstring xpathExpn)]]></prototype>
+          </function>
+          <function>
+            <description>Extracts a nested tuple value from a nodeset that contains a single node.</description>
+            <prototype><![CDATA[<tuple T> public T XPath (rstring xpathExpn, T tupleLiteral)]]></prototype>
+          </function>
+          <function>
+            <description>Extracts a list of objects from XML.</description>
+            <prototype><![CDATA[<any T> public list<T> XPathList(rstring xpathExpn, T elements)]]></prototype>
+          </function>
+          <function>
+            <description>Extracts a map of XML attributes.</description>
+            <prototype><![CDATA[public map<rstring,rstring> XPathMap(rstring xpathExpn)]]></prototype>
+          </function>
+        </customOutputFunction>
+      </customOutputFunctions>
+      <libraryDependencies>
+        <library>
+          <cmn:description>xml-spl</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-xml</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Implicit XMLParse">
+          <description>XMLParse using implicit shape of output schema</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = XMLParse(${inputStream}) {
+            param
+                trigger : ${triggerExpression};
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="Explicit XMLParse">
+          <description>Basic XMLParse template with explicit output clause</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = XMLParse(${inputStream}) {
+            param
+                trigger : ${triggerExpression};
+            output
+                ${outputStream} : ${outputAttribute} = ${value};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+      <splExpressionTree output="true"/>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>xmlInput</name>
+        <description>
+Specifies which attribute of the input stream carries the XML data that the operator parses.
+If there is only one attribute in the input stream, this parameter is optional.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Attribute</expressionMode>
+      </parameter>
+      <parameter>
+        <name>trigger</name>
+        <description>
+Specifies the subtree of the XML document that triggers a tuple to be output.
+This parameter is a list of rstring values, one for each output stream, in output stream declaration order.
+Each rstring contains an absolute XPath expression that identifies the top-level element of a subtree with the XML document.
+The XPath expression is a UTF-8 string value.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+      </parameter>
+      <parameter>
+        <name>parsing</name>
+        <description>
+Specifies the parsing behavior of the `XMLParse` operator.
+The valid values are `strict` and `permissive`. The default value is `strict`.
+
+When the parameter value is `strict`, an exception is raised for invalid conversions of XML data to SPL attributes
+and the operator terminates.
+When the parameter value is `permissive`, an error is logged and execution continues.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>ParseOption</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>flatten</name>
+        <description>
+Specifies the interpretation of scalar (or list&lt;scalar&gt;) attributes seen in the tuple definition for implicit XPath generation.
+The valid values are `attributes`, `elements`, and `none`. The default is `none`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>Flatten</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>attributesName</name>
+        <description>
+Specifies the SPL attribute name to be used in the handling of implicit XPath.
+The default value is `_attrs`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>textName</name>
+        <description>
+Specifies the SPL attribute content name that is used in the handling of implicit XPath.
+The default value is `_text`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>nullify</name>
+        <description>
+Set the values of missing output attributes by using the default initializer for the type
+(0 for numeric, empty for strings and lists), instead of using a default XPath or XPathList expression.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>ignorecase</name>
+        <description>
+Specifies whether to ignore the case of elements and attributes.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>ignoreNamespaces</name>
+        <description>
+Specifies whether to ignore namespaces in names.
+If the parameter value is `true`, names in the XML ignore the leading `namespace:` and are compared only with the local name.
+By default, the parameter value is `false` and the whole name, including the colon (:), is used.
+A name such as `foo:bar` can be matched only by using XPath `("foo:bar")` or similar functions.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>ignorePrefix</name>
+        <description>
+Specifies a string that, if present, is removed from the start of an attribute name that is used to form an implicit XPath directive.
+You can use this method for XML that contains elements or attributes with SPL or C++ keywords.
+For example:
+    stream &lt;rstring __graph&gt; A = XMLParse(Input) {
+      param trigger      : "/a";
+            flatten      : element;
+            ignorePrefix : "__";
+    }
+
+This example accepts XML of the following form:
+
+    &lt;a&gt;
+      &lt;graph&gt;value&lt;/graph&gt;
+    &lt;/a&gt;
+
+Since graph is an SPL keyword, `stream&lt;rstring graph&gt; A = XMLParse` is not valid SPL.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>xmlParseHuge</name>
+        <description>
+The XMLParse operator uses libxml2, which imposes some arbitrary size limits
+for internal buffers used for XML parsing.  These limits can be removed by
+setting this parameter to true.  The default value for this parameter is false.
+</description>
+      <optional>true</optional>
+      <rewriteAllowed>true</rewriteAllowed>
+      <expressionMode>AttributeFree</expressionMode>
+      <type>boolean</type>
+      <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `XMLParse` operator has one input port, which contains XML to be converted to tuples.
+
+The `XMLParse` operator accepts as input a single stream that contains an attribute with XML data to convert.
+The one attribute that contains XML data must have type rstring, ustring, blob, or xml.
+If the attribute type is xml, then it represents a complete XML document every tuple.
+If the attribute type is rstring, ustring, or blob, the attribute might contain a chunk of XML
+that is not well-formed as the complete XML document might be contained across multiple input tuples.
+The `XMLParse` operator acts as if the chunks are concatenated together.
+The concatenated XML can contain multiple, sequential, XML documents.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `XMLParse` operator is configurable with one or more output ports, which have tuples generated from XML input.
+
+Each output port generates tuples that correspond to one subtree of the input XML.
+The specific subtree of the XML document that triggers a tuple for a particular port
+is specified by the **trigger** parameter by using a subset of XPath.
+Each output stream corresponds to one expression on the trigger.
+Tuples are generated as the XML documents are parsed, and a `WindowMarker` punctuation is generated at the end of each XML document.
+If errors occur when the XML is parsed that do not result in an exception,
+the errors are logged and no tuples are generated until the start of the next trigger.
+Receipt of a `WindowMarker` punctuation resets the `XMLParse` operator, causing it to start parsing from the beginning of a new XML document.
+Tuples are output from a stream when the end tag of the element that is identified by the **trigger** parameter for that stream is seen.
+</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <outputFunctions>
+          <default>AsIs</default>
+          <type>XMLPathFunctions</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <allowNestedCustomOutputFunctions>true</allowNestedCustomOutputFunctions>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+      <outputPortOpenSet>
+        <description>Tuples generated from XML input</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <outputFunctions>
+          <default>AsIs</default>
+          <type>XMLPathFunctions</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <allowNestedCustomOutputFunctions>true</allowNestedCustomOutputFunctions>
+      </outputPortOpenSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

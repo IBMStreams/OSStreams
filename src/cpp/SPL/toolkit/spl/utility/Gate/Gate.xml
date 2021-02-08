@@ -1,0 +1,221 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Gate.html">
+The `Gate` operator is used to control the rate at which tuples are passed through.
+Each tuple that passes through `Gate` must be acknowledged by a downstream operator to allow more tuples through.
+
+# Checkpointed data
+
+The `Gate` operator does not support checkpointing.
+
+# Behavior in a consistent region
+
+The `Gate` operator is not supported in a consistent region.
+
+# Checkpointing in an autonomous region
+
+When the `Gate` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+When the `Gate` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `Gate` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring name, uint32 age&gt; Data = Beacon() {}
+
+        stream&lt;Data&gt; Gated = Gate(Data; Control)
+        {
+          param maxUnackedTupleCount : 1u; // allow only 1 tuple to go through at a time
+                numTuplesToAck : Control.count; // acknowledge given number of tuples
+        }
+
+        (stream&lt;Data&gt; Output; stream&lt;uint32 count&gt; Control) = Custom(Gated)
+        {
+          logic onTuple Gated:
+          {
+                 println (Gated); // do some processing
+                 submit(Gated, Output); // pass it on to the output
+                 submit({count = 1u}, Control); // tell gate to allow another tuple
+          }
+          // no more than 1 tuple will be queued up at any time
+          config threadedPort : queue(Gated, Sys.Wait);
+        }
+    }
+
++ Implementing tuple load balancing
+
+A `ThreadedSplit` operator can be used to split a stream and process tuples in parallel.
+This method works for many applications.
+If the processing time of a tuple varies considerably depending on the tuple data, however,
+it might cause problems when a tuple with a long processing time causes subsequent tuples to be backed up in the stream
+that is waiting for processing.
+This problem can occur even though there might be another thread available and idle.
+This problem can be aggravated by tuples that are in a TCP/IP connection to another processing element (PE).
+
+To ensure that the load is balanced, a `ThreadedSplit` operator with a buffer size of 1 can be tied to
+two or more `Gate` operators with a maximum unacknowledged tuple count of 1 or more.
+The `ThreadedSplit` and the `Gate` operators must be on the same PE to avoid tuples queued between PEs.
+To put operators on the same PE, use a `partitionColocation` placement config.
+
+The `Gate` operator allows only the specified number of tuples to pass at a time.
+It waits until a subsequent operator acknowledges receipt of the tuple before it passes the next tuple.
+In this manner, no tuple can ever be queued behind another, waiting to be processed.
+
+The following example demonstrates balancing the load:
+
+    composite Main {
+      graph
+        // Generate a stream of data to process
+        stream&lt;uint32 i&gt; I = Beacon(){
+          logic
+            state : mutable uint32 c = 0 ;
+        output
+            I : i = c ++ ;
+        }
+
+        // Split the stream into 2 streams.  Use a following Gate to ensure load balancing
+        (stream&lt;I&gt; X ; stream&lt;I&gt; Y)= ThreadedSplit(I){
+          param
+            bufferSize : 1u ;
+          config
+            placement : partitionColocation("Split"), // ensure same PE as the Gates
+                        partitionExlocation("Process");
+        }
+
+        stream&lt;I&gt; O0 = Gate(X ; Control0){
+          param
+            maxUnackedTupleCount : 1u ;
+          config
+            placement : partitionColocation("Split");
+            // ensure same PE as ThreadedSplit
+        }
+
+        stream&lt;I&gt; O1 = Gate(Y ; Control1){
+          param
+            maxUnackedTupleCount : 1u ;
+          config
+            placement : partitionColocation("Split");
+            // ensure same PE as ThreadedSplit
+        }
+
+        (stream&lt;I&gt; R0 as out ; stream&lt;uint32 i&gt; Control0 as control)= Custom(O0 as In){
+          logic
+            onTuple In : {
+              // do some processing
+              submit(In, out); // forward tuple
+              submit({ i = 1u }, control);
+            }
+            // Place on a different PE from Gate or other processing operator
+
+          config
+            placement : partitionExlocation("Process");
+        }
+
+        (stream&lt;I&gt; R1 as out ; stream&lt;uint32 i&gt; Control1 as control)= Custom(O1 as In){
+          logic
+            onTuple In : {
+              // do some processing
+              submit(In, out); // forward tuple
+              submit({ i = 1u }, control);
+            }
+            // Place on a different PE from Gate and other processing operator
+
+          config
+            placement : partitionExlocation("Process");
+        }
+    }
+
+</description>
+      <iconUri size="16">gate_16.gif</iconUri>
+      <iconUri size="32">gate_32.gif</iconUri>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <allowCustomLogic>false</allowCustomLogic>
+      <codeTemplates>
+        <codeTemplate name="Gate">
+          <description>Basic Gate template</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = Gate(${dataStream};${controlStream})  {
+            param
+                maxUnackedTupleCount: ${numAllowedThru};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>maxUnackedTupleCount</name>
+        <description>
+Specifies the maximum number of tuples that are allowed through the `Gate` operator before they are acknowledged.</description>
+        <optional>false</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>numTuplesToAck</name>
+        <description>
+Specifies the number of tuples to acknowledge for each control stream tuple that is received.
+If this parameter is not specified, the default value is `1u`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <cardinality>1</cardinality>
+        <portScope><port>1</port></portScope>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Gate` operator has two input ports.
+The first port is the data port and holds the tuples to be gated.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+      <inputPortSet>
+        <description>
+The second input port is the control port and is used to acknowledge data tuples.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <controlPort>true</controlPort>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Gate` operator is configurable with a single output port, which produces the gated tuples.
+The schema of the output port must match that of the first input port.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <windowPunctuationInputPort>0</windowPunctuationInputPort>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

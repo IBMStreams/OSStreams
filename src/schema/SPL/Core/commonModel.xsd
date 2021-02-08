@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<!-- The description type.  Used to document a name. -->
+<xs:complexType name="descriptionType">
+  <xs:simpleContent>
+    <!-- The default description text.  -->
+    <xs:extension base="xs:string">
+      <!-- A Uri for sample code -->
+      <xs:attribute name="sampleUri" type="xs:string"/>
+      <!-- The documentation link -->
+      <xs:attribute name="docHref" type="xs:string"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+
+<!-- The C++ library type.  Used for compiling, linking and executing C++ code. -->
+<xs:complexType name="libraryType">
+  <xs:sequence>
+    <!-- A description of this library. -->
+    <xs:element name="description" type="descriptionType"/>
+    <!-- The C++ library details. -->
+    <xs:element name="managedLibrary" type="managedLibraryType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The Java library type.  Used for compiling, linking and executing Java code. -->
+<xs:complexType name="javaOpLibraryType">
+  <xs:sequence>
+    <!-- A description of this library. -->
+    <xs:element name="description" type="descriptionType"/>
+    <!-- The Java library details. -->
+    <xs:element name="managedLibrary" type="javaOpManagedLibraryType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The C++ library type.  -->
+<xs:complexType name="managedLibraryType">
+  <xs:sequence>
+    <!-- libraries needed when linking. Used as -l<lib>.  -->
+    <xs:element name="lib" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    <!-- library paths needed when linking and executing. Used as -L<libPath>.  -->
+    <xs:element name="libPath" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    <!-- include paths needed when compiling C++ code.  used as -I<includePath>. -->
+    <xs:element name="includePath" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    <!-- Command to invoke to specify lib/libPath/includePath values. -->
+    <xs:element name="command" type="xs:string" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The Java library type.  -->
+<xs:complexType name="javaOpManagedLibraryType">
+  <xs:sequence>
+    <!-- library paths needed when executing Java code.  -->
+    <xs:element name="libPath" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    <!-- Command to invoke to specify lib/libPath/includePath values. -->
+    <xs:element name="command" type="xs:string" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The versionType type.  Used for toolkit and product versions.  -->
+<xs:simpleType name="versionType">
+  <!-- A version is number [ '.' number [ '.' number [ '.' alphaNum ] ] ] -->
+  <xs:restriction base="xs:string">
+    <xs:pattern value="\d+(\.\d+(\.\d+(\.[0-9a-zA-Z_\-]+)?)?)?"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<!-- The versionRangeType type.  Used for toolkit and product dependencies.  -->
+<xs:simpleType name="versionRangeType">
+  <!-- A version range is either a versionType, or ('[' | '(') versionType ',' versionType ( ')' | ']'). -->
+  <xs:restriction base="xs:string">
+    <xs:pattern value="(\d+(\.\d+(\.\d+(\.[0-9a-zA-Z_\-]+)?)?)?)|([\[\(]\d+(\.\d+(\.\d+(\.[0-9a-zA-Z_\-]+)?)?)?,\d+(\.\d+(\.\d+(\.[0-9a-zA-Z_\-]+)?)?)?[\)\]])"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<!-- The toolkitDependencyType type.  Used for toolkit dependencies.  -->
+<xs:complexType name="toolkitDependencyType">
+  <xs:sequence>
+    <!-- The name of the toolkit that is needed.  -->
+    <xs:element name="name" type="xs:string"/>
+    <!-- The range of the toolkit versions that are required.  -->
+    <xs:element name="version" type="versionRangeType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="uriType">
+  <xs:attribute name="index" type="xs:int" use="required"/>
+  <xs:attribute name="value" type="xs:string" use="required"/>
+</xs:complexType>
+
+<!-- top-level elements: for these elements we need the XSD compiler to create
+     XML serialization and de-serialization functions
+-->
+<xs:element name="library" type="libraryType"/>
+<xs:element name="javaOpLibrary" type="javaOpLibraryType"/>
+
+</xs:schema>

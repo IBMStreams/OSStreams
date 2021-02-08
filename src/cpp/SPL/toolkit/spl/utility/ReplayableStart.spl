@@ -1,0 +1,148 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+namespace spl.utility ;
+
+use spl.utility.internal::*;
+
+/**
+*
+* The `ReplayableStart` operator forwards tuples and punctuations from its input port to its output port.
+*
+* **Behavior in a consistent region**
+*
+* Use the `ReplayableStart` operator in a consistent region only.
+* This operator is a bridge between the output of an autonomous region and a consistent region.
+* It ensures that tuples that come from the autonomous region can be replayed into the consistent region when a reset occurs.
+*
+* The `ReplayableStart` operator can be used as a start operator of periodic and operator-driven consistent regions.
+* In an operator-driven region, it initiates a drain after it forwards each window punctuation.
+* If no window punctuations are received, the region is never made consistent and any resets revert to the beginning of the stream.
+*
+* The `ReplayableStart` operator is a composite operator that consists of three components:
+* a `Marker`, three `Buffers`, and a `Selector`.
+* These components are all on different host resources.
+* An application that uses a `ReplayableStart` operator cannot be deployed to an instance with fewer than four host resources.
+* If there are fewer than four host resources, the application fails at submission.
+*
+* Each `Buffer` operator keeps an in-memory copy of all input tuples and punctuation.
+* It associates them, in the order that they are received, with the consistent region sequence ID in which they were received.
+* The extra copies of the `Buffer` operator enable tuple replay. Up to two of them can fail without loss of data.
+*
+* The `Marker` operator ensures that the same set of tuples are associated to a specific sequence ID in all three buffers.
+* It is the start of the consistent region.
+*
+* The `Selector` operator forwards tuples from one of the `Buffer` operators to its output port.
+* The `Selector` operator always selects tuples from one of the `Buffer` operators that either processed a drain
+* since the most recent time it was restarted or was never restarted. All other received tuples are ignored.
+*
+* If data is fed into the `ReplayableStart` operator faster than it can be played into the operators downstream from it,
+* or if the amount of data in each sequence is large, the Buffer operators might run out of memory.
+*
+* When the `ReplayableStart` operator is used, in some situations, it is possible to have data loss.
+*
+* Data loss might happen in one or more of the following situations:
+* * Any of the operators that feed data into the `ReplayableStart` operator fails
+* * The `Marker` operator within the `ReplayableStart` operator fails
+* * All of the `Buffer` operators fail while a single sequence is processed
+*
+* If you need a higher level of assurance against data loss, use only operators that are designed to participate in a consistent region.
+*
+* **Parameters**
+*
+* The `ReplayableStart` operator does not have any parameters.
+*
+* **Windowing**
+*
+* The `ReplayableStart` operator does not accept any window configurations.
+*
+* **Metrics**
+*
+* This operator does not report any metrics.
+*
+* **Examples**
+*
+*      composite Main
+*      {
+*        graph
+*         (stream<int32 a, rstring b, list<boolean> c> Source_out0) as Source = Custom () {
+*             config
+*                 placement: partitionColocation("RSO");
+*         }
+*
+*         \@consistent(trigger = operatorDriven)
+*         (stream<SourceFoo_out()> RSO_out0) as RSO = ReplayableStart(Source_out0) {
+*             config
+*                 placement: partitionColocation("RSO");
+*         }
+*
+*         () as Sink = Custom(RSO_out0) {}
+*      }
+*
+* @input IN The `ReplayableStart` operator is configurable with a single input port, which is a stream from an autonomous region.
+* The input port is non-mutating and its punctuation mode is Oblivious.
+*
+* @output OUT The `ReplayableStart` operator is configurable with a single output port, which is a stream into a consistent region.
+* The output port is mandatory, non-mutating, and its punctuation mode is Preserving. The schema of the output port must match that of the input port.
+*
+*/
+
+public composite ReplayableStart(input IN ; output OUT)
+{
+	graph
+		(stream<IN> Marker0_out0) as Marker0 = Marker(IN)
+		{
+			config
+                                placement:
+                                        hostExlocation (getThisCompositeInstanceName() + "::ReplayableStart"),
+                                        partitionExlocation (getThisCompositeInstanceName() + "::ReplayableStart");
+                }
+
+		(stream<IN> Buffer0_out0) as Buffer0 = Buffer(Marker0_out0)
+		{
+			config
+                                placement:
+                                        hostExlocation (getThisCompositeInstanceName() + "::ReplayableStart"),
+                                        partitionExlocation (getThisCompositeInstanceName() + "::ReplayableStart");
+                }
+
+		(stream<IN> Buffer1_out0) as Buffer1 = Buffer(Marker0_out0)
+		{
+			config
+                                placement:
+                                        hostExlocation (getThisCompositeInstanceName() + "::ReplayableStart"),
+                                        partitionExlocation (getThisCompositeInstanceName() + "::ReplayableStart");
+
+                }
+
+		(stream<IN> Buffer2_out0) as Buffer2 = Buffer(Marker0_out0)
+		{
+			config
+                                placement:
+                                        hostExlocation (getThisCompositeInstanceName() + "::ReplayableStart"),
+                                        partitionExlocation (getThisCompositeInstanceName() + "::ReplayableStart");
+
+                }
+
+		(stream<IN> OUT) as Selector0 = Selector(Buffer0_out0 ; Buffer1_out0 ;
+			Buffer2_out0)
+		{
+		}
+
+	config
+		restartable: true;
+		relocatable: true;
+}

@@ -1,0 +1,735 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:xi="http://www.w3.org/2001/Xinclude"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.adapter$TCPSource.html">
+The `TCPSource` operator reads data from a TCP socket and creates tuples out of it.
+It can be configured as a TCP server (listens for a client connection) or as a TCP client (initiates a connection to a server).
+In both modes, it handles a single connection at a time. It works with both IPv4 and IPv6 addresses.
+
+The `TCPSource` operator accepts an optional output clause.
+Any SPL expression and supported custom output functions can be used in the output clause.
+Output attributes can be assigned values on the output clause.
+If they have an assignment, the expression value is assigned to the attribute
+and the attribute is not part of the value that is read from the source.
+For the line and block formats, there is only one attribute that is not assigned by an output assignment
+and this attribute must have type rstring (for line format) or blob (for block format).
+For all other formats, any attributes that are not assigned in the output clause are read from the input by using csv, txt, or bin format.
+
+# Checkpointed data
+
+When the `TCPSource` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `TCPSource` operator is not supported in a consistent region.
+
+# Checkpointing behavior in an autonomous region
+
+When the `TCPSource` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `TCPSource` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Exceptions
+
+The `TCPSource` operator throws an exception in the following cases:
+* The host cannot be resolved.
+* The name cannot be located.
+* Unable to set SO_REUSEADDR on TCP socket.
+* Unable to bind to port.
+
+# Examples
+
+This example uses the `TCPSource` operator.
+
+    composite Main {
+      graph
+        // server source with an alias string as port
+        stream&lt;rstring name, uint32 age, uint64 salary&gt; Beat = TCPSource()
+        {
+          param
+            role : server;
+            port : "ftp";
+        }
+        // server source with a number string as port
+        stream&lt;Beat&gt; Beat1 = TCPSource()
+        {
+          param
+            role : server;
+            port : 23145u;
+            keepAlive : {time=7200, probes=9, interval=75};
+        }
+        // server source with a name, registering interface eth1
+        stream&lt;Beat&gt; Beat2 = TCPSource()
+        {
+          param
+            role  : server;
+            name : "my_server";
+            interface : "eth1";
+        }
+        // server source with a name and port
+        stream&lt;Beat&gt; Beat3 = TCPSource()
+        {
+          param
+            role  : server;
+            port  : 23145u;
+            name : "my_server";
+        }
+        // server source with a port and infinite reconnection
+        stream&lt;Beat&gt; Beat4 = TCPSource()
+        {
+          param
+            role              : server;
+            port              : "ftp";
+            reconnectionPolicy : InfiniteRetry;
+        }
+        // server source with a port and reconnection (5 times)
+        stream&lt;Beat&gt; Beat4r = TCPSource()
+        {
+          param
+            role              : server;
+            port              : "ftp";
+            reconnectionPolicy : BoundedRetry;
+            reconnectionBound  : 5u;
+        }
+        // client source with an IP address and port
+        stream&lt;Beat&gt; Beat5 = TCPSource()
+        {
+          param
+            role    : client;
+            address : "99.2.45.67";
+            port    : "ftp";
+        }
+        // client source with an host name as the address
+        stream&lt;Beat&gt; Beat6 = TCPSource()
+        {
+          param
+            role    : client;
+            address : "mynode.mydomain";
+            port    : 23145u;
+        }
+        // client source with name
+        stream&lt;Beat&gt; Beat7 = TCPSource()
+        {
+          param
+            role  : client;
+            name : "my_server";
+        }
+        // client source with reconnection
+        stream&lt;Beat&gt; Beat8 = TCPSource()
+        {
+          param
+            role              : client;
+            address           : "mynode.mydomain";
+            port              : "ftp";
+            reconnectionPolicy : InfiniteRetry;
+        }
+        // client source with reconnection interval (and 10 connections)
+        // Wait 5 seconds before starting
+        stream&lt;Beat&gt; Beat9=  TCPSource()
+        {
+          param
+            role                : client;
+            address             : "mynode.mydomain";
+            port                : "ftp";
+            reconnectionPolicy   : BoundedRetry;
+            reconnectionBound    : 10u;
+            initDelay           : 5.0;
+        }
+    }
+
+</description>
+      <iconUri size="16">TCPSource_16.gif</iconUri>
+      <iconUri size="32">TCPSource_32.gif</iconUri>
+      <metrics>
+        <metric>
+          <name>nInvalidTuples</name>
+          <description>The number of tuples that failed to read correctly in csv or txt format.</description>
+          <kind>Counter</kind>
+        </metric>
+        <metric>
+          <name>nReconnections</name>
+          <description>The number of times the input connection was re-establised.</description>
+          <kind>Counter</kind>
+        </metric>
+        <metric>
+          <name>nConnections</name>
+          <description>
+The number of currently active TCP/IP connections.
+If the `TCPSource` operator is waiting for a connection or a reconnection, the value is `0`.
+If the operator is connected, the value is `1`.
+</description>
+          <kind>Gauge</kind>
+        </metric>
+        <metric>
+          <name>nConfirmWireFormatFailures</name>
+          <description>The number of times the input connection wire format handshake failed.</description>
+          <kind>Counter</kind>
+        </metric>
+      </metrics>
+      <customLiterals>
+        <enumeration>
+          <name>DataFormat</name>
+          <value>csv</value>
+          <value>txt</value>
+          <value>bin</value>
+          <value>block</value>
+          <value>line</value>
+        </enumeration>
+        <enumeration>
+          <name>ParseOption</name>
+          <value>strict</value>
+          <value>permissive</value>
+          <value>fast</value>
+        </enumeration>
+        <enumeration>
+          <name>SocketRole</name>
+          <value>server</value>
+          <value>client</value>
+        </enumeration>
+        <enumeration>
+          <name>CompressionAlg</name>
+          <value>zlib</value>
+          <value>gzip</value>
+          <value>bzip2</value>
+        </enumeration>
+        <enumeration>
+          <name>ReconnectionPolicy</name>
+          <value>InfiniteRetry</value>
+          <value>NoRetry</value>
+          <value>BoundedRetry</value>
+        </enumeration>
+        <enumeration>
+          <name>ClientAuth</name>
+          <value>none</value>
+          <value>request</value>
+          <value>require</value>
+        </enumeration>
+      </customLiterals>
+      <customOutputFunctions>
+        <customOutputFunction>
+          <name>OutputFunctions</name>
+          <function>
+            <description>
+Returns the address of the remote end of the TCP connection. If the name cannot be resolved, this address is a host name or a dotted IP address.
+</description>
+            <prototype><![CDATA[rstring RemoteIP()]]></prototype>
+          </function>
+          <function>
+            <description>Returns the port number of the remote end of the TCP connection.</description>
+            <prototype><![CDATA[uint32 RemotePort()]]></prototype>
+          </function>
+          <function>
+            <description>Returns the port number of the local end of the TCP connection.</description>
+            <prototype><![CDATA[uint32 LocalPort()]]></prototype>
+          </function>
+          <function>
+            <description>
+Returns the port number that the TCP server is listening on.
+This custom output function is valid only when the **role** parameter value is `server`.
+</description>
+            <prototype><![CDATA[uint32 ServerPort()]]></prototype>
+          </function>
+          <function>
+            <description>
+Returns the number of tuples that are generated by this operator since the start of the current TCP connection.
+The first tuple that is generated has number 0.
+</description>
+            <prototype><![CDATA[int64 TupleNumber()]]></prototype>
+          </function>
+          <function>
+            <description>Return the input value</description>
+            <prototype><![CDATA[<any T> T AsIs(T)]]></prototype>
+          </function>
+        </customOutputFunction>
+      </customOutputFunctions>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:lib>boost_iostreams</cmn:lib>
+            <cmn:lib>boost_system</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="TCPSource (client)">
+          <description>TCPSource (client)</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = TCPSource() {
+            param
+                role: client;
+                address : "${hostOrIp}";
+                port : "${sourcePort}";
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="TCPSource (server)">
+          <description>TCPSource (server)</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = TCPSource() {
+            param
+                role: server;
+                port : "${sourcePort}";
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="TCPSource with Name (client or server)">
+          <description>TCPSource with Name (client or server)</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = TCPSource() {
+            param
+                role: ${serverOrClient};
+                name : "${name}";
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>address</name>
+        <description>
+In the case of a client-based `TCPSource` operator, this parameter specifies the destination server address of the TCP connection.
+
+The **address** parameter must be specified when the **role** parameter value is `client` and the **name** parameter is not specified.
+In all other cases, it cannot be specified.
+
+The parameter value can be a host name or an IP address.
+The address might not be used for a server-based `TCPSource` operator, as the address used is always on the current host.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>port</name>
+        <description>
+In the case of a server-based `TCPSource` operator, this parameter specifies the port address on which the connections are accepted.
+In the case of a client-based `TCPSource` operator, it specifies the destination server port address.
+
+The parameter value might be a well-known port alias, such as http or ftp, as specified in `etc/services`.
+It can also be a plain port number, such as 45134u.
+
+It is an optional parameter for server-based `TCPSource` operators. Its default value is `0`, which picks any available port.
+
+For client-based `TCPSource` operators, the **port** parameter must be specified when the **name** parameter is not specified
+and it cannot be specified otherwise.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>name</name>
+        <description>
+In the case of a server-based `TCPSource` operator, this parameter specifies the name that is used to register the address
+and port pair for the server with the name service that is part of the Streams instance.
+This name can be used by a corresponding client-based `TCPSink` operator to connect to this operator by just specifying the name.
+
+These names are automatically prefixed by the application scope, thus applications with differing scopes cannot communicate through the same name.
+The application scope can be set by using `config applicationScope` on the main composite in the application.
+It is an error for a name with the same application scope to be defined multiple times with an instance.
+If multiple operators attempt to define the same name, the second and subsequent operators keep trying periodically to register the name,
+with an error message for each failure.
+
+In the case of a client-based `TCPSource`, this parameter specifies the name to be used to look up the address
+and port pair for the destination server from the name service that is part of the Streams instance.
+
+You can use the **streamtool getnsentry** command to query server-based `TCPSource` addresses.
+The `Value` field contains `host:port`.
+
+When the **name** parameter is specified in the client-mode, the **port** and **address** parameters cannot be specified.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>role</name>
+        <description>
+Specifies whether the `TCPSource` operator is server-based or client-based.
+It takes one of the following two values: `server` and `client`.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>SocketRole</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>format</name>
+        <description>
+Specifies the format of the data.
+For more information, see the **format** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>DataFormat</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>encoding</name>
+        <description>
+Specifies the character set encoding of the input.
+For more information, see the **encoding** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>defaultTuple</name>
+        <description>
+Specifies the default tuple to use for missing fields.
+For more information, see the **defaultTuple** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>parsing</name>
+        <description>
+Specifies the parsing behavior of the `TCPSource` operator.
+There are three valid values: `strict`, `permissive`, and `fast`.
+
+When the parameter value is `strict`, incorrectly formatted tuples result in a runtime error and termination of the operator.
+
+When the parameter value is `permissive`, incorrectly formatted tuples result in the creation of a runtime log entry
+and the parser makes an effort to skip to the next tuple (formats txt and csv) and continue.
+If the format is bin, the parser closes the current connection and starts reading the next connection (if the **reconnectionPolicy** permits).
+The `permissive` parameter value can be used with only txt, csv, and bin formats.
+
+When the parameter value is `fast`, the input is assumed to be formatted correctly and no runtime checks are performed.
+Incorrect input in fast mode causes undefined behavior.
+
+The default parsing mode is `strict`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>ParseOption</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>hasDelayField</name>
+        <description>
+Specifies whether the format contains inter-arrival delays as the first field.
+For more information, see the **hasDelayField** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>compression</name>
+        <description>
+Specifies the compression mode.
+For more information, see the **compression** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>CompressionAlg</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>eolMarker</name>
+        <description>
+Specifies the end of line marker.
+For more information, see the **eolMarker** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>blockSize</name>
+        <description>
+Specifies the block size for the block format.
+For more information, see the **blockSize** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>reconnectionPolicy</name>
+        <description>
+Specifies the reconnection policy.
+In the case of a server-based `TCPSource` operator, this parameter specifies whether more connections are allowed
+when the initial connection terminates.
+In the case of a client-based `TCPSource` operator, this parameter specifies whether more connection attempts
+are made when the initial connection to the server terminates.
+
+The valid values are: `NoRetry`, `InfiniteRetry`, and `BoundedRetry`.
+If this parameter is not specified, it is set to `InfiniteRetry`.
+
+When this parameter value is `NoRetry`, the `TCPSource` operator produces a final marker punctuation right away
+after the initial connection is terminated and a window marker punctuation is sent.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>ReconnectionPolicy</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>reconnectionBound</name>
+        <description>
+Specifies the number of successive connections that are attempted for a client-based `TCPSource` operator
+or accepted for a server-based `TCPSource` operator.
+This parameter must be specified when the **reconnectionPolicy** parameter value is `BoundedRetry` and cannot be used otherwise.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>receiveBufferSize</name>
+        <description>Specifies the kernel receive buffer size for the TCP socket.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>initDelay</name>
+        <description>
+Specifies the number of seconds to delay before starting to produce tuples.
+For more information, see the **initDelay** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>separator</name>
+        <description>
+Specifies the separator character for the csv format.
+For more information, see the **separator** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>interface</name>
+        <description>
+Specifies the network interface to use to register when the **name** parameter is specified.
+This parameter is valid only when the **role** parameter value is `server` and the **name** parameter is specified.
+
+Using this parameter with the **name** parameter ensures that a matching operator with a **role** parameter value of `client`
+and the same **name** parameter uses the wanted interface.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>readPunctuations</name>
+        <description>
+Specifies whether to read punctuations from 'bin' format input.
+For more information, see the **readPunctuations** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>ignoreExtraCSVValues</name>
+        <description>
+Specifies whether to skip any extra fields before the end of line when reading in CSV format.
+For more information, see the **ignoreExtraCSValues** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>confirmWireFormat</name>
+        <description>
+Specifies whether an exchange of the wire format description is required to confirm that the client and server are passing compatible data.
+If this parameter is not specified, the default value is `false`.
+The wire format is defined in `etc/xsd/SPL/wireFormatModel.xsd`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>keepAlive</name>
+        <description>
+Specifies to use the keepalive timer to check if the connection is alive.
+This parameter applies only to `TCPSource` operators for which the **role** parameter value is `server`.
+The parameter prevents a server from hanging on a connection when it drops and it keeps a connection live when there is no normal activity.
+
+The value of the parameter is a tuple literal that specifies the configurable attributes.
+If any of the configurable attribute values for a specific **keepAlive** parameter are set to zero,
+the default system value of the **keepAlive** parameter is used.
+This parameter has the following configurable attributes:
+* `int32 time`: The number of seconds that the connection sits idle before a keepalive probe is sent.
+* `int32 probes`: The maximum number of probes to send to establish the state of the connection.
+* `int32 interval`: The time interval in seconds between each probe.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>tuple&lt;int32 time, int32 probes, int32 interval&gt;</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sslConfigName</name>
+        <description>
+Instructs the `TCPSource` operator to configure SSL / TLS with the properties from the application configuration named. The key in the application configuration can be any of the other remaining parameters related to SSL / TLS. Values from the application configuration will supercede the equivalent parameter.
+If this parameter or **sslProtocol** is given SSL / TLS will be available even if the **sslProtocol** is `none` at runtime. Since this may have performance and memory overhead, if you are certain you do not require SSL / TLS then leave this and **sslProtocol** unset.
+Using the **password** parameter is less secure than using an application configuration with the **password** as a key because the parameter may be stored as clear text in the SAB file. Using the application configuration is strongly recommended.
+This parameter may be supplied at runtime to allow the application to use different configurations.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sslProtocol</name>
+        <description>
+Instructs the `TCPSource` operator which, if any, SSL / TLS protocol to use at a minimum. The currently recognized values are: `none`, `SSLv3`, `TLSv1`, `TLSv1.1`, `TLSv1.2`.
+If this parameter or **sslConfigName** is given SSL / TLS will be available even if the **sslProtocol** is `none` at runtime. Since this may have performance and memory overhead, if you are certain you do not require SSL / TLS then leave this and **sslConfigName** unset.
+If the value is `none`, SSL / TLS will not be used. For other values it represents the minimum allowed SSL / TLS protocol version. The actual protocol used will be the highest version mutually supported by both ends of the connection if one can be negotiated, otherwise the connection will fail.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sslCertificateFile</name>
+        <description>
+If SSL / TLS is being used (**sslConfigName** or **sslProtocol** is set), this is the path to a PEM format file that includes a certificate chain and private key. Relative paths are relative to the data directory. If the private key is encrypted (recommended), the password must be given either by the an application configuration named by **sslConfigName** and containing a property `password` (recommended), or directly with the **password** parameter. Using **sslConfigName** is recommended, since it prevents the password from being included in the SAB.
+If you have a Java keystore named `keys.jks` with an entry alias `mycert` a file in the correct format for `TCPSource` named `cert.pem` can be created by running the command:
+`keytool -list -rfc -keystore keys.jks -alias mycert > cert.pem`
+If the key was encrypted in the Java keystore it will also be encrypted in `cert.pem` and a password will be required.
+When the **role** is `server` the parameter is required and the certificate will be offered to clients. If the **role** is client the certificate will be given to the server if a client certificate is requested during negotiation.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>password</name>
+        <description>
+If SSL / TLS is being used (**sslConfigName** or **sslProtocol** is set), this is the password or passphrase required for an encrypted private key in **sslCertificateFile**.
+It is strongly recommended that this be supplied in the application configuration given by **sslConfigName** instead of a hard-coded parameter to prevent the password from being stored in clear-text in the SAB.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sslCertificateAuthorityFile</name>
+        <description>
+If SSL / TLS is being used (**sslConfigName** or **sslProtocol** is set), this is the path to a file containing trusted Certificate Authority certificates in PEM format. Relative paths are relative to the data directory. When validating certificates these will be checked before checking the default trusted certificat authorities.
+If you have a Java truststore named `trust.jks` a file in the correct format for `TCPSource` named `ca_certs.pem` can be created by running the command:
+`keytool -list -rfc -keystore trust.jks > ca_certs.pem`
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sslAuthenticateClient</name>
+        <description>
+If SSL / TLS is being used (**sslConfigName** or **sslProtocol** is set) and the **role** is `server`, this controls whether or not the server requests a client certificate, and if so whether or not the client is required to send one. When the **role** is client this parameter is ignored and the client always validates the server certificate.
+The default value if the parameter is not provided is `request`.
+If the value is `none` the server will not request a client certificate. This is equivaled to using `setWantClientAuth(false)` and `setNeedClientAuth(false)` with the Java SSL API, or `SSL_VERIFY_NONE` with the OpenSSL API.
+If the value is `request`, the server will request a client certificate and send the list of certificate authorities from **sslCertificateAuthorityFile** as trusted CAs. The client is not required to send a certificate, but if it does, it will be validated and failure will cause the connection to be rejected. This behavior is equivalent to using `setWantClientAuth(true)` but `setNeedClientAuth(false)` with the Java SSL API, or using `SSL_VERIFY_PEER` with the OpenSSL API.
+If the value is `require`, the server will request a client certificate and send the list of certificate authorities from **sslCertificateAuthorityFile** as trusted CAs. The client must send a certificate that the server can successfully validate or the connection will be rejected. This behavior is equivalent to using  `setNeedClientAuth(true)` with the Java SSL API, or using both `SSL_VERIFY_PEER` and `SSL_VERIFY_FAIL_IF_NO_PEER_CERT` with the OpenSSL API.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>ClientAuth</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sslCipherSuites</name>
+        <description>
+If SSL / TLS is being used (**sslConfigName** or **sslProtocol** is set), this is the list of cipher suites in OpenSSL format that will be available during negotiation.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `TCPSource` operator is configurable with a single output port, which produces tuples read from the TCP connection.
+The `TCPSource` operator outputs a window marker punctuation when a TCP connection terminates unless **readPunctuations** is `true`.
+</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <outputFunctions>
+          <default>AsIs</default>
+          <type>OutputFunctions</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/toolkit"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:common="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:ti="http://www.ibm.com/xmlns/prod/streams/spl/toolkitInfo"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/toolkit"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+  <!-- The toolkit index provides a consolidated view of the                     -->
+  <!-- contents of a toolkit. Select features of the operator and function       -->
+  <!-- models are copied from individual files into this index.  This provides   -->
+  <!-- a single specification of the key features of the toolkit artifacts,      -->
+  <!-- enabling more efficient access by components, such as the Streams Studio. -->
+
+  <xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/common" schemaLocation="commonModel.xsd"/>
+  <xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/toolkitInfo" schemaLocation="toolkitInfoModel.xsd"/>
+
+  <!-- Root element containing the model -->
+  <xs:element name="toolkitModel" type="toolkitModelType"/>
+
+  <!-- One or more toolkits -->
+  <xs:complexType name="toolkitModelType">
+    <xs:sequence>
+      <xs:element name="toolkit" type="toolkitType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <!-- Version of the InfoSphere Streams that was used to create this toolkit model. -->
+    <xs:attribute name="productVersion" use="required" type="xs:token"/>
+  </xs:complexType>
+
+  <!-- One toolkit -->
+  <xs:complexType name="toolkitType">
+    <xs:complexContent>
+        <xs:extension base="toolkitBaseType">
+        <!-- One or more namespaces for toolkit artifacts -->
+        <xs:sequence>
+          <xs:choice minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="namespace" type="toolkitNamespaceType"/>
+            <xs:element name="dependency" type="common:toolkitDependencyType"/>
+          </xs:choice>
+          <xs:element name="sabFiles" type="ti:sabFilesType" minOccurs="0"/>
+        </xs:sequence>
+        <!-- Version of the toolkit -->
+        <xs:attribute name="version" type="common:versionType" use="required" />
+        <!-- Required compiler version -->
+        <xs:attribute name="requiredProductVersion" type="common:versionRangeType" use="required" />
+        <!-- The Uri where the toolkit resides -->
+        <xs:attribute name="uri" type="xs:string"/>
+        <!-- Flag indicating if the toolkit has any resource bundles -->
+        <xs:attribute name="hasNLResources" type="xs:boolean"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- A toolkit element, with name and description -->
+  <xs:complexType name="toolkitElementType">
+    <xs:sequence>
+      <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="sampleUriIndex" type="xs:int"/>
+  </xs:complexType>
+
+  <!-- Toolkit artifacts are qualified by a name space -->
+  <xs:complexType name="toolkitNamespaceType">
+    <xs:complexContent>
+      <xs:extension base="toolkitElementType">
+        <!-- List of primitive, composite operators, funcions, and types -->
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+          <xs:element name="primitiveOp" type="primitiveToolkitOperatorType"/>
+          <xs:element name="compositeOp" type="compositeToolkitOperatorType"/>
+          <xs:element name="function" type="toolkitFunctionType"/>
+          <xs:element name="type" type="toolkitTypeType"/>
+          <xs:element name="enumLiterals" type="enumLiteralsType"/>
+        </xs:choice>
+        <!-- A relative path to access artifacts in name space -->
+        <xs:attribute name="relPathToNamespace" type="xs:string" use="optional"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- Add a URI table to a toolkit -->
+  <xs:complexType name="toolkitBaseType">
+    <xs:complexContent>
+      <xs:extension base="toolkitElementType">
+        <xs:sequence>
+          <xs:element name="uriTable" type="uriTableType" minOccurs="0" maxOccurs="1"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- Add a URI table to a toolkit -->
+  <xs:complexType name="uriTableType">
+    <xs:sequence>
+      <xs:element name="uri" type="common:uriType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Description of SPL primitive operator -->
+  <xs:complexType name="primitiveToolkitOperatorType">
+    <xs:complexContent>
+      <xs:extension base="baseToolkitOperatorType">
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+          <xs:element name="customLiterals" type="customLiteralsType"/>
+          <xs:element name="outputFunctions" type="outputFunctionsType"/>
+          <xs:element name="parametersDescription" type="common:descriptionType"/>
+          <xs:element name="parameter" type="primitiveOpParameterType"/>
+          <xs:element name="inputPort" type="primitiveOpInputPortType"/>
+          <xs:element name="outputPort" type="primitiveOpOutputPortType"/>
+          <xs:element name="codeTemplate" type="codeTemplateType"/>
+        </xs:choice>
+        <xs:attribute name="modelUriIndex" use="required" type="xs:int"/>
+        <xs:attribute name="language" type="languageType"/>
+        <xs:attribute name="invalid" type="xs:boolean"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:simpleType name="languageType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Cpp"/>
+      <xs:enumeration value="Java"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Base description of operator -->
+  <xs:complexType name="baseToolkitOperatorType">
+    <xs:complexContent>
+      <xs:extension base="toolkitElementType">
+        <xs:sequence>
+          <xs:element name="images" type="imagesType" minOccurs="0" maxOccurs="1"/>
+        </xs:sequence>
+        <xs:attribute name="public" type="xs:boolean"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- Set of images for an operator -->
+  <xs:complexType name="imagesType">
+    <xs:sequence>
+      <xs:element name="image" type="imageType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- One image for an operator -->
+  <xs:complexType name="imageType">
+    <xs:attribute name="size" type="xs:int" use="required"/>
+    <xs:attribute name="uriIndex" type="xs:int" use="required"/>
+  </xs:complexType>
+
+  <!-- Enumeration used for custom literals -->
+  <xs:complexType name="customLiteralsType">
+    <xs:complexContent>
+      <xs:extension base="toolkitElementType">
+        <xs:sequence>
+          <xs:element name="value" type="customLiteralValueType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- Custom literal value type -->
+  <xs:complexType name="customLiteralValueType">
+    <xs:complexContent>
+      <xs:extension base="toolkitElementType">
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- Output functions defined for output ports -->
+  <xs:complexType name="outputFunctionsType">
+    <xs:complexContent>
+      <xs:extension base="toolkitElementType">
+        <xs:sequence>
+          <xs:element name="function" type="baseFunctionType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- Base type for functions function -->
+  <xs:complexType name="baseFunctionType">
+    <xs:complexContent>
+      <xs:extension base="toolkitElementType">
+        <xs:sequence>
+          <xs:element name="prototype" type="xs:string"/>
+          <xs:element name="parameter" type="parameterType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="returnType" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- Base description of a parameter -->
+  <xs:complexType name="parameterType">
+    <xs:complexContent>
+      <xs:extension base="toolkitElementType">
+        <xs:attribute name="defaultValue" type="xs:string"/>
+        <xs:attribute name="type" type="xs:string"/>
+        <xs:attribute name="mutable" type="xs:boolean"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- Description of parameter for primitive operator -->
+  <xs:complexType name="primitiveOpParameterType">
+    <xs:complexContent>
+      <xs:extension base="parameterType">
+        <xs:sequence>
+          <xs:element name="portScope" type="xs:int" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="optional" type="xs:boolean" use="required"/>
+        <xs:attribute name="expressionMode" type="enumExpressionModeType"/>
+        <xs:attribute name="cardinality" type="xs:int"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- Enumeration for expression modes -->
+  <xs:simpleType name="enumExpressionModeType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Attribute"/>
+      <xs:enumeration value="AttributeFree"/>
+      <xs:enumeration value="Constant"/>
+      <xs:enumeration value="CustomLiteral"/>
+      <xs:enumeration value="Expression"/>
+      <xs:enumeration value="Nonexistent"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- An input port type for peimitive operators -->
+  <xs:complexType name="primitiveOpInputPortType">
+    <xs:complexContent>
+      <xs:extension base="primitivePortDescriptionType">
+        <xs:sequence>
+          <xs:element name="windowPolicy" type="enumWindowPolicyType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="windowPunctInputMode" type="enumWindowPunctInputModeType" use="required"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- Base description of primitive port type -->
+  <xs:complexType name="primitivePortDescriptionType">
+    <xs:sequence>
+      <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <!-- The upper bound for this port type, if any -->
+    <xs:attribute name="maxNumPorts" type="xs:int"/>
+    <!-- The lower bound for this port type, if any -->
+    <xs:attribute name="minNumPorts" type="xs:int"/>
+    <!-- Whether a port of this type is optional -->
+    <xs:attribute name="optional" type="xs:boolean" use="required"/>
+  </xs:complexType>
+
+  <!-- Enumeration for window policies -->
+  <xs:simpleType name="enumWindowPolicyType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="NonWindowed"/>
+      <xs:enumeration value="Windowed"/>
+      <xs:enumeration value="OptionallyWindowed"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Enumeration for window punctuation input mode -->
+  <xs:simpleType name="enumWindowPunctInputModeType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Expecting"/>
+      <xs:enumeration value="Oblivious"/>
+      <xs:enumeration value="WindowBound"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- An output port type -->
+  <xs:complexType name="primitiveOpOutputPortType">
+    <xs:complexContent>
+      <xs:extension base="primitivePortDescriptionType">
+        <xs:sequence>
+          <xs:element name="outputFunctionsType" type="outputFunctionsTypeType" minOccurs="0" maxOccurs="1"/>
+        </xs:sequence>
+        <xs:attribute name="expressionMode" type="enumExpressionModeType" use="required"/>
+        <xs:attribute name="windowPunctOutputMode" type="enumWindowPunctOutputModeType" use="required"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+   <!-- Type for output functions -->
+   <xs:complexType name="outputFunctionsTypeType">
+     <xs:attribute name="name" use="required" type="xs:string"/>
+     <xs:attribute name="defaultValue" use="required" type="xs:string"/>
+   </xs:complexType>
+
+  <!-- Enumeration for window punctuation output mode -->
+  <xs:simpleType name="enumWindowPunctOutputModeType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Generating"/>
+      <xs:enumeration value="Free"/>
+      <xs:enumeration value="Preserving"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- A code template for a primitive operator -->
+  <xs:complexType name="codeTemplateType">
+    <xs:complexContent>
+      <xs:extension base="toolkitElementType">
+        <xs:attribute name="template" type="xs:string" use="required"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- A description of an SPL composite operator -->
+  <xs:complexType name="compositeToolkitOperatorType">
+    <xs:complexContent>
+      <xs:extension base="baseToolkitOperatorType">
+        <xs:choice maxOccurs="unbounded" minOccurs="0">
+          <xs:element name="parameter" type="compositeOpParameterType"/>
+          <xs:element name="inputPort" type="compositeOpPortType"/>
+          <xs:element name="outputPort" type="compositeOpPortType"/>
+          <xs:element name="type" type="toolkitTypeType"/>
+          <xs:element name="enumLiterals" type="enumLiteralsType"/>
+        </xs:choice>
+        <xs:attribute name="potentialMain" type="xs:boolean"/>
+        <xs:attribute name="uriIndex" use="required" type="xs:int"/>
+        <xs:attribute name="line" use="required" type="xs:int"/>
+        <xs:attribute name="column" use="required" type="xs:int"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- Composite operator parameter type -->
+  <xs:complexType name="compositeOpParameterType">
+    <xs:complexContent>
+      <xs:extension base="parameterType">
+        <xs:attribute name="metaType" type="compositeParamEnumType" use="required"/>
+        <xs:attribute name="optional" type="xs:boolean" use="required"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- Enumeration for composite parameter meta type -->
+  <xs:simpleType name="compositeParamEnumType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Attribute"/>
+      <xs:enumeration value="Expression"/>
+      <xs:enumeration value="Function"/>
+      <xs:enumeration value="Operator"/>
+      <xs:enumeration value="Type"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- A composite operator port -->
+  <xs:complexType name="compositeOpPortType">
+    <xs:complexContent>
+      <xs:extension base="toolkitElementType">
+        <xs:attribute name="type" type="xs:string"/>
+        <xs:attribute name="portIndex" type="xs:int" use="required"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- A toolkit function -->
+  <xs:complexType name="toolkitFunctionType">
+    <xs:complexContent>
+      <xs:extension base="baseFunctionType">
+        <xs:attribute name="uriIndex" use="required" type="xs:int"/>
+        <xs:attribute name="line" type="xs:int"/>
+        <xs:attribute name="column" type="xs:int"/>
+        <xs:attribute name="stateful" type="xs:boolean"/>
+        <xs:attribute name="native" type="xs:boolean"/>
+        <xs:attribute name="public" type="xs:boolean"/>
+        <!-- modelUriIndex is only used if native="true" -->
+        <xs:attribute name="modelUriIndex" type="xs:int"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- A toolkit type -->
+  <xs:complexType name="toolkitTypeType">
+    <xs:complexContent>
+      <xs:extension base="toolkitElementType">
+        <xs:attribute name="type" type="xs:string" use="required"/>
+        <xs:attribute name="uriIndex" use="required" type="xs:int"/>
+        <xs:attribute name="line" use="required" type="xs:int"/>
+        <xs:attribute name="column" use="required" type="xs:int"/>
+        <xs:attribute name="static" type="xs:boolean"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- enum literals from an enum declaration -->
+  <xs:complexType name="enumLiteralsType">
+    <xs:sequence>
+      <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="enum" type="xs:token" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="typeName" type="xs:token"/>
+    <xs:attribute name="uriIndex" type="xs:int" use="required"/>
+    <xs:attribute name="line" use="required" type="xs:int"/>
+    <xs:attribute name="column" use="required" type="xs:int"/>
+    <xs:attribute name="static" type="xs:boolean"/>
+</xs:complexType>
+
+</xs:schema>

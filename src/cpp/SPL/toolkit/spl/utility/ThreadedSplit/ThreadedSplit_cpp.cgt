@@ -1,0 +1,408 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use ThreadedSplitCommon;
+    ThreadedSplitCommon::verify($model);
+    my $bufferSize = $model->getParameterByName("bufferSize");
+    $bufferSize = $bufferSize->getValueAt(0)->getCppExpression();
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <boost/atomic/atomic.hpp>
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+
+using namespace std;
+
+static const uint32_t metricsIntervalSeconds = 5 * 60;
+
+MY_OPERATOR::MY_OPERATOR()
+    : MY_BASE_OPERATOR(),
+      done_(false), currentBuf_(0), bufferSize_(<%=$bufferSize%>),
+      numOutputPorts_(getNumberOfOutputPorts())
+{
+    if (!bufferSize_) {
+        bufferSize_ = 1;
+    }
+    OperatorMetrics & om = getContext().getMetrics();
+    Metric & queueSizeMetric = om.createCustomMetric("queueSize",
+        SPL_APPLICATION_RUNTIME_THREADEDSPLIT_DESC_QUEUESIZE,
+        Metric::Gauge);
+    queueSizeMetric.setValueNoLock(<%=$bufferSize%>);
+    Metric & recentMaxItemsQueuedIntervalMetric =
+        om.createCustomMetric("recentMaxItemsQueuedInterval",
+        SPL_APPLICATION_RUNTIME_THREADEDSPLIT_DESC_RECENTMAXITEMSQUEUEDINTERVAL,
+        Metric::Time);
+    recentMaxItemsQueuedIntervalMetric.setValueNoLock(metricsIntervalSeconds * 1000);
+
+    for (uint32_t i=0; i<numOutputPorts_; ++i) {
+        buffers_.push_back(new CircularQueue<ItemType>(bufferSize_));
+        consumeCVs_.push_back(new CV());
+        consumeMutexes_.push_back(new Mutex());
+        OutputPortMetrics *opm = &outputPortMetrics_[i];
+        opm->nItemsQueuedMetric = &om.createCustomMetric(
+            makeMetricNameForPort(i, "nItemsQueued"),
+            SPL_APPLICATION_RUNTIME_THREADEDSPLIT_DESC_NITEMSQUEUED,
+            Metric::Gauge);
+        opm->maxItemsQueuedMetric = &om.createCustomMetric(
+            makeMetricNameForPort(i, "maxItemsQueued"),
+            SPL_APPLICATION_RUNTIME_THREADEDSPLIT_DESC_MAXITEMSQUEUED,
+            Metric::Gauge);
+        opm->recentMaxItemsQueuedMetric = &om.createCustomMetric(
+            makeMetricNameForPort(i, "recentMaxItemsQueued"),
+            SPL_APPLICATION_RUNTIME_THREADEDSPLIT_DESC_RECENTMAXITEMSQUEUED,
+            Metric::Gauge);
+    }
+    nEnqueueWaitsMetric_ = &om.createCustomMetric("nEnqueueWaits",
+        SPL_APPLICATION_RUNTIME_THREADEDSPLIT_DESC_NENQUEUEWAITS,
+        Metric::Counter);
+    resetMetrics();
+
+    <%if ($isInConsistentRegion) {%>
+        _crContext = static_cast<ConsistentRegionContext *> (getContext().getOptionalContext(CONSISTENT_REGION));
+    <%}%>
+    <%if (SPL::CodeGen::hasEventTimeContext($model)) {%>eventTimeContext_.setMode(EventTimeContext::outputEventTime);<%}%>
+}
+
+MY_OPERATOR::~MY_OPERATOR()
+{
+    for(uint32_t i=0; i<numOutputPorts_; ++i) {
+        CircularQueue<ItemType> & buffer = *buffers_[i];
+        for(size_t j=0, ju=buffer.getCapacity(); j<ju; ++j) {
+            ItemType & item = buffer.getRawData(j);
+            delete item.tuple;
+        }
+        delete &buffer;
+        delete consumeCVs_[i];
+        delete consumeMutexes_[i];
+    }
+}
+
+std::string MY_OPERATOR::makeMetricNameForPort(uint32_t port, std::string const & name)
+{
+    std::stringstream s;
+    s.imbue(locale::classic());
+    s << name << " (port " << port << ")";
+    return s.str();
+}
+
+void MY_OPERATOR::resetMetrics()
+{
+    for (uint32_t i=0; i<numOutputPorts_; ++i) {
+        OutputPortMetrics *opm = &outputPortMetrics_[i];
+        opm->nItemsQueuedMetric->setValueNoLock(0);
+        opm->maxItemsQueuedMetric->setValueNoLock(0);
+        opm->recentMaxItemsQueuedMetric->setValueNoLock(0);
+        opm->currentMaxItemsQueued = 0;
+        opm->previousMaxItemsQueued = 0;
+    }
+    nEnqueueWaitsMetric_->setValueNoLock(0);
+}
+
+static void pause_instruction() {
+#if defined(__i386) || defined(__x86_64__)
+    __asm__ __volatile__("pause;" ::: "memory");
+#elif defined(__powerpc__)
+    __asm__ __volatile__("or 30,30,30" ::: "memory");
+#else
+    boost::atomic::atomic_thread_fence(boost::atomic::memory_order_seq_cst);
+#endif
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+    if(punct == Punctuation::WindowMarker)
+    {
+        ItemType item(punct);
+        process(item);
+    } else if (punct == Punctuation::FinalMarker) {
+        // need to wait until all buffers flush
+        ProcessingElement& pe = getPE();
+        while(!pe.getShutdownRequested()) {
+            uint32_t done = 0;
+            for(size_t i=0; i<numOutputPorts_; ++i)
+                if(buffers_[i]->empty())
+                    ++done;
+            if(done==numOutputPorts_)
+                break;
+            pause_instruction();
+        }
+        done_ = true;
+        wakeMetricsIntervalTimer();
+    }
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+    ItemType item(const_cast<Tuple*>(&tuple));
+    process(item);
+}
+
+void MY_OPERATOR::processWatermark(Punctuation const & wm, uint32_t port)
+{
+    ItemType item(wm);
+    process(item);
+}
+
+void MY_OPERATOR::process(ItemType const & item)
+{
+    // in case there are multiple threads calling us;
+<%if ($isInConsistentRegion or $ckptKind ne "none") {%>
+    AutoMutex am(mutex_);
+<% } else {%>
+    // this will reduce to an untaken branch in case there is only a single thread
+    AutoPortMutex apm(mutex_, *this);
+<% } %>
+
+    int cnt = 0;
+    if(item.isTuple()) {
+        boolean wait = false;
+        while(!getPE().getShutdownRequested()) {
+            CircularQueue<ItemType> & buffer = *buffers_[currentBuf_];
+            if(!buffer.full()) {
+                ItemType & citem = buffer.rear();
+                if(citem.tuple) {
+                    citem.tuple->assign(*item.tuple);
+                }
+                else {
+                    citem.tuple = item.tuple->clone();
+                }
+
+                citem.punct = Punctuation::Invalid;
+                bool wasEmpty = buffer.empty();
+                buffer.push_back();
+                if (wasEmpty) {
+                    AutoMutex am(*consumeMutexes_[currentBuf_]);
+                    consumeCVs_[currentBuf_]->signal();
+                }
+
+                if (wait) {
+                    nEnqueueWaitsMetric_->incrementValueNoLock();
+                }
+                currentBuf_ = (currentBuf_+1) % numOutputPorts_;
+                return;
+            } else {
+               currentBuf_ = (currentBuf_+1) % numOutputPorts_;
+            }
+            ++cnt;
+            if(cnt==numOutputPorts_) {
+                pause_instruction();
+                cnt = 0;
+                wait = true;
+            }
+        }
+    }
+    else {
+        //for puncts and watermarks, add the punct to each buffer
+    	//if the buffer is full, then wait and try to add again till there
+    	//is space available.
+    	bool buffersToTry[numOutputPorts_];
+    	bool stillBuffersRemaining = false;
+    	for(uint32_t i=0; i<numOutputPorts_; ++i) {
+            if(getPE().getShutdownRequested()) return;
+       	    CircularQueue<ItemType> & buffer = *buffers_[i];
+       	    if(!buffer.full()) {
+                ItemType & citem = buffer.rear();
+                citem.punct = item.punct;
+                bool wasEmpty = buffer.empty();
+                buffer.push_back();
+                if (wasEmpty) {
+                    AutoMutex am(*consumeMutexes_[i]);
+                    consumeCVs_[i]->signal();
+                }
+                buffersToTry[i] = false;
+            } else {
+                buffersToTry[i] = true;
+                stillBuffersRemaining = true;
+            }
+        }
+    	if (stillBuffersRemaining) {
+            nEnqueueWaitsMetric_->incrementValueNoLock();
+        }
+    	while(stillBuffersRemaining) {
+            if(getPE().getShutdownRequested()) break;
+    	    pause_instruction();
+            stillBuffersRemaining = false;
+    	    for (uint32_t i = 0; i < numOutputPorts_; i++) {
+                if(buffersToTry[i]) {
+                    CircularQueue<ItemType> & buffer = *buffers_[i];
+                    if(!buffer.full()) {
+                        ItemType & citem = buffer.rear();
+                        citem.punct = item.punct;
+                        bool wasEmpty = buffer.empty();
+                        buffer.push_back();
+                        if (wasEmpty) {
+                            AutoMutex am(*consumeMutexes_[i]);
+                            consumeCVs_[i]->signal();
+                        }
+                        buffersToTry[i] = false;
+                    } else {
+                        stillBuffersRemaining = true;
+                    }
+                }
+    	    }
+    	}
+    }
+}
+
+void MY_OPERATOR::process(uint32_t index)
+{
+    if (index == numOutputPorts_) {
+        processMetricsIntervalTimer();
+    } else {
+        processQueue(index);
+    }
+}
+
+void MY_OPERATOR::processQueue(uint32_t index)
+{
+    CircularQueue<ItemType> & buffer = *buffers_[index];
+    size_t len;
+    while (!getPE().getShutdownRequested()) {
+        if (buffer.empty(&len)) {
+            AutoMutex am(*consumeMutexes_[index]);
+            long ns = 100;
+            timespec delay;
+            delay.tv_sec = 0;
+            while (buffer.empty(&len)) {
+                if (getPE().getShutdownRequested() || done_) {
+                    return;
+                }
+
+                delay.tv_nsec = ns;
+                consumeCVs_[index]->waitFor(*consumeMutexes_[index], delay);
+                if (ns < 10000000) {
+                    ns *= 10;
+                }
+            }
+        }
+
+        {
+        <%if ($isInConsistentRegion) {%>
+            ConsistentRegionPermit crp(_crContext);
+            // Recheck buffer size, as it might has been emptied
+            // due to a reset
+            if (buffer.empty()) continue;
+        <% } %>
+
+            ItemType & item = buffer.front();
+            if (item.isTuple()) {
+                submit(*item.tuple, index);
+                item.tuple->clear();
+            }
+            else if (item.isPunct()) {
+               submit(item.punct, index);
+            }
+            buffer.pop_front();
+            OutputPortMetrics *opm = &outputPortMetrics_[index];
+            opm->nItemsQueuedMetric->setValueNoLock(len - 1);
+            if (len > opm->currentMaxItemsQueued) {
+                opm->currentMaxItemsQueued = len;
+                if (len > opm->previousMaxItemsQueued) {
+                    opm->recentMaxItemsQueuedMetric->setValueNoLock(len);
+                    if (len > opm->maxItemsQueuedMetric->getValueNoLock()) {
+                        opm->maxItemsQueuedMetric->setValueNoLock(len);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void MY_OPERATOR::processMetricsIntervalTimer()
+{
+    timespec interval = {0, 0};
+    interval.tv_sec = metricsIntervalSeconds;
+    AutoMutex am(metricsIntervalMutex_);
+    while (!getPE().getShutdownRequested() && !done_) {
+        metricsIntervalCV_.waitFor(metricsIntervalMutex_, interval);
+
+        <%if ($isInConsistentRegion) {%>
+            // Allow any metrics reset to complete.
+            ConsistentRegionPermit crp(_crContext);
+        <% } %>
+
+        for (uint32_t i = 0; i < numOutputPorts_; ++i) {
+            OutputPortMetrics *opm = &outputPortMetrics_[i];
+            opm->previousMaxItemsQueued = opm->currentMaxItemsQueued;
+            opm->currentMaxItemsQueued =
+                opm->nItemsQueuedMetric->getValueNoLock();
+            opm->recentMaxItemsQueuedMetric->setValueNoLock(
+                std::max(opm->previousMaxItemsQueued,
+                         opm->currentMaxItemsQueued));
+        }
+    }
+}
+
+void MY_OPERATOR::wakeMetricsIntervalTimer()
+{
+    AutoMutex am(metricsIntervalMutex_);
+    metricsIntervalCV_.signal();
+}
+
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads(numOutputPorts_ + 1);
+}
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    wakeMetricsIntervalTimer();
+}
+
+<%if ($isInConsistentRegion) {%>
+void MY_OPERATOR::drain()
+{
+    // Wait until all buffers are drained
+    for(uint32_t i = 0; i < numOutputPorts_; i++) {
+        CircularQueue<ItemType> & buffer = *buffers_[i];
+        while (!buffer.empty()) {
+            pause_instruction();
+        }
+    }
+}
+
+<%}
+  if ($isInConsistentRegion or $ckptKind ne "none") {%>
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    // Just empty the buffers
+    resetToInitialState();
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    AutoMutex am(mutex_);
+
+    currentBuf_ = 0;
+    for(uint32_t i = 0; i < numOutputPorts_; ++i) {
+        CircularQueue<ItemType> & buffer = *buffers_[i];
+        while (!buffer.empty()) {
+            ItemType & item = buffer.front();
+            if(item.isTuple()) {
+                item.tuple->clear();
+            }
+            buffer.pop_front();
+        }
+    }
+    resetMetrics();
+}
+<% } %>
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

@@ -1,0 +1,118 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use ParseCommon;
+    ParseCommon::verify($model);
+    my $defaultTuple = $model->getParameterByName("defaultTuple");
+    my $defaultTupleType = ($defaultTuple) ? $defaultTuple->getValueAt(0)->getCppType() : "";
+    my @includes;
+    my $readPunctuations = $model->getParameterByName("readPunctuations");
+    $readPunctuations = $readPunctuations ? $readPunctuations->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    my $format = $model->getParameterByName("format");
+    $format = $format ? $format->getValueAt(0)->getSPLExpression() : "csv";;
+    my $binary = $format eq "bin" || $format eq "block";
+    my $hasHeaderLine = $model->getParameterByName("hasHeaderLine");
+    push @includes, "#include <SPL/Runtime/Common/Metric.h>";
+    push @includes, "#include <SPL/Toolkit/BlobSourceV2.h>";
+    push @includes, "#include <SPL/Toolkit/AtomicBool.h>";
+    push @includes, "#include <boost/iostreams/stream.hpp>";
+    push @includes, "#include <boost/iostreams/filtering_streambuf.hpp>";
+    #consistent region support
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    if ($isInConsistentRegion) {
+        push @includes, "#include <SPL/Runtime/Operator/State/ConsistentRegionContext.h>";
+        push @includes, "#include <SPL/Runtime/Operator/State/StateHandler.h>";
+    }
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+    if ($binary) {
+      push @includes, "#include <SPL/Runtime/Serialization/StreamByteBuffer.h>";
+    }
+%>
+<%SPL::CodeGen::headerPrologue($model, \@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR<%if ($isInConsistentRegion or $ckptKind ne "none") {%>, public StateHandler<%}%>
+{
+public:
+    MY_OPERATOR();
+
+    virtual void process(uint32_t index);
+    virtual void allPortsReady();
+    virtual void process (Tuple& tuple, uint32_t port);
+    virtual void process (const Punctuation& punct, uint32_t port);
+    virtual void prepareToShutdown();
+
+    <%if ($isInConsistentRegion) {%>
+    // Consistent region support
+    virtual void drain();
+    virtual void checkpoint(Checkpoint & ckpt);
+    virtual void reset(Checkpoint & ckpt);
+    virtual void resetToInitialState();
+    <%}%>
+
+private:
+    void initStream();
+    void initPendingStream();
+    void swapStreams();
+    <%if ($hasHeaderLine) {%>
+    void initHeaderLineCount();
+    <%}%>
+    <%if ($isInConsistentRegion) {%>
+    void resetBlobSource();
+    <%}%>
+    void flushBlobSource(bool setFailBit);
+    void waitForFlush();
+
+    uint64_t _tupleNumber;
+    std::auto_ptr<boost::iostreams::filtering_streambuf<boost::iostreams::input_seekable> > _filt_str;
+    std::auto_ptr<boost::iostreams::filtering_streambuf<boost::iostreams::input_seekable> > _filt_str_pending;
+
+    <%if ($binary) {%>
+        std::auto_ptr<SPL::StreamByteBuffer> _sbfs;
+        std::auto_ptr<SPL::StreamByteBuffer> _sbfs_pending;
+        std::auto_ptr<std::iostream> _fs;
+        std::auto_ptr<std::iostream> _fs_pending;
+    <%} else {%>
+        std::auto_ptr<std::istream> _fs;
+        std::auto_ptr<std::istream> _fs_pending;
+    <%}%>
+    <%if($defaultTuple) {%>
+        <%=$defaultTupleType%> _defaultTuple;
+    <%}%>
+    SPL::BlobSourceV2 *_blobSource;
+    volatile SPL::atomic_bool _finished;
+    volatile SPL::atomic_bool _draining; // Are we currently draining?
+    volatile SPL::atomic_bool _reset;
+    std::streamoff _position;  // Start position of current read.
+    <%if ($readPunctuations) {%>
+        volatile SPL::atomic_bool _sawFinal;
+    <%}%>
+    Metric& _numInvalidTuples;
+
+    Mutex _mutex;
+    CV _flushed;
+    CV _resume;
+    <% if ($isInConsistentRegion) { %>
+        ConsistentRegionContext *_crContext;
+    <% } %>
+    <%if ($hasHeaderLine) {%>
+    uint32_t _headerLineCount;
+    <%}%>
+    volatile SPL::atomic_bool _isFlushed;
+    uint32 _flushWaiters;
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

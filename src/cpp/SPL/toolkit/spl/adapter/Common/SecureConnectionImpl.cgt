@@ -1,0 +1,1250 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <map>
+
+#include <openssl/bio.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/conf.h>
+#include <openssl/rand.h>
+
+#include <boost/filesystem.hpp>
+
+#include <SPL/Toolkit/WireFormat.h>
+#include <SPL/Toolkit/RuntimeException.h>
+
+using namespace std;
+
+// TODO: Should we make this common with UTILS/Security.h? They have slightly
+// different meanings and handling of errors but the same strings at present
+class MY_OPERATOR::Security {
+public:
+
+    // NOTE: If these change, both parseType *AND* createContext must change
+    enum Type {
+        None,
+        SSLv3,
+        TLSv1,
+        TLSv1_1,
+        TLSv1_2
+    };
+
+    static Security::Type parseType(std::string const & value);
+
+    static std::string getError();
+
+    static std::string getError(SSL* ssl, int code);
+};
+
+MY_OPERATOR::Security::Type MY_OPERATOR::Security::parseType(const std::string& value)
+{
+    if (value == "none") {
+        return Security::None;
+    }
+    if (value == "SSLv3") {
+        return Security::SSLv3;
+    }
+    if (value == "TLSv1") {
+        return Security::TLSv1;
+    }
+    if (value == "TLSv1.1") {
+        return Security::TLSv1_1;
+    }
+    if (value == "TLSv1.2") {
+        return Security::TLSv1_2;
+    }
+    SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_INVALID_PARAM("sslProtocol", value), SPL_OPER_DBG);
+    // NOTREACHED
+    return Security::None;
+}
+
+std::string
+MY_OPERATOR::Security::getError()
+{
+    BIO* bio = BIO_new(BIO_s_mem());
+    ERR_print_errors(bio);
+    char* buf = NULL;
+    size_t len = BIO_get_mem_data(bio, &buf);
+    std::string result(buf, len);
+    BIO_free(bio);
+    return result;
+}
+
+std::string
+MY_OPERATOR::Security::getError(SSL* ssl, int code)
+{
+    switch (SSL_get_error(ssl, code))
+    {
+    case SSL_ERROR_NONE:
+        return "SSL_ERROR_NONE";
+    case SSL_ERROR_ZERO_RETURN:
+        return "SSL_ERROR_ZERO_RETURN";
+    case SSL_ERROR_WANT_READ:
+        return "SSL_ERROR_WANT_READ";
+    case SSL_ERROR_WANT_WRITE:
+        return "SSL_ERROR_WANT_WRITE";
+    case SSL_ERROR_WANT_CONNECT:
+        return "SSL_ERROR_WANT_CONNECT";
+    case SSL_ERROR_WANT_ACCEPT:
+        return "SSL_ERROR_WANT_ACCEPT";
+    case SSL_ERROR_WANT_X509_LOOKUP:
+        return "SSL_ERROR_WANT_X509_LOOKUP";
+    case SSL_ERROR_SYSCALL: {
+        std::string ssl_err(ERR_error_string(ERR_peek_error(), NULL));
+        return "SSL_ERROR_SYSCALL(" + ssl_err + ")";
+    }
+    case SSL_ERROR_SSL: {
+        std::string ssl_err(ERR_error_string(ERR_peek_error(), NULL));
+        return "SSL_ERROR_SSL(" + ssl_err + ")";
+    }
+    default:
+        return "UNKNOWN_ERROR";
+    }
+}
+
+
+<%if ($role eq "client") {%>
+class MY_OPERATOR::SecureTCPClient : public <%=$connectorBaseType%> {
+public:
+    /// Connect to a port on a given host
+    /// @param pe Processing Element
+    SecureTCPClient (ProcessingElement& pe) : <%=$connectorBaseType%>(pe) {}
+
+    /// Destructor
+    virtual ~SecureTCPClient() {}
+
+    /// @param host Hostname
+    /// @param port Port number, or service (e.g. "smtp")
+    void setup (const std::string& host, const std::string& port) {
+        SPLAPPTRC(L_DEBUG, "SecureTCPClient starting: " << host << '/' << port, SPL_OPER_DBG);
+        setDebugString(host, port);
+        connect(host, port, NULL, NULL);
+        <%if ($needsExtendedConnector) {%>
+            if (confirmWireFormat())
+                setLocalPort();
+        <%}%>
+    }
+
+    /// Connect to a port on a given host
+    /// @param host Hostname
+    /// @param port Port number
+    void setup (const std::string& host, uint32_t port) {
+        SPLAPPTRC(L_DEBUG, "SecureTCPClient starting: " << host << '/' << port, SPL_OPER_DBG);
+        stringstream s;
+        s.imbue(locale::classic());
+        s << port;
+        setDebugString(host, s.str());
+        connect(host, s.str(), NULL, NULL);
+        <%if ($needsExtendedConnector) {%>
+            if (confirmWireFormat())
+                setLocalPort();
+        <%}%>
+    }
+
+    /// Connect to a port on a given host using NAM to map from label to host/port
+    /// @param label Name of object in NAM containing host/port information
+    void setup (const std::string& label) {
+        SPLAPPTRC(L_DEBUG, "SecureTCPClient starting: " << label, SPL_OPER_DBG);
+        string host, port;
+        labelLookup (label, host, port);
+        connect(host, port, NULL, NULL);
+        <%if ($needsExtendedConnector) {%>
+            if (confirmWireFormat())
+                setLocalPort();
+        <%}%>
+    }
+
+    /// Re-establish a connection to same server.  Retry until connected or PE shutdown
+    /// @return new file descriptor for the new connection
+    int32_t reconnect() {
+        SPLAPPTRC(L_DEBUG, "SecureTCPClient: reconnecting to " << _hostInfo, SPL_OPER_DBG);
+        reset();
+        close(_fd);
+        _fd = -1;
+        connect(NULL, NULL);
+        <%if ($needsExtendedConnector) {%>
+            if (confirmWireFormat())
+                setLocalPort();
+        <%}%>
+        return _fd;
+    }
+
+    // Shutdown read side (only for non-SSL)
+    virtual int shutdownRead() = 0;
+
+    // Read bytes
+    virtual ssize_t read(void * buf, size_t count) = 0;
+
+    // Write bytes
+    virtual ssize_t write(const void * buf, size_t count) = 0;
+
+    // Shutdown everything
+    virtual void terminate() = 0;
+
+    // Reset SSL prior to connectiing to, closing, or re-using fd
+    virtual void reset() = 0;
+
+    static SecureTCPClient * createSecureConnection(SPL::ProcessingElement & pe,
+            std::string configName, std::string protocol,
+            std::string certFile, std::string password,
+            std::string caFile, std::string clientAuth,
+            std::string cipherSuites);
+
+protected:
+    virtual void connect (const std::string& host, const std::string& port, std::string* saveHost,
+            uint32_t* savePort) = 0;
+    virtual void connect (std::string* saveHost, uint32_t* savePort) = 0;
+
+<%if ($needsExtendedConnector) {%>
+    virtual bool confirmWireFormat() = 0;
+<%}%>
+
+    static void getAppConfig(SPL::ProcessingElement & pe,
+            std::string & configName, std::string & protocol,
+            std::string & certFile, std::string & password,
+            std::string & caFile, std::string & clientAuth,
+            std::string & cipherSuites);
+};
+
+class MY_OPERATOR::UnencryptedTCPClient : public MY_OPERATOR::SecureTCPClient {
+public:
+    /// Connect to a port on a given host
+    /// @param pe Processing Element
+    UnencryptedTCPClient (ProcessingElement& pe) : SecureTCPClient(pe) {}
+
+    /// Destructor
+    virtual ~UnencryptedTCPClient() {}
+
+    // Shutdown read
+    virtual int shutdownRead() {
+        return ::shutdown(_fd, SHUT_RD);
+    }
+
+    // Read bytes
+    virtual ssize_t read(void * buf, size_t count) {
+        return ::read(_fd, buf, count);
+    }
+
+    // Write bytes
+    virtual ssize_t write(const void * buf, size_t count) {
+        return ::write(_fd, buf, count);
+    }
+
+    // Shutdown everything
+    virtual void terminate() {
+        TCPClient::terminate();
+    }
+
+    // Reset prior to connectiing to, closing, or re-using fd
+    virtual void reset() { }
+
+protected:
+
+    virtual void connect (const std::string& host, const std::string& port, std::string* saveHost,
+            uint32_t* savePort) {
+        TCPClient::connect(host, port, saveHost, savePort);
+    }
+
+    virtual void connect (std::string* saveHost, uint32_t* savePort) {
+        TCPClient::connect(saveHost, savePort);
+    }
+
+<%if ($needsExtendedConnector) {%>
+    virtual bool confirmWireFormat() {
+        return TCPClientExtended::confirmWireFormat();
+    }
+<%}%>
+};
+
+class MY_OPERATOR::SSLClient : public MY_OPERATOR::SecureTCPClient {
+public:
+    SSLClient (SPL::ProcessingElement& pe)
+            : SecureTCPClient(pe), _ctx(NULL), _ssl(NULL), _shutdown(false) {}
+
+    /// Destructor
+    virtual ~SSLClient() {
+        reset();
+        if (_ctx) {
+            SSL_CTX_free(_ctx);
+            _ctx = NULL;
+        }
+    }
+
+    void setSecureOptions(Security::Type sslProtocol,
+            const std::string & certFile, const std::string & password,
+            const std::string & caFile,
+            const std::string & cipherSuites) {
+        createContext(sslProtocol, cipherSuites);
+        setCertificateInfo(certFile, password, caFile);
+    }
+
+    // Shutdown read: NOP for SSL
+    virtual int shutdownRead() {
+        return 0;
+    }
+
+    // Get SSL pending bytes
+    virtual int pending() {
+        return SSL_pending(_ssl);
+    }
+
+    // Read bytes
+    virtual ssize_t read(void * buf, size_t count);
+
+    // Write bytes
+    virtual ssize_t write(const void * buf, size_t count);
+
+    // Shutdown everything
+    virtual void terminate() {
+        reset();
+        TCPClient::terminate();
+    }
+
+    // Reset SSL prior to connectiing to, closing, or re-using fd
+    virtual void reset();
+
+protected:
+
+    virtual void connect (const std::string& host, const std::string& port, std::string* saveHost,
+            uint32_t* savePort) {
+        TCPClient::connect(host, port, saveHost, savePort);
+        sslClientConnect();
+    }
+
+    virtual void connect (std::string* saveHost, uint32_t* savePort) {
+        TCPClient::connect(saveHost, savePort);
+        sslClientConnect();
+    }
+
+<%if ($needsExtendedConnector) {%>
+    class SSLWireFormatIO : public SPL::WireFormatIO {
+    public:
+        SSLWireFormatIO(SSLClient * client) :
+                WireFormatIO(client->fileDescriptor()), _client(client) {}
+        virtual int pending() const {
+            return _client->pending();
+        }
+        virtual ssize_t read (void * buf, size_t len) const {
+            ssize_t n = _client->read(buf, len);
+            if (n <= 0) {
+                SPLAPPTRC(L_DEBUG, "SecureTCPClient: wire format read returned " << n, SPL_OPER_DBG);
+            }
+            return n;
+        }
+        virtual ssize_t write (const void * buf, size_t len) const {
+            // FIXME: Does not duplicate MSG_NOSIGNAL behaviour
+            ssize_t n = _client->write(buf, len);
+            if (n <= 0) {
+                SPLAPPTRC(L_DEBUG, "SecureTCPClient: wire format write returned " << n, SPL_OPER_DBG);
+            }
+            return n;
+        }
+        virtual void finish () const {
+            _client->reset();
+        }
+        virtual ~SSLWireFormatIO () {}
+    private:
+        SSLClient * _client;
+    };
+
+    virtual bool confirmWireFormat() {
+        SSLWireFormatIO io(this);
+        return TCPClientExtended::confirmWireFormat(io);
+    }
+<%}%>
+
+private:
+    class PUData;
+
+    SSL_CTX* _ctx;
+    SSL* _ssl;
+    bool _shutdown;
+    std::auto_ptr<PUData> _pudata;
+
+    void createContext(Security::Type type, const std::string & cipherSuites);
+
+    void setCertificateInfo(const std::string & certFile, const std::string & password,
+            const std::string & caFile);
+
+    std::string getAbsolutePath(const std::string & path);
+
+    void disconnect();
+
+    void sslClientConnect() {
+        using namespace SPL;
+
+        if (!_connected) {
+            disconnect();
+            return;
+        }
+
+        SPLAPPTRC(L_TRACE, "SecureTCPClient: setting up SSL client connection", SPL_OPER_DBG);
+        _ssl = SSL_new(_ctx);
+        if (_ssl == NULL) {
+            SPLAPPTRC(L_ERROR, "SecureTCPClient: SSL_new() failed: " << Security::getError(), SPL_OPER_DBG);
+            SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_NEW_FAILED, SPL_OPER_DBG);
+        }
+        SSL_set_read_ahead(_ssl, 0);
+        /**
+         * Set the underlying FD and state
+         */
+        int res = SSL_set_fd(_ssl, _fd);
+        if (res <= 0)
+        {
+            SPLAPPTRC(L_DEBUG, "SecureTCPClient: Cannot set SSL fd: " << Security::getError(_ssl, res), SPL_OPER_DBG);
+            disconnect();
+            return;
+        }
+        SSL_set_connect_state(_ssl);
+        /**
+         * Connect secure socket.
+         */
+        res = SSL_connect(_ssl);
+        if (res != 1)
+        {
+            int err = SSL_get_error(_ssl, res);
+            if (err == SSL_ERROR_SYSCALL || err == SSL_ERROR_SSL) {
+                _shutdown = false;
+                SPLAPPTRC(L_DEBUG, "SecureTCPClient: non-recoverable SSL error on connect: " << Security::getError(_ssl, res), SPL_OPER_DBG);
+            } else {
+                SPLAPPTRC(L_TRACE, "SecureTCPClient: SSL error on connect: " << Security::getError(_ssl, res), SPL_OPER_DBG);
+            }
+            disconnect();
+            return;
+        }
+        _shutdown = true;
+
+        /*
+         * Step 1: verify a server certificate was presented during the negotiation
+         */
+        X509* cert = SSL_get_peer_certificate(_ssl);
+        if (cert) {
+            X509_free(cert);
+        } else {
+            SPLAPPTRC(L_DEBUG, "SecureTCPClient: Cannot get peer certificate", SPL_OPER_DBG);
+            disconnect();
+            return;
+        }
+        /*
+         * Step 2: verify the result of chain verification, according to RFC 4158
+         */
+        res = SSL_get_verify_result(_ssl);
+        if (X509_V_OK != res) {
+            SPLAPPTRC(L_DEBUG, "SecureTCPClient: X509 verify result failed: "<< Security::getError(_ssl, res), SPL_OPER_DBG);
+            disconnect();
+            // This is not recoverable, no point in retrying
+            SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_VALIDATE_PEER, SPL_OPER_DBG);
+        }
+        SPLAPPTRC(L_TRACE, "SecureTCPClient: SSL client connection ready", SPL_OPER_DBG);
+    }
+};
+
+MY_OPERATOR::SecureTCPClient *
+MY_OPERATOR::SecureTCPClient::createSecureConnection(ProcessingElement & pe,
+        std::string configName, std::string protocol,
+        std::string certFile, std::string password,
+        std::string caFile, std::string clientAuth,
+        std::string cipherSuites)
+{
+    using namespace SPL;
+
+    getAppConfig(pe, configName, protocol, certFile, password, caFile,
+            clientAuth, cipherSuites);
+
+    Security::Type type = Security::parseType(protocol);
+    if (type != Security::None) {
+        SPLAPPTRC(L_DEBUG, "SecureTCPClient: using SSL / TLS protocol " << protocol, SPL_OPER_DBG);
+        try {
+            SSLClient * ssl = new SSLClient(pe);
+            ssl->setSecureOptions(type, certFile, password, caFile, cipherSuites);
+            return ssl;
+        } catch (const std::exception & e) {
+            SPLAPPTRC(L_ERROR, "caught exception: " << e.what(), SPL_OPER_DBG);
+            throw;
+        } catch (...) {
+            SPLAPPTRC(L_ERROR, "caught unknown exception", SPL_OPER_DBG);
+            throw;
+        }
+    }
+    SPLAPPTRC(L_DEBUG, "SecureTCPClient: using unencrypted connection", SPL_OPER_DBG);
+    return new UnencryptedTCPClient(pe);
+}
+
+<%} else {%>
+/// Class to establish a server TCP connection
+/// Initial connection will retry until some connects or PE Shutdown
+class MY_OPERATOR::SecureTCPServer : public <%=$connectorBaseType%> {
+  public:
+    /// Setup a TCP port on the current machine and wait for a connection
+    /// @param pe Processing Element
+    SecureTCPServer (SPL::ProcessingElement& pe) : <%=$connectorBaseType%>(pe) {}
+
+    /// Destructor
+    virtual ~SecureTCPServer() {}
+
+    /// Setup a TCP port on the current machine and wait for a connection
+    /// @param port Port number, or service (e.g. "smtp")
+    void setup (const std::string& port) {
+        SPLAPPTRC(L_DEBUG, "SecureTCPServer starting: port " << port, SPL_OPER_DBG);
+        setDebugString(port);
+        connect(port);
+        <%if ($needsExtendedConnector) {%>
+            if (!_connected)
+                return;
+            setServerPort();
+            while (_connected && !confirmWireFormat() && !_pe.getShutdownRequested())
+                reconnect();
+            setInformation();
+        <%}%>
+    }
+
+    /// Setup a TCP port on the current machine and wait for a connection
+    /// @param port Port number
+    void setup (uint32_t port) {
+        SPLAPPTRC(L_DEBUG, "SecureTCPServer starting: port " << port, SPL_OPER_DBG);
+        stringstream s;
+        s.imbue(locale::classic());
+        s << port;
+        setDebugString(s.str());
+        connect(s.str());
+        <%if ($needsExtendedConnector) {%>
+            if (!_connected)
+                return;
+            if (port)
+                _serverPort = port;
+            else
+                setServerPort();
+            while (_connected && !confirmWireFormat() && !_pe.getShutdownRequested())
+                reconnect();
+            setInformation();
+        <%}%>
+    }
+
+    /// Setup a TCP port on the current machine.  Register the port number using NAM
+    /// with the given label, so that it can be found by clients
+    /// @param name Name of object in NAM to store host/port information
+    /// @param port Port to be used or service ("0" to pick any free port)
+    void setup (const std::string& name, const std::string& port) {
+        SPLAPPTRC(L_DEBUG, "SecureTCPServer starting: " << name << '/' << port, SPL_OPER_DBG);
+        _label = name;
+        setDebugLabelString(_label, port);
+        connect(port);
+        <%if ($needsExtendedConnector) {%>
+            if (!_connected)
+                return;
+            setServerPort();
+            while (_connected && !confirmWireFormat() && !_pe.getShutdownRequested())
+                reconnect();
+            setInformation();
+        <%}%>
+    }
+
+    /// Setup a TCP port on the current machine.  Register the port number using NAM
+    /// with the given label, so that it can be found by clients
+    /// @param name Name of object in NAM to store host/port information
+    /// @param port Port to be used (0 to pick any free port)
+    void setup (const std::string& name, uint32_t port){
+        SPLAPPTRC(L_DEBUG, "SecureTCPServer starting: " << name << '/' << port, SPL_OPER_DBG);
+        _label = name;
+        setDebugLabelString(_label, port);
+        if (port == 0)
+            connect ("");
+        else {
+            stringstream s;
+            s.imbue(locale::classic());
+            s << port;
+            connect(s.str());
+        }
+        <%if ($needsExtendedConnector) {%>
+            if (!_connected)
+                return;
+            if (port)
+                _serverPort = port;
+            else
+                setServerPort();
+            while (_connected && !confirmWireFormat() && !_pe.getShutdownRequested())
+                reconnect();
+            setInformation();
+        <%}%>
+    }
+
+    /// Wait for a new a connection.  Retry until someone connects or PE shutdown
+    /// @return new file descriptor for the new connection
+    int32_t reconnect() {
+        SPLAPPTRC(L_DEBUG, "SecureTCPServer: reconnecting to " << _hostInfo, SPL_OPER_DBG);
+        reset();
+        close(_fd);
+        <%if (!$needsExtendedConnector) {%>
+            connect();
+        <%} else {%>
+            do {
+                connect();
+            } while (_connected && !confirmWireFormat() && !_pe.getShutdownRequested());
+            setInformation();
+        <%}%>
+        return _fd;
+    }
+
+    // Shutdown read side (only for non-SSL)
+    virtual int shutdownRead() = 0;
+
+    // Read bytes
+    virtual ssize_t read(void * buf, size_t count) = 0;
+
+    // Write bytes
+    virtual ssize_t write(const void * buf, size_t count) = 0;
+
+    // Reset SSL prior to connectiing to, closing, or re-using fd
+    virtual void reset() = 0;
+
+    // Shutdown everything
+    virtual void terminate() = 0;
+
+    static SecureTCPServer * createSecureConnection(SPL::ProcessingElement & pe,
+            std::string configName, std::string protocol,
+            std::string certFile, std::string password,
+            std::string caFile, std::string clientAuth,
+            std::string cipherSuites);
+
+  protected:
+
+    virtual void connect (const std::string& port) = 0;
+
+    virtual void connect () = 0;
+
+<%if ($needsExtendedConnector) {%>
+    virtual bool confirmWireFormat() = 0;
+<%}%>
+
+    static void getAppConfig(SPL::ProcessingElement & pe,
+            std::string & configName, std::string & protocol,
+            std::string & certFile, std::string & password,
+            std::string & caFile, std::string & clientAuth,
+            std::string & cipherSuites);
+};
+
+class MY_OPERATOR::UnencryptedTCPServer : public SecureTCPServer {
+public:
+    /// Setup a TCP port on the current machine and wait for a connection
+    /// @param pe Processing Element
+    UnencryptedTCPServer (SPL::ProcessingElement& pe) : SecureTCPServer(pe) {}
+
+    /// Destructor
+    virtual ~UnencryptedTCPServer() {}
+
+    // Shutdown read
+    virtual int shutdownRead() {
+        return ::shutdown(_fd, SHUT_RD);
+    }
+
+    // Read bytes
+    virtual ssize_t read(void * buf, size_t count) {
+        return ::read(_fd, buf, count);
+    }
+
+    // Write bytes
+    virtual ssize_t write(const void * buf, size_t count) {
+        return ::write(_fd, buf, count);
+    }
+
+    // Reset prior to connectiing to, closing, or re-using fd
+    virtual void reset() { }
+
+    // Shutdown everything
+    virtual void terminate(){
+        TCPServer::terminate();
+    }
+
+  protected:
+
+    virtual void connect (const std::string& port) {
+        TCPServer::connect(port);
+    }
+
+    virtual void connect () {
+        TCPServer::connect();
+    }
+
+<%if ($needsExtendedConnector) {%>
+    virtual bool confirmWireFormat() {
+        return TCPServerExtended::confirmWireFormat();
+    }
+<%}%>
+};
+
+// FIXME: Internal implementation detail from TCPServer
+#define TERMINATED -2
+
+class MY_OPERATOR::SSLServer : public SecureTCPServer {
+  public:
+    /// Setup a TCP port on the current machine and wait for a connection
+    /// @param pe Processing Element
+    SSLServer (SPL::ProcessingElement& pe) : SecureTCPServer(pe),
+            _ctx(NULL), _ssl(NULL), _shutdown(false), _clientVerify(NONE) {}
+
+    /// Destructor
+    virtual ~SSLServer() {
+        reset();
+        if (_ctx) {
+            SSL_CTX_free(_ctx);
+            _ctx = NULL;
+        }
+    }
+
+    void setSecureOptions(MY_OPERATOR::Security::Type sslProtocol,
+            const std::string & certFile, const std::string & password,
+            const std::string & caFile, const std::string & clientAuth,
+            const std::string & cipherSuites) {
+        createContext(sslProtocol, clientAuth, cipherSuites);
+        setCertificateInfo(certFile, password, caFile);
+    }
+
+    // Shutdown read: NOP for SSL
+    virtual int shutdownRead() {
+        return 0;
+    }
+
+    // Get SSL pending bytes
+    virtual int pending() {
+        return SSL_pending(_ssl);
+    }
+
+    // Read bytes
+    virtual ssize_t read(void * buf, size_t count);
+
+    // Write bytes
+    virtual ssize_t write(const void * buf, size_t count);
+
+    // Reset SSL prior to connectiing to, closing, or re-using fd
+    virtual void reset();
+
+    // Shutdown everything
+    virtual void terminate(){
+        reset();
+        TCPServer::terminate();
+    }
+
+  protected:
+
+    virtual void connect (const std::string& port) {
+        TCPServer::connect(port);
+        // Keep retrying as long as base server will
+        while (_connected && _fd != TERMINATED && !_pe.getShutdownRequested()) {
+            sslServerConnect();
+            if (_connected || _fd == TERMINATED || _pe.getShutdownRequested()) {
+                return;
+            }
+            SPLAPPTRC(L_DEBUG, "SecureTCPServer: reconnect to port " << port, SPL_OPER_DBG);
+            TCPServer::reconnect();
+        }
+    }
+
+    virtual void connect () {
+        TCPServer::connect();
+        // Keep retrying as long as base server will
+        while (_connected && _fd != TERMINATED && !_pe.getShutdownRequested()) {
+            sslServerConnect();
+            if (_connected || _fd == TERMINATED || _pe.getShutdownRequested()) {
+                return;
+            }
+            SPLAPPTRC(L_DEBUG, "SecureTCPServer: reconnect", SPL_OPER_DBG);
+            TCPServer::reconnect();
+        }
+    }
+
+<%if ($needsExtendedConnector) {%>
+    class SSLWireFormatIO : public SPL::WireFormatIO {
+    public:
+        SSLWireFormatIO(SSLServer * server) :
+                WireFormatIO(server->fileDescriptor()), _server(server) {}
+        virtual int pending() const {
+            return _server->pending();
+        }
+        virtual ssize_t read (void * buf, size_t len) const {
+            ssize_t n = _server->read(buf, len);
+            if (n <= 0) {
+                SPLAPPTRC(L_TRACE, "SSLWireFormatIO: server read failed" << n, SPL_OPER_DBG);
+            }
+            return n;
+        }
+        virtual ssize_t write (const void * buf, size_t len) const {
+            // FIXME: Does not duplicate MSG_NOSIGNAL behaviour
+            return _server->write(buf, len);
+        }
+        virtual void finish () const {
+            _server->reset();
+        }
+        virtual ~SSLWireFormatIO () {}
+    private:
+        SSLServer * _server;
+    };
+
+    virtual bool confirmWireFormat() {
+        SSLWireFormatIO io(this);
+        return TCPServerExtended::confirmWireFormat(io);
+    }
+<%}%>
+
+  private:
+    class PUData;
+    enum ClientVerify { NONE, REQUEST, REQUIRE };
+
+    SSL_CTX* _ctx;
+    SSL* _ssl;
+    bool _shutdown;
+    std::auto_ptr<PUData> _pudata;
+    ClientVerify _clientVerify;
+
+    void createContext(Security::Type type, const std::string & clientAuth,
+            const std::string & cipherSuites);
+
+    void setCertificateInfo(const std::string & certFile, const std::string & password,
+            const std::string & caFile);
+
+    std::string getAbsolutePath(const std::string & path);
+
+    void disconnect();
+
+    void sslServerConnect() {
+        using namespace SPL;
+
+        if (!_connected) {
+            disconnect();
+            return;
+        }
+
+        SPLAPPTRC(L_TRACE, "SecureTCPServer: setting up SSL server connection", SPL_OPER_DBG);
+        _ssl = SSL_new(_ctx);
+        if (_ssl == NULL) {
+            SPLAPPTRC(L_ERROR, "SecureTCPServer: SSL_new() failed: " << Security::getError(), SPL_OPER_DBG);
+            SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_NEW_FAILED, SPL_OPER_DBG);
+        }
+        SSL_set_read_ahead(_ssl, 0);
+        /**
+         * Set the underlying FD and state
+         */
+        int res = SSL_set_fd(_ssl, _fd);
+        if (res <= 0)
+        {
+            SPLAPPTRC(L_DEBUG, "SecureTCPServer: Cannot set SSL fd: " << Security::getError(_ssl, res), SPL_OPER_DBG);
+            disconnect();
+            return;
+        }
+        SSL_set_accept_state(_ssl);
+        /**
+         * Accept the SSL connection
+         */
+        res = SSL_accept(_ssl);
+        if (res <= 0)
+        {
+            int err = SSL_get_error(_ssl, res);
+            if (err == SSL_ERROR_SYSCALL || err == SSL_ERROR_SSL) {
+                _shutdown = false;
+                SPLAPPTRC(L_DEBUG, "SecureTCPClient: non-recoverable SSL error on accept: " << Security::getError(_ssl, res), SPL_OPER_DBG);
+            } else {
+                SPLAPPTRC(L_TRACE, "SecureTCPClient: SSL error on accept: " << Security::getError(_ssl, res), SPL_OPER_DBG);
+            }
+            disconnect();
+            return;
+        }
+        _shutdown = true;
+
+        /*
+         * Verify peer certificate if necessary.
+         */
+        if (_clientVerify != NONE) {
+            X509* cert = SSL_get_peer_certificate(_ssl);
+            if (cert) {
+                X509_free(cert);
+            } else if (_clientVerify != REQUEST){
+                SPLAPPTRC(L_DEBUG, "SecureTCPServer: Cannot get peer certificate", SPL_OPER_DBG);
+                disconnect();
+                return;
+            }
+            res = SSL_get_verify_result(_ssl);
+            if (X509_V_OK != res) {
+                SPLAPPTRC(L_DEBUG, "SecureTCPServer: X509 verify result failed: "<< Security::getError(_ssl, res), SPL_OPER_DBG);
+                disconnect();
+            }
+        }
+        SPLAPPTRC(L_TRACE, "SecureTCPServer: SSL server connection ready", SPL_OPER_DBG);
+    }
+};
+
+MY_OPERATOR::SecureTCPServer *
+MY_OPERATOR::SecureTCPServer::createSecureConnection(SPL::ProcessingElement & pe,
+        std::string configName, std::string protocol,
+        std::string certFile, std::string password,
+        std::string caFile, std::string clientAuth,
+        std::string cipherSuites)
+{
+    using namespace SPL;
+
+    getAppConfig(pe, configName, protocol, certFile, password, caFile,
+            clientAuth, cipherSuites);
+
+    MY_OPERATOR::Security::Type type = MY_OPERATOR::Security::parseType(protocol);
+    if (type != MY_OPERATOR::Security::None) {
+        SPLAPPTRC(L_DEBUG, "SecureTCPServer: using SSL / TLS protocol " << protocol, SPL_OPER_DBG);
+        try {
+            SSLServer * ssl = new SSLServer(pe);
+            ssl->setSecureOptions(type, certFile, password, caFile, clientAuth,
+                    cipherSuites);
+            return ssl;
+        } catch (const std::exception & e) {
+            SPLAPPTRC(L_ERROR, "caught exception: " << e.what(), SPL_OPER_DBG);
+            throw;
+        } catch (...) {
+            SPLAPPTRC(L_ERROR, "caught unknown exception", SPL_OPER_DBG);
+            throw;
+        }
+    }
+    SPLAPPTRC(L_DEBUG, "SecureTCPServer: using unencrypted connections", SPL_OPER_DBG);
+    return new UnencryptedTCPServer(pe);
+}
+<%}%>
+
+void MY_OPERATOR::SecureTCP<%=$roleClass%>::getAppConfig(
+        SPL::ProcessingElement & pe,
+        std::string & configName, std::string & protocol,
+        std::string & certFile, std::string & password,
+        std::string & caFile, std::string & clientAuth,
+        std::string & cipherSuites)
+{
+    std::map<std::string, std::string> config;
+    if (!configName.empty()) {
+        // Get application configuration information to override params
+        if (pe.getApplicationConfiguration(configName, config)) {
+            SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_NO_APP_CONFIG(configName), SPL_OPER_DBG);
+        }
+        SPLAPPTRC(L_DEBUG, "SecureTCP<%=$roleClass%>: using app config " << configName << ": " << config.size(), SPL_OPER_DBG);
+        std::map<std::string, std::string>::const_iterator prop = config.find("sslProtocol");
+        if (prop != config.end()) {
+            SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: using protocol from app config", SPL_OPER_DBG);
+            protocol = prop->second;
+        }
+        prop = config.find("sslCertificateFile");
+        if (prop != config.end()) {
+            SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: using certifcate from app config", SPL_OPER_DBG);
+            certFile = prop->second;
+        }
+        prop = config.find("password");
+        if (prop != config.end()) {
+            SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: using password from app config", SPL_OPER_DBG);
+            password = prop->second;
+        }
+        prop = config.find("sslCertificateAuthorityFile");
+        if (prop != config.end()) {
+            SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: using CA file from app config", SPL_OPER_DBG);
+            caFile = prop->second;
+        }
+        prop = config.find("sslAuthenticateClient");
+        if (prop != config.end()) {
+            SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: using client authentication from app config", SPL_OPER_DBG);
+            clientAuth = prop->second;
+            if (clientAuth != "none" &&
+                    clientAuth != "request" &&
+                    clientAuth != "require") {
+                SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_INVALID_PARAM("sslAuthenticateClient", clientAuth), SPL_OPER_DBG);
+            }
+        }
+        prop = config.find("sslCipherSuites");
+        if (prop != config.end()) {
+            SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: using cipher suite from app config", SPL_OPER_DBG);
+            cipherSuites = prop->second;
+        }
+    }
+}
+
+// Password userdata for password callback. Password is kept XOR-ed with
+// random bytes, and a descrambled copy is produced on get().
+class MY_OPERATOR::SSL<%=$roleClass%>::PUData {
+public:
+    PUData(const std::string & password) {
+        _size = password.size();
+        _buf.resize(_size);
+        _rnd.resize(_size);
+
+        // Try for strong randomness, but fall back
+        if (RAND_bytes(&_rnd[0], (int)_size) == 0) {
+            RAND_pseudo_bytes(&_rnd[0], (int)_size);
+        }
+        for (size_t i = 0; i < _size; ++i) {
+            _buf[i] = _rnd[i] ^ password[i];
+        }
+    }
+
+    int get(char * output, int size) {
+        int len = (int)std::min(_size, (size_t)size);
+        for (int i = 0; i < len; ++i) {
+            output[i] = (char)(_buf[i] ^ _rnd[i]);
+        }
+        return len;
+    }
+
+    ~PUData() {
+        for (size_t i = 0; i < _size; ++i) {
+            _buf[i] = 0;
+            _rnd[i] = 0;
+        }
+    }
+
+    static int pudata_cb(char * buf, int size, int rwflag, void * userdata) {
+        int len = ((PUData *)userdata)->get(buf, size);
+        return len;
+    }
+
+private:
+    size_t _size;
+    std::vector<unsigned char> _buf;
+    std::vector<unsigned char> _rnd;
+
+    // No copying
+    PUData(const PUData &);
+    PUData & operator=(PUData &);
+};
+
+void MY_OPERATOR::SSL<%=$roleClass%>::createContext(Security::Type type,
+        <%if ($role ne "client") {%>
+            const std::string & clientAuth,
+        <%}%>
+        const std::string & cipherSuites)
+{
+    using namespace SPL;
+
+    SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: creating SSL context", SPL_OPER_DBG);
+
+    long options = 0;
+
+    switch (type) {
+    case Security::SSLv3:
+        options = SSL_OP_NO_SSLv2;
+        break;
+    case Security::TLSv1:
+        options = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3;
+        break;
+    case Security::TLSv1_1:
+        options = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1;
+        break;
+    case Security::TLSv1_2:
+        options = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1
+        | SSL_OP_NO_TLSv1_1;
+        break;
+    default: {
+        std::string err = "Security Type: " + type;
+        SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_INTERNAL_ERROR(err), SPL_OPER_DBG);
+        break;
+    }
+    }
+
+   <%if ($role eq "client") {%>
+        _ctx = SSL_CTX_new(SSLv23_client_method());
+    <%} else {%>
+        _ctx = SSL_CTX_new(SSLv23_server_method());
+    <%}%>
+    if (_ctx == NULL) {
+        SPLAPPTRC(L_ERROR, "SecureTCP: SSL_CTX_new() failed: " << Security::getError(), SPL_OPER_DBG);
+        SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_NEW_FAILED, SPL_OPER_DBG);
+    }
+    SSL_CTX_set_options(_ctx, options);
+    SSL_CTX_set_mode(_ctx, SSL_MODE_AUTO_RETRY);
+
+    // Set up cipher suites
+    if (SSL_CTX_set_cipher_list(_ctx, cipherSuites.c_str()) <= 0) {
+        SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_INVALID_PARAM("sslCipherSuites", cipherSuites), SPL_OPER_DBG);
+    }
+
+    // Set up client verification
+    <%if ($role eq "client") {%>
+        const int verify = SSL_VERIFY_PEER;
+    <%} else {%>
+        int verify = 0;
+        SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: client authentication: " << clientAuth, SPL_OPER_DBG);
+        if (clientAuth == "none") {
+            verify = SSL_VERIFY_NONE;
+            _clientVerify = NONE;
+        } else {
+            verify = SSL_VERIFY_PEER;
+            if (clientAuth == "require") {
+                verify |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+                _clientVerify = REQUIRE;
+            } else {
+                _clientVerify = REQUEST;
+            }
+        }
+    <%}%>
+    // Default callback is fine
+    SSL_CTX_set_verify(_ctx, verify, NULL);
+}
+
+void MY_OPERATOR::SSL<%=$roleClass%>::setCertificateInfo(const std::string & certFile, const std::string & password,
+        const std::string & caFile)
+{
+    using namespace SPL;
+
+    SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: initializing certificate information", SPL_OPER_DBG);
+
+    <%if ($role eq "client") {%>
+    if (!certFile.empty()) {
+    <%}%>
+        std::string certPath(getAbsolutePath(certFile));
+        SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: using certifcate file: " << certPath, SPL_OPER_DBG);
+
+        // Set up server certificate
+        if (SSL_CTX_use_certificate_chain_file(_ctx, certPath.c_str()) <= 0) {
+            SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_LOAD_CERT_FILE(certFile), SPL_OPER_DBG);
+        }
+
+        _pudata.reset(new PUData(password));
+        SSL_CTX_set_default_passwd_cb(_ctx, PUData::pudata_cb);
+        SSL_CTX_set_default_passwd_cb_userdata(_ctx, (void *) _pudata.get());
+
+        if (SSL_CTX_use_PrivateKey_file(_ctx, certPath.c_str(), SSL_FILETYPE_PEM)
+                <= 0) {
+            SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_LOAD_KEY_FILE(certFile), SPL_OPER_DBG);
+        }
+
+        if (SSL_CTX_check_private_key(_ctx) <= 0) {
+            SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_VALIDATE_KEY(certFile), SPL_OPER_DBG);
+        }
+    <%if ($role eq "client") {%>
+    }
+    <%}%>
+
+    if (!caFile.empty()) {
+        std::string caPath(getAbsolutePath(caFile));
+        SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: using CA file: " << caPath, SPL_OPER_DBG);
+        if (SSL_CTX_load_verify_locations(_ctx, caPath.c_str(), NULL) <= 0) {
+            SPLTRACEMSGANDTHROW(SPLRuntimeTCPOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SSL_LOAD_CERT_FILE(caFile), SPL_OPER_DBG);
+        }
+        STACK_OF(X509_NAME) *cas = SSL_load_client_CA_file(caPath.c_str());
+        if (cas) {
+            SSL_CTX_set_client_CA_list(_ctx, cas);
+        }
+    }
+}
+
+std::string MY_OPERATOR::SSL<%=$roleClass%>::getAbsolutePath(const std::string & path) {
+    boost::filesystem::path absPath(path);
+    if (!absPath.is_absolute()) {
+        absPath = _pe.getDataDirectory();
+        absPath /= path;
+    }
+    return absPath.string();
+}
+
+ssize_t MY_OPERATOR::SSL<%=$roleClass%>::read(void * buf, size_t count) {
+    if (!_ssl || !_connected || _fd < 0) {
+        SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: SSL read with no connection", SPL_OPER_DBG);
+        return -1;
+    } else if (SSL_get_shutdown(_ssl) != 0) {
+        SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: SSL connection shutdown before read", SPL_OPER_DBG);
+        return 0;
+    }
+    int n = SSL_read(_ssl, buf, count);
+    if (n <= 0) {
+        int err = SSL_get_error(_ssl, n);
+        if (err == SSL_ERROR_SYSCALL || err == SSL_ERROR_SSL) {
+            _shutdown = false;
+            SPLAPPTRC(L_DEBUG, "SecureTCP<%=$roleClass%>: non-recoverable SSL error on read: " << Security::getError(_ssl, n), SPL_OPER_DBG);
+        } else if (n == 0 && err == SSL_ERROR_ZERO_RETURN) {
+            SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: SSL connection shutdown on read", SPL_OPER_DBG);
+            return 0;
+        } else {
+            SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: SSL error on read: " << Security::getError(_ssl, n), SPL_OPER_DBG);
+            return -1;
+        }
+    }
+    return n;
+}
+
+// Write bytes
+ssize_t MY_OPERATOR::SSL<%=$roleClass%>::write(const void * buf, size_t count) {
+    if (count == 0) {
+        return 0;
+    } else if (!_ssl || !_connected || _fd < 0) {
+        SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: SSL write with no connection", SPL_OPER_DBG);
+        return -1;
+    } else if (SSL_get_shutdown(_ssl) != 0) {
+        SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: SSL connection shutdown before write", SPL_OPER_DBG);
+        return -1;
+    }
+    int n = SSL_write(_ssl, buf, count);
+    if (n <= 0) {
+        int err = SSL_get_error(_ssl, n);
+        if (err == SSL_ERROR_SYSCALL || err == SSL_ERROR_SSL) {
+            _shutdown = false;
+            SPLAPPTRC(L_DEBUG, "SecureTCP<%=$roleClass%>: non-recoverable SSL error on write: " << Security::getError(_ssl, n), SPL_OPER_DBG);
+        } else if (n == 0 && err == SSL_ERROR_ZERO_RETURN) {
+            SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: SSL connection shutdown on write", SPL_OPER_DBG);
+        } else {
+            SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: SSL error on write: " << Security::getError(_ssl, n), SPL_OPER_DBG);
+        }
+        return -1;
+    }
+    return n;
+}
+
+
+void MY_OPERATOR::SSL<%=$roleClass%>::reset()
+{
+    if (_ssl) {
+        if (_shutdown) {
+            SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: SSL initiate shutdown", SPL_OPER_DBG);
+            int ret = SSL_shutdown(_ssl);
+            if (ret == 0) {
+                SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: SSL finish shutdown", SPL_OPER_DBG);
+                ret == SSL_shutdown(_ssl);
+            }
+            if (ret < 0) {
+                SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: SSL error on shutdown: " << Security::getError(_ssl, ret), SPL_OPER_DBG);
+            } else {
+                SPLAPPTRC(L_TRACE, "SecureTCP<%=$roleClass%>: SSL connection is shutdown", SPL_OPER_DBG);
+            }
+            _shutdown = false;
+        }
+        SSL_free(_ssl);
+        _ssl = NULL;
+    }
+}
+
+void MY_OPERATOR::SSL<%=$roleClass%>::disconnect()
+{
+    reset();
+    close(_fd);
+    _connected = false;
+}
+
+class MY_OPERATOR::SecureSource : public boost::iostreams::source {
+public:
+    SecureSource(<%=$connectorType%> & conn) : _conn(conn) { }
+    std::streamsize read(char * s, std::streamsize n) {
+        return _conn.read(s, n);
+    }
+private:
+    <%=$connectorType%> & _conn;
+};
+
+class MY_OPERATOR::SecureSink : public boost::iostreams::sink {
+public:
+    SecureSink(<%=$connectorType%> & conn) : _conn(conn) { }
+    std::streamsize write(const char * s, std::streamsize n) {
+        return _conn.write(s, n);
+    }
+private:
+    <%=$connectorType%> & _conn;
+};

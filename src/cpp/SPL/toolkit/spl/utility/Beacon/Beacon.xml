@@ -1,0 +1,232 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Beacon.html">
+The `Beacon` operator is a utility source that generates tuples on an ad hoc basis.
+
+# Checkpointed data
+
+When the `Beacon` operator is checkpointed, its iteration count value and logic state variables (if present) are saved.
+
+# Behavior in a consistent region
+
+The `Beacon` operator can be the start operator of a consistent region.
+The operator checkpoints and restores its iteration count value and logic state variables (if any), as needed to maintain consistency.
+If a stateful function is used to assign values to tuples, the replayed value of a tuple might not be the same
+as the original value assigned to that same logical tuple.
+For example, if a random value is assigned to a tuple, the replayed value can differ from the original.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Beacon` operator is in an autonomous region and configured with a `config checkpoint : periodic(T)` clause,
+the operator state is checkpointed every T seconds, asynchronously to the normal tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Beacon` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause,
+no checkpoints are taken.
+Upon restart, the operator restores its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `Beacon` operator.
+
+    composite Main {
+      graph
+        // with no options
+        stream&lt;rstring name, uint32 age&gt; Beat1 = Beacon() {}
+        // with iterations
+        stream&lt;rstring name, uint32 age&gt; Beat2 = Beacon()
+        {
+          param
+            iterations : 10u;
+        }
+        // with iterations and period
+        stream&lt;rstring name, uint32 age&gt; Beat3 = Beacon()
+        {
+          param
+            period     : 0.2;
+            iterations : 10u;
+        }
+        // with output assignments and an initial delay of 5 seconds
+        stream&lt;rstring name, uint32 age&gt; Beat4 = Beacon()
+        {
+          param
+            period : 0.2;
+            initDelay: 5.0;
+          output
+            Beat4 : name = "SPL"+(rstring)(random()*10.0),
+                   age = (uint32)(random()*40.0);
+        }
+    }
+
+</description>
+      <iconUri size="16">beacon_16.gif</iconUri>
+      <iconUri size="32">beacon_32.gif</iconUri>
+      <customOutputFunctions>
+        <customOutputFunction>
+          <name>Functions</name>
+          <function>
+            <description>Passthrough function.</description>
+            <prototype><![CDATA[<any T> T AsIs(T)]]></prototype>
+          </function>
+          <function>
+            <description>
+Returns the number of tuples that have been emitted so far.
+This function is used to generate sequences of data with different values.
+The initial value is `0`.
+
+For example:
+
+    submit {a=0, b=1}, {a=2, b=3}, ...
+
+    stream&lt;int32 a, int32 b&gt; A = Beacon() {
+       param iterations : 1000;
+       output A : a = (int32) (IterationCount()*2ul), b = (int32) (IterationCount()*2ul+1ul);
+    }
+            </description>
+            <prototype><![CDATA[public uint64 IterationCount()]]></prototype>
+          </function>
+        </customOutputFunction>
+      </customOutputFunctions>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Beacon">
+          <description>Basic Beacon template</description>
+          <template>stream &lt;${schema}&gt; ${outputStream} = Beacon() {
+            logic
+                state:  mutable ${stateVariable};
+            param
+                period: ${period};
+            output
+                ${outputStream}:  ${outputExpression};
+        }</template>
+        </codeTemplate>
+       <codeTemplate name="Beacon As Counter">
+          <description>Beacon As Counter</description>
+          <template>stream &lt;int32 counter&gt; ${outputStream} as O = Beacon() {
+            logic
+                state: mutable int32 i = 0;
+            param
+                iterations: ${numIterations};
+                period: ${period};
+            output
+                O:  counter = i++;
+        }</template>
+        </codeTemplate>
+		<codeTemplate name="Beacon As Trigger">
+          <description>Beacon to generate a single tuple and feed into a custom source</description>
+          <template>stream&lt;int32 i&gt; ${beaconOutStream} = Beacon()  {
+            param iterations: 1;
+        }
+
+        stream&lt;${schema}&gt; ${outputStream} = Custom(${beaconOutStream} as I)  {
+            logic
+                onTuple I: {
+                    while (!isShutdown()) {
+                        // Add code here
+                        ${cursor}
+                    }
+                }
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="Beacon as a start operator of an operator-driven consistent region">
+          <description>Beacon drains the pipeline at every 10 tuples.</description>
+          <template>
+            @consistent(trigger=operatorDriven)
+            stream &lt;int32 itCount&gt; Beat = Beacon() {
+              param
+                triggerCount: 10u;
+              output Beat: itCount = (int32) IterationCount();
+            }
+          </template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>period</name>
+        <description>
+Specifies the time interval between successive tuple submissions, in seconds.
+When the parameter is not specified, the default value is `0.0`.
+        </description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>iterations</name>
+        <description>
+Specifies the number of tuples to be produced by the `Beacon` operator.
+It takes a single expression of type uint32 or int32 as its value, which is evaluated as uint32.
+When the parameter is not specified, the operator produces tuples until the application is shut down.
+        </description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>initDelay</name>
+        <description>
+Specifies the number of seconds that the operator delays before starting to produce tuples.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>triggerCount</name>
+        <description>
+Specifies how many tuples are submitted before the operator starts to drain the pipeline of a consistent region and establish a consistent state.
+If the `Beacon` operator is the trigger operator of a consistent region, this parameter must be set and must be greater than zero.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <!--<parameter>
+        <name>permitBatchSize</name>
+        <description>This optional parameter is used to specify how many tuples are submitted before the Beacon operator starts to drain the pipeline and establish a consistent state. This parameter must be greater than zero and must be set if the Beacon operator is the trigger operator of a consistent region.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter> -->
+    </parameters>
+    <inputPorts>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Beacon` operator is configurable with a single output port.
+The `Beacon` operator outputs a window marker punctuation when it finishes generating tuples.
+</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <outputFunctions>
+          <default>AsIs</default>
+          <type>Functions</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <allowNestedCustomOutputFunctions>true</allowNestedCustomOutputFunctions>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

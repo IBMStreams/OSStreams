@@ -1,0 +1,760 @@
+/* ------------------------------------------------------------------ */
+/* cdecmath header -- dfp additions to C++ standard header <cmath>    */
+/* ------------------------------------------------------------------ */
+/* Copyright (c) IBM Corporation, 2006.  All rights reserved.         */
+/*                                                                    */
+/* This software is made available under the terms of the IBM         */
+/* alphaWorks License Agreement (distributed with this software as    */
+/* alphaWorks-License.txt).  Your use of this software indicates      */
+/* your acceptance of the terms and conditions of that Agreement.     */
+/*                                                                    */
+/* Please send comments, suggestions, and corrections to the author:  */
+/*   klarer@ca.ibm.com                                                */
+/*   Robert Klarer                                                    */
+/* ------------------------------------------------------------------ */
+
+#ifndef _CDECMATH_
+#define _CDECMATH_
+
+#include "cdecfloat"
+
+#define HUGE_VAL_D32  std::decimal::decimal32::_GetMax()
+#define HUGE_VAL_D64  std::decimal::decimal64::_GetMax()
+#define HUGE_VAL_D128 std::decimal::decimal128::_GetMax()
+
+#define DEC_INFINITY  std::decimal::decimal32::_GetINF()
+#define DEC_NAN       std::decimal::decimal32::_GetNAN()
+
+namespace ibm {
+namespace decimal {
+
+inline decimal32 abs(decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_UnaryOp<_DecNumber::_Abs, _Tr>(_Rhs);
+        }
+inline decimal64 abs(decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_UnaryOp<_DecNumber::_Abs, _Tr>(_Rhs);
+        }
+inline decimal128 abs(decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_UnaryOp<_DecNumber::_Abs, _Tr>(_Rhs);
+        }
+inline decimal32 fabsd32 (decimal32 _Rhs)
+        { return abs(_Rhs); }
+inline decimal64 fabsd64 (decimal64 _Rhs)
+        { return abs(_Rhs); }
+inline decimal128 fabsd128(decimal128 _Rhs)
+        { return abs(_Rhs); }
+
+inline decimal32  ceil(decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Ceil, _Tr>(_Rhs);
+        }
+inline decimal64  ceil(decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Ceil, _Tr>(_Rhs);
+        }
+inline decimal128 ceil(decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Ceil, _Tr>(_Rhs);
+        }
+inline decimal32  ceild32 (decimal32 _Rhs)
+        { return ceil(_Rhs); }
+inline decimal64  ceild64 (decimal64 _Rhs)
+        { return ceil(_Rhs); }
+inline decimal128 ceild128(decimal128 _Rhs)
+        { return ceil(_Rhs); }
+
+inline decimal32  exp(decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Exp, _Tr>(_Rhs);
+        }
+inline decimal64  exp(decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Exp, _Tr>(_Rhs);
+        }
+inline decimal128 exp(decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Exp, _Tr>(_Rhs);
+        }
+inline decimal32  expd32 (decimal32 _Rhs)
+        { return exp(_Rhs); }
+inline decimal64  expd64 (decimal64 _Rhs)
+        { return exp(_Rhs); }
+inline decimal128 expd128(decimal128 _Rhs)
+        { return exp(_Rhs); }
+
+inline decimal32  floor(decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Floor, _Tr>(_Rhs);
+        }
+inline decimal64  floor(decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Floor, _Tr>(_Rhs);
+        }
+inline decimal128 floor(decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Floor, _Tr>(_Rhs);
+        }
+inline decimal32  floord32 (decimal32 _Rhs)
+        { return floor(_Rhs); }
+inline decimal64  floord64 (decimal64 _Rhs)
+        { return floor(_Rhs); }
+inline decimal128 floord128(decimal128 _Rhs)
+        { return floor(_Rhs); }
+
+#ifdef _DEC_HAS_C99_MATH
+inline int ilogb(decimal32 _Rhs)
+        { return _DecNumber::_Ilogb(_Rhs); }
+inline int  ilogb(decimal64 _Rhs)
+        { return _DecNumber::_Ilogb(_Rhs); }
+inline int ilogb(decimal128 _Rhs)
+        { return _DecNumber::_Ilogb(_Rhs); }
+inline int ilogbd32 (decimal32 _Rhs)
+        { return _DecNumber::_Ilogb(_Rhs); }
+inline int ilogbd64 (decimal64 _Rhs)
+        { return _DecNumber::_Ilogb(_Rhs); }
+inline int ilogbd128(decimal128 _Rhs)
+        { return _DecNumber::_Ilogb(_Rhs); }
+#endif /* _DEC_HAS_C99_MATH */
+
+inline long long llrint    (decimal32  _Rhs)
+        { return rint(_Rhs); }
+inline long long llrint    (decimal64  _Rhs)
+        { return rint(_Rhs); }
+inline long long llrint    (decimal128 _Rhs)
+        { return rint(_Rhs); }
+inline long long llrintd32 (decimal32  _Rhs)
+        { return rint(_Rhs); }
+inline long long llrintd64 (decimal64  _Rhs)
+        { return rint(_Rhs); }
+inline long long llrintd128(decimal128 _Rhs)
+        { return rint(_Rhs); }
+
+inline long long llround    (decimal32  _Rhs)
+        { return round(_Rhs); }
+inline long long llround    (decimal64  _Rhs)
+        { return round(_Rhs); }
+inline long long llround    (decimal128 _Rhs)
+        { return round(_Rhs); }
+inline long long llroundd32 (decimal32  _Rhs)
+        { return round(_Rhs); }
+inline long long llroundd64 (decimal64  _Rhs)
+        { return round(_Rhs); }
+inline long long llroundd128(decimal128 _Rhs)
+        { return round(_Rhs); }
+
+inline decimal32  log(decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Log, _Tr>(_Rhs);
+        }
+inline decimal64  log(decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Log, _Tr>(_Rhs);
+        }
+inline decimal128 log(decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Log, _Tr>(_Rhs);
+        }
+inline decimal32  logd32 (decimal32 _Rhs)
+        { return log(_Rhs); }
+inline decimal64  logd64 (decimal64 _Rhs)
+        { return log(_Rhs); }
+inline decimal128 logd128(decimal128 _Rhs)
+        { return log(_Rhs); }
+
+inline decimal32  log10(decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Log10, _Tr>(_Rhs);
+        }
+inline decimal64  log10(decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Log10, _Tr>(_Rhs);
+        }
+inline decimal128 log10(decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Log10, _Tr>(_Rhs);
+        }
+inline decimal32  log10d32 (decimal32 _Rhs)
+        { return log10(_Rhs); }
+inline decimal64  log10d64 (decimal64 _Rhs)
+        { return log10(_Rhs); }
+inline decimal128 log10d128(decimal128 _Rhs)
+        { return log10(_Rhs); }
+
+inline decimal32  logb(decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Logb, _Tr>(_Rhs);
+        }
+inline decimal64  logb(decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Logb, _Tr>(_Rhs);
+        }
+inline decimal128 logb(decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Logb, _Tr>(_Rhs);
+        }
+inline decimal32  logbd32 (decimal32 _Rhs)
+        { return logb(_Rhs); }
+inline decimal64  logbd64 (decimal64 _Rhs)
+        { return logb(_Rhs); }
+inline decimal128 logbd128(decimal128 _Rhs)
+        { return logb(_Rhs); }
+
+inline long lrint    (decimal32  _Rhs)
+        { return rint(_Rhs); }
+inline long lrint    (decimal64  _Rhs)
+        { return rint(_Rhs); }
+inline long lrint    (decimal128 _Rhs)
+        { return rint(_Rhs); }
+inline long lrintd32 (decimal32  _Rhs)
+        { return rint(_Rhs); }
+inline long lrintd64 (decimal64  _Rhs)
+        { return rint(_Rhs); }
+inline long lrintd128(decimal128 _Rhs)
+        { return rint(_Rhs); }
+
+inline long lround    (decimal32  _Rhs)
+        { return round(_Rhs); }
+inline long lround    (decimal64  _Rhs)
+        { return round(_Rhs); }
+inline long lround    (decimal128 _Rhs)
+        { return round(_Rhs); }
+inline long lroundd32 (decimal32  _Rhs)
+        { return round(_Rhs); }
+inline long lroundd64 (decimal64  _Rhs)
+        { return round(_Rhs); }
+inline long lroundd128(decimal128 _Rhs)
+        { return round(_Rhs); }
+
+inline decimal32  nearbyint(decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Nearbyint, _Tr>(_Rhs);
+        }
+inline decimal64  nearbyint(decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Nearbyint, _Tr>(_Rhs);
+        }
+inline decimal128 nearbyint(decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Nearbyint, _Tr>(_Rhs);
+        }
+inline decimal32  nearbyintd32 (decimal32 _Rhs)
+        { return nearbyint(_Rhs); }
+inline decimal64  nearbyintd64 (decimal64 _Rhs)
+        { return nearbyint(_Rhs); }
+inline decimal128 nearbyintd128(decimal128 _Rhs)
+        { return nearbyint(_Rhs); }
+
+inline decimal32  rint(decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Rint, _Tr>(_Rhs);
+        }
+inline decimal64  rint(decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Rint, _Tr>(_Rhs);
+        }
+inline decimal128 rint(decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Rint, _Tr>(_Rhs);
+        }
+inline decimal32  rintd32 (decimal32 _Rhs)
+        { return rint(_Rhs); }
+inline decimal64  rintd64 (decimal64 _Rhs)
+        { return rint(_Rhs); }
+inline decimal128 rintd128(decimal128 _Rhs)
+        { return rint(_Rhs); }
+
+inline decimal32  round(decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Round, _Tr>(_Rhs);
+        }
+inline decimal64  round(decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Round, _Tr>(_Rhs);
+        }
+inline decimal128 round(decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Round, _Tr>(_Rhs);
+        }
+inline decimal32  roundd32 (decimal32 _Rhs)
+        { return round(_Rhs); }
+inline decimal64  roundd64 (decimal64 _Rhs)
+        { return round(_Rhs); }
+inline decimal128 roundd128(decimal128 _Rhs)
+        { return round(_Rhs); }
+
+inline decimal32  sqrt(decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Sqrt, _Tr>(_Rhs);
+        }
+inline decimal64  sqrt(decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Sqrt, _Tr>(_Rhs);
+        }
+inline decimal128 sqrt(decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Sqrt, _Tr>(_Rhs);
+        }
+inline decimal32  sqrtd32 (decimal32 _Rhs)
+        { return sqrt(_Rhs); }
+inline decimal64  sqrtd64 (decimal64 _Rhs)
+        { return sqrt(_Rhs); }
+inline decimal128 sqrtd128(decimal128 _Rhs)
+        { return sqrt(_Rhs); }
+
+inline decimal32  trunc(decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Trunc, _Tr>(_Rhs);
+        }
+inline decimal64  trunc(decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Trunc, _Tr>(_Rhs);
+        }
+inline decimal128 trunc(decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_UnaryMathFn<_DecNumber::_Trunc, _Tr>(_Rhs);
+        }
+inline decimal32  truncd32 (decimal32 _Rhs)
+        { return trunc(_Rhs); }
+inline decimal64  truncd64 (decimal64 _Rhs)
+        { return trunc(_Rhs); }
+inline decimal128 truncd128(decimal128 _Rhs)
+        { return trunc(_Rhs); }
+
+inline decimal32  fmax(decimal32  _Lhs, decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Max, _Tr>(_Lhs, _Rhs);
+        }
+inline decimal64  fmax(decimal64  _Lhs, decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Max, _Tr>(_Lhs, _Rhs);
+        }
+inline decimal128 fmax(decimal128 _Lhs, decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Max, _Tr>(_Lhs, _Rhs);
+        }
+inline decimal32 fmaxd32(decimal32 _Lhs, decimal32 _Rhs)
+        { return fmax(_Lhs, _Rhs); }
+inline decimal64 fmaxd64(decimal64 _Lhs, decimal64 _Rhs)
+        { return fmax(_Lhs, _Rhs); }
+inline decimal128 fmaxd128(decimal128 _Lhs, decimal128 _Rhs)
+        { return fmax(_Lhs, _Rhs); }
+
+inline decimal32  fmin(decimal32  _Lhs, decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Min, _Tr>(_Lhs, _Rhs);
+        }
+inline decimal64  fmin(decimal64  _Lhs, decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Min, _Tr>(_Lhs, _Rhs);
+        }
+inline decimal128 fmin(decimal128 _Lhs, decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Min, _Tr>(_Lhs, _Rhs);
+        }
+inline decimal32 fmind32(decimal32 _Lhs, decimal32 _Rhs)
+        { return fmin(_Lhs, _Rhs); }
+inline decimal64 fmind64(decimal64 _Lhs, decimal64 _Rhs)
+        { return fmin(_Lhs, _Rhs); }
+inline decimal128 fmind128(decimal128 _Lhs, decimal128 _Rhs)
+        { return fmin(_Lhs, _Rhs); }
+
+inline decimal32  fmod(decimal32  _Lhs, decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Fmod, _Tr>(_Lhs, _Rhs);
+        }
+inline decimal64  fmod(decimal64  _Lhs, decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Fmod, _Tr>(_Lhs, _Rhs);
+        }
+inline decimal128 fmod(decimal128 _Lhs, decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Fmod, _Tr>(_Lhs, _Rhs);
+        }
+inline decimal32 fmodd32(decimal32 _Lhs, decimal32 _Rhs)
+        { return fmod(_Lhs, _Rhs); }
+inline decimal64 fmodd64(decimal64 _Lhs, decimal64 _Rhs)
+        { return fmod(_Lhs, _Rhs); }
+inline decimal128 fmodd128(decimal128 _Lhs, decimal128 _Rhs)
+        { return fmod(_Lhs, _Rhs); }
+
+inline decimal32  pow(decimal32  _Lhs, decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Pow, _Tr>(_Lhs, _Rhs);
+        }
+inline decimal64  pow(decimal64  _Lhs, decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Pow, _Tr>(_Lhs, _Rhs);
+        }
+inline decimal128 pow(decimal128 _Lhs, decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Pow, _Tr>(_Lhs, _Rhs);
+        }
+inline decimal32 powd32(decimal32 _Lhs, decimal32 _Rhs)
+        { return pow(_Lhs, _Rhs); }
+inline decimal64 powd64(decimal64 _Lhs, decimal64 _Rhs)
+        { return pow(_Lhs, _Rhs); }
+inline decimal128 powd128(decimal128 _Lhs, decimal128 _Rhs)
+        { return pow(_Lhs, _Rhs); }
+
+inline decimal32  quantize(decimal32  _Lhs, decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Quantize, _Tr>(_Lhs,
+                                                                     _Rhs);
+        }
+inline decimal64  quantize(decimal64  _Lhs, decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Quantize, _Tr>(_Lhs,
+                                                                     _Rhs);
+        }
+inline decimal128 quantize(decimal128 _Lhs, decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Quantize, _Tr>(_Lhs,
+                                                                     _Rhs);
+        }
+inline decimal32  quantized32 (decimal32  _Lhs, decimal32 _Rhs)
+        { return quantize(_Lhs, _Rhs); }
+inline decimal64  quantized64 (decimal64  _Lhs, decimal64 _Rhs)
+        { return quantize(_Lhs, _Rhs); }
+inline decimal128 quantized128(decimal128 _Lhs, decimal128 _Rhs)
+        { return quantize(_Lhs, _Rhs); }
+
+inline decimal32  remainder(decimal32  _Lhs, decimal32 _Rhs)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Remainder, _Tr>(_Lhs,
+                                                                      _Rhs);
+        }
+inline decimal64  remainder(decimal64  _Lhs, decimal64 _Rhs)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Remainder, _Tr>(_Lhs,
+                                                                      _Rhs);
+        }
+inline decimal128 remainder(decimal128 _Lhs, decimal128 _Rhs)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryMathFn<_DecNumber::_Remainder, _Tr>(_Lhs,
+                                                                      _Rhs);
+        }
+inline decimal32  remainderd32 (decimal32  _Lhs, decimal32 _Rhs)
+        { return remainder(_Lhs, _Rhs); }
+inline decimal64  remainderd64 (decimal64  _Lhs, decimal64 _Rhs)
+        { return remainder(_Lhs, _Rhs); }
+inline decimal128 remainderd128(decimal128 _Lhs, decimal128 _Rhs)
+        { return remainder(_Lhs, _Rhs); }
+
+inline bool samequantum(decimal32  _Lhs, decimal32  _Rhs)
+        { return _DecNumber::_SameQuantum(_Lhs, _Rhs); }
+inline bool samequantum(decimal64  _Lhs, decimal64  _Rhs)
+        { return _DecNumber::_SameQuantum(_Lhs, _Rhs); }
+inline bool samequantum(decimal128 _Lhs, decimal128 _Rhs)
+        { return _DecNumber::_SameQuantum(_Lhs, _Rhs); }
+inline bool samequantumd32 (decimal32  _Lhs, decimal32 _Rhs)
+        { return samequantum(_Lhs, _Rhs); }
+inline bool samequantumd64 (decimal64  _Lhs, decimal64 _Rhs)
+        { return samequantum(_Lhs, _Rhs); }
+inline bool samequantumd128(decimal128 _Lhs, decimal128 _Rhs)
+        { return samequantum(_Lhs, _Rhs); }
+
+} // namespace decimal
+} // namespace ibm
+namespace std {
+namespace tr1 {
+
+#ifdef _DEC_HAS_TR1_MATH
+
+template <> inline
+int isfinite<std::decimal::decimal32> (std::decimal::decimal32 _Rhs)
+        { return std::decimal::_DecNumber(_Rhs)._IsFinite(); }
+template <> inline
+int isfinite<std::decimal::decimal64> (std::decimal::decimal64 _Rhs)
+        { return std::decimal::_DecNumber(_Rhs)._IsFinite(); }
+template <> inline
+int isfinite<std::decimal::decimal128>(std::decimal::decimal128 _Rhs)
+        { return std::decimal::_DecNumber(_Rhs)._IsFinite(); }
+
+template <> inline
+int isinf<std::decimal::decimal32> (std::decimal::decimal32 _Rhs)
+        { return std::decimal::_DecNumber(_Rhs)._IsINF(); }
+template <> inline
+int isinf<std::decimal::decimal64> (std::decimal::decimal64 _Rhs)
+        { return std::decimal::_DecNumber(_Rhs)._IsINF(); }
+template <> inline
+int isinf<std::decimal::decimal128>(std::decimal::decimal128 _Rhs)
+        { return std::decimal::_DecNumber(_Rhs)._IsINF(); }
+
+template <> inline
+int isnan<std::decimal::decimal32> (std::decimal::decimal32 _Rhs)
+        { return std::decimal::_DecNumber(_Rhs)._IsNAN(); }
+template <> inline
+int isnan<std::decimal::decimal64> (std::decimal::decimal64 _Rhs)
+        { return std::decimal::_DecNumber(_Rhs)._IsNAN(); }
+template <> inline
+int isnan<std::decimal::decimal128>(std::decimal::decimal128 _Rhs)
+        { return std::decimal::_DecNumber(_Rhs)._IsNAN(); }
+
+template <> inline
+int isnormal<std::decimal::decimal32> (std::decimal::decimal32 _Rhs)
+        {
+        std::decimal::_DecNumber _Tmp(_Rhs);
+        return !_Tmp._IsNAN() && !_Tmp._IsINF() &&
+               (fabsd32(_Rhs) >= DEC32_MIN);
+        }
+template <> inline
+int isnormal<std::decimal::decimal64> (std::decimal::decimal64 _Rhs)
+        {
+        std::decimal::_DecNumber _Tmp(_Rhs);
+        return !_Tmp._IsNAN() && !_Tmp._IsINF() &&
+               (fabsd64(_Rhs) >= DEC64_MIN);
+        }
+template <> inline
+int isnormal<std::decimal::decimal128>(std::decimal::decimal128 _Rhs)
+        {
+        std::decimal::_DecNumber _Tmp(_Rhs);
+        return !_Tmp._IsNAN() && !_Tmp._IsINF() &&
+               (fabsd128(_Rhs) >= DEC128_MIN);
+        }
+
+template <> inline
+int signbit<std::decimal::decimal32> (std::decimal::decimal32 _Rhs)
+        { return std::decimal::_DecNumber(_Rhs)._IsNeg(); }
+template <> inline
+int signbit<std::decimal::decimal64> (std::decimal::decimal64 _Rhs)
+        { return std::decimal::_DecNumber(_Rhs)._IsNeg(); }
+template <> inline
+int signbit<std::decimal::decimal128>(std::decimal::decimal128 _Rhs)
+        { return std::decimal::_DecNumber(_Rhs)._IsNeg(); }
+
+template <class _DecType> inline
+int _DecFPClassify(_DecType _Rhs)
+        {
+        if (isnan(_Rhs)) { return FP_NAN; }
+        if (isinf(_Rhs)) { return FP_INFINITE; }
+        if (std::decimal::_DecNumber(_Rhs)._IsZero()) { return FP_ZERO; }
+        if (isnormal(_Rhs)) { return FP_NORMAL; }
+        return FP_SUBNORMAL;
+        }
+
+template <> inline
+int fpclassify<std::decimal::decimal32> (std::decimal::decimal32 _Rhs)
+        { return _DecFPClassify(_Rhs); }
+template <> inline
+int fpclassify<std::decimal::decimal64> (std::decimal::decimal64 _Rhs)
+        { return _DecFPClassify(_Rhs); }
+template <> inline
+int fpclassify<std::decimal::decimal128>(std::decimal::decimal128 _Rhs)
+        { return _DecFPClassify(_Rhs); }
+
+template <> inline
+bool isgreater<std::decimal::decimal32> (std::decimal::decimal32 _Lhs,
+                                         std::decimal::decimal32 _Rhs)
+        {
+        typedef std::decimal::_DecNumber::_Gt _Pred;
+        return std::decimal::_DecNumber::_CompareNoInvalid<_Pred>(_Lhs, _Rhs);
+        }
+template <> inline
+bool isgreater<std::decimal::decimal64> (std::decimal::decimal64 _Lhs,
+                                         std::decimal::decimal64 _Rhs)
+        {
+        typedef std::decimal::_DecNumber::_Gt _Pred;
+        return std::decimal::_DecNumber::_CompareNoInvalid<_Pred>(_Lhs, _Rhs);
+        }
+template <> inline
+bool isgreater<std::decimal::decimal128>(std::decimal::decimal128 _Lhs,
+                                         std::decimal::decimal128 _Rhs)
+        {
+        typedef std::decimal::_DecNumber::_Gt _Pred;
+        return std::decimal::_DecNumber::_CompareNoInvalid<_Pred>(_Lhs, _Rhs);
+        }
+
+template <> inline
+bool isgreaterequal<std::decimal::decimal32> (std::decimal::decimal32 _Lhs,
+                                              std::decimal::decimal32 _Rhs)
+        {
+        typedef std::decimal::_DecNumber::_Ge _Pred;
+        return std::decimal::_DecNumber::_CompareNoInvalid<_Pred>(_Lhs, _Rhs);
+        }
+template <> inline
+bool isgreaterequal<std::decimal::decimal64> (std::decimal::decimal64 _Lhs,
+                                              std::decimal::decimal64 _Rhs)
+        {
+        typedef std::decimal::_DecNumber::_Ge _Pred;
+        return std::decimal::_DecNumber::_CompareNoInvalid<_Pred>(_Lhs, _Rhs);
+        }
+template <> inline
+bool isgreaterequal<std::decimal::decimal128>(std::decimal::decimal128 _Lhs,
+                                              std::decimal::decimal128 _Rhs)
+        {
+        typedef std::decimal::_DecNumber::_Ge _Pred;
+        return std::decimal::_DecNumber::_CompareNoInvalid<_Pred>(_Lhs, _Rhs);
+        }
+
+template <> inline
+bool isless<std::decimal::decimal32> (std::decimal::decimal32 _Lhs,
+                                      std::decimal::decimal32 _Rhs)
+        {
+        typedef std::decimal::_DecNumber::_Lt _Pred;
+        return std::decimal::_DecNumber::_CompareNoInvalid<_Pred>(_Lhs, _Rhs);
+        }
+template <> inline
+bool isless<std::decimal::decimal64> (std::decimal::decimal64 _Lhs,
+                                      std::decimal::decimal64 _Rhs)
+        {
+        typedef std::decimal::_DecNumber::_Lt _Pred;
+        return std::decimal::_DecNumber::_CompareNoInvalid<_Pred>(_Lhs, _Rhs);
+        }
+template <> inline
+bool isless<std::decimal::decimal128>(std::decimal::decimal128 _Lhs,
+                                      std::decimal::decimal128 _Rhs)
+        {
+        typedef std::decimal::_DecNumber::_Lt _Pred;
+        return std::decimal::_DecNumber::_CompareNoInvalid<_Pred>(_Lhs, _Rhs);
+        }
+
+template <> inline
+bool islessequal<std::decimal::decimal32> (std::decimal::decimal32 _Lhs,
+                                           std::decimal::decimal32 _Rhs)
+        {
+        typedef std::decimal::_DecNumber::_Le _Pred;
+        return std::decimal::_DecNumber::_CompareNoInvalid<_Pred>(_Lhs, _Rhs);
+        }
+template <> inline
+bool islessequal <std::decimal::decimal64> (std::decimal::decimal64 _Lhs,
+                                            std::decimal::decimal64 _Rhs)
+        {
+        typedef std::decimal::_DecNumber::_Le _Pred;
+        return std::decimal::_DecNumber::_CompareNoInvalid<_Pred>(_Lhs, _Rhs);
+        }
+template <> inline
+bool islessequal<std::decimal::decimal128>(std::decimal::decimal128 _Lhs,
+                                           std::decimal::decimal128 _Rhs)
+        {
+        typedef std::decimal::_DecNumber::_Le _Pred;
+        return std::decimal::_DecNumber::_CompareNoInvalid<_Pred>(_Lhs, _Rhs);
+        }
+
+template <class _DecType> inline
+bool _DecIsLessGreater(_DecType _Lhs, _DecType _Rhs)
+        {
+        using std::decimal::_DecNumber;
+        typedef _DecNumber::_Lt _Pred1;
+        typedef _DecNumber::_Gt _Pred2;
+        return _DecNumber::_CompareNoInvalid<_Pred1>(_Lhs, _Rhs) ||
+               _DecNumber::_CompareNoInvalid<_Pred2>(_Lhs, _Rhs);
+        }
+
+template <> inline
+bool islessgreater<std::decimal::decimal32> (std::decimal::decimal32 _Lhs,
+                                             std::decimal::decimal32 _Rhs)
+        { return _DecIsLessGreater(_Lhs, _Rhs); }
+template <> inline
+bool islessgreater<std::decimal::decimal64> (std::decimal::decimal64 _Lhs,
+                                             std::decimal::decimal64 _Rhs)
+        { return _DecIsLessGreater(_Lhs, _Rhs); }
+template <> inline
+bool islessgreater<std::decimal::decimal128>(std::decimal::decimal128 _Lhs,
+                                             std::decimal::decimal128 _Rhs)
+        { return _DecIsLessGreater(_Lhs, _Rhs); }
+
+template <> inline
+bool isunordered<std::decimal::decimal32> (std::decimal::decimal32 _Lhs,
+                                           std::decimal::decimal32 _Rhs)
+        { return isnan(_Lhs) || isnan(_Rhs); }
+template <> inline
+bool isunordered<std::decimal::decimal64> (std::decimal::decimal64 _Lhs,
+                                           std::decimal::decimal64 _Rhs)
+        { return isnan(_Lhs) || isnan(_Rhs); }
+template <> inline
+bool isunordered<std::decimal::decimal128>(std::decimal::decimal128 _Lhs,
+                                           std::decimal::decimal128 _Rhs)
+        { return isnan(_Lhs) || isnan(_Rhs); }
+
+#endif /* def _DEC_HAS_TR1_MATH */
+
+} // namespace tr1
+} // namespace std
+
+/* from <stdlib.h> */
+
+namespace ibm {
+namespace decimal {
+decimal32  strtod32 (const char *, char **);
+decimal64  strtod64 (const char *, char **);
+decimal128 strtod128(const char *, char **);
+} // namespace decimal
+} // namespace std
+
+/* from <wchar.h> */
+
+namespace ibm {
+namespace decimal {
+decimal32  wcstod32 (const wchar_t *, wchar_t **);
+decimal64  wcstod64 (const wchar_t *, wchar_t **);
+decimal128 wcstod128(const wchar_t *, wchar_t **);
+} // namespace decimal
+} // namespace std
+
+/* from <fenv.h> */
+
+namespace ibm {
+namespace decimal {
+int fe_dec_getround();
+int fe_dec_setround(int);
+} // namespace decimal
+} // namespace std
+
+#endif /* ndef _CDECMATH */

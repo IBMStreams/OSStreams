@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns="http://www.ibm.com/xmlns/prod/streams/spl/xml"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/xml"
+           elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+   <xs:element name="xmlModel" type="xmlModelType"/>
+
+   <xs:complexType name="xmlModelType">
+      <xs:sequence>
+         <xs:element name="class" type="xs:token"/>
+         <xs:element name="schema" type="xs:string" minOccurs="0"/>
+         <xs:element name="toolkitIndex" type="xs:unsignedInt" minOccurs="0"/>
+      </xs:sequence>
+   </xs:complexType>
+</xs:schema>

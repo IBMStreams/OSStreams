@@ -1,0 +1,250 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use Getopt::Long qw(:config no_ignore_case bundling) ;
+use File::Basename;
+use Cwd qw(abs_path getcwd);
+
+sub usage
+{
+	print "Usage: " . basename($0) . " [--help] [--product-id] [--product-name] [--version <format>] [--min-os] [--max-os] [--min-os-version] [--max-os-version] [--min-os-patch] [--max-os-patch]\n";
+        print "       [--fix-brand-name] [--fix-brand-short] [--fix-product-name] [--fix-product-short]\n";
+        print "\n";
+        print "This program is a centralized way of getting product information (name, id, version)\n";
+        print "for build and test purposes.\n";
+        print "\n";
+        print "Options:\n";
+        print "\n";
+        print "--product-id         Print the product ID.\n";
+        print "--product-name       Print the product name string.\n";
+        print "--version [format]   Print the product version (V.R.M.L) in the format given.\n";
+        print "                     If no format is provided, the full version is returned.\n";
+        print "                       The format can consist of the V, R, M, and L, and IF.\n";
+        print "                        - V = version\n";
+        print "                        - R = release\n";
+        print "                        - M = modification\n";
+        print "                        - L = level (fix)\n";
+        print "                        - IF = Interim Fix ID (not always present)\n";
+        print "                       NOTE:  V, R, M, L, and IF may be more than one digit.\n";
+        print "--min-os             Minimum version of the OS you are on that is supported by Streams.\n";
+        print "--max-os             Maximum version of the OS you are on that is supported by Streams.\n";
+        print "--min-os-version     Minimum OS major release number you are on that is supported by Streams.\n";
+        print "--max-os-version     Maximum OS major release you are on that is supported by Streams.\n";
+        print "--min-os-patch       Minimum OS minor release you are on that is supported by Streams.\n";
+        print "--max-os-patch       Maximum OS minor release you are on that is supported by Streams.\n";
+        print "--fix-brand-name     The fix brand name for the product.\n";
+        print "--fix-brand-short    The short version of the fix brand name for the product.\n";
+        print "--fix-product-name   The fix product name of the product.\n";
+        print "--fix-product-short  The short version of the fix product name of the product.\n";
+	exit;
+}
+
+# Options
+my $HELP = 0;
+my $PRODUCT_NAME = 0;
+my $PRODUCT_ID = 0;
+my $VERSION;
+my $MIN_OS = 0;
+my $MIN_OS_VERSION = 0;
+my $MIN_OS_PATCH = 0;
+my $MAX_OS = 0;
+my $MAX_OS_VERSION = 0;
+my $MAX_OS_PATCH = 0;
+my $FIX_BRAND_NAME = 0;
+my $FIX_BRAND_SHORT = 0;
+my $FIX_PRODUCT_NAME = 0;
+my $FIX_PRODUCT_SHORT = 0;
+
+my $result = GetOptions("h|help"            => \$HELP,
+                        "product-name"      => \$PRODUCT_NAME,
+                        "product-id"        => \$PRODUCT_ID,
+                        "version:s"         => \$VERSION,
+                        "min-os"            => \$MIN_OS,
+                        "min-os-version"    => \$MIN_OS_VERSION,
+                        "min-os-patch"      => \$MIN_OS_PATCH,
+                        "max-os"            => \$MAX_OS,
+                        "max-os-version"    => \$MAX_OS_VERSION,
+                        "max-os-patch"      => \$MAX_OS_PATCH,
+                        "fix-brand-name"    => \$FIX_BRAND_NAME,
+                        "fix-brand-short"   => \$FIX_BRAND_SHORT,
+                        "fix-product-name"  => \$FIX_PRODUCT_NAME,
+                        "fix-product-short" => \$FIX_PRODUCT_SHORT);
+
+if (!$result || $HELP || !($PRODUCT_NAME ||
+                           $PRODUCT_ID ||
+                           defined($VERSION) ||
+                           $MIN_OS ||
+                           $MIN_OS_VERSION ||
+                           $MIN_OS_PATCH ||
+                           $MAX_OS ||
+                           $MAX_OS_VERSION ||
+                           $MAX_OS_PATCH ||
+                           $FIX_BRAND_NAME ||
+                           $FIX_BRAND_SHORT ||
+                           $FIX_PRODUCT_NAME ||
+                           $FIX_PRODUCT_SHORT))
+{
+    usage();
+    exit($result ? 0 : 1);
+}
+
+if ($PRODUCT_ID)
+{
+    print "5724Y95\n";
+}
+elsif ($PRODUCT_NAME)
+{
+    print "Streams\n";
+}
+elsif (defined($VERSION))
+{
+    my $vproperties_file = abs_path(dirname($0)) . "/../etc/release.properties";
+    my $vproperties =`cat $vproperties_file`;
+    $vproperties =~ m/streams.version\s*=\s*(\d+)\.(\d+)\.(\d+)\.(\d+)/;
+    my ($v, $r, $m, $l) = ($1, $2, $3, $4);
+
+    # TODO: Possibly need a standard way to define build-time properties (right now we're not really using this)
+    # my $if;
+    #my $dproperties_file = abs_path(dirname($0)) . "/../../../dst.ant.properties";
+    #if (-e $dproperties_file)
+    #{
+    #    my $dproperties = `cat $dproperties_file`;
+    #    if ($dproperties =~ m/DST_ENABLE_HOTFIX/)
+    #    {
+    #        $dproperties =~ m/streams.build.timestamp\s*=\s*(\d+)/;
+    #        $if = $1;
+    #    }
+    #}
+
+    my $version = $VERSION;
+    if (defined($version) && !$version)
+    {
+        $version = "$v.$r.$m.$l";
+#        if ($if)
+#        {
+#            $version .= ".$if";
+#        }
+    }
+    else
+    {
+        $version =~ s/V/$v/g;
+        $version =~ s/R/$r/g;
+        $version =~ s/M/$m/g;
+        $version =~ s/L/$l/g;
+#        $version =~ s/IF/$if/g;
+    }
+    print "$version\n";
+}
+elsif ($MIN_OS || $MIN_OS_VERSION || $MIN_OS_PATCH ||
+       $MAX_OS || $MAX_OS_VERSION || $MAX_OS_PATCH)
+{
+    my $platform_info = abs_path(dirname($0)) . "/platform-info";
+    my $this_machine_os = `$platform_info --osname_rpm_format`;
+    my $this_machine_arch = `$platform_info --arch`;
+    chomp($this_machine_os);
+    chomp($this_machine_arch);
+
+    if ($this_machine_os eq 'el6')
+    {
+        my $el6minversion = "6";
+        my $el6minpatch = "6";
+        #if ($this_machine_arch eq 'ppc64')
+        #{
+        #    $el6minpatch = "3";
+        #}
+        print "Red Hat Enterprise Linux Server release $el6minversion.$el6minpatch (Santiago)\n" if $MIN_OS;
+        print "6\n" if $MIN_OS_VERSION;
+        print "$el6minpatch\n" if $MIN_OS_PATCH;
+        print "Red Hat Enterprise Linux Server release 6.4 (Santiago)\n" if $MAX_OS;
+        print "6\n" if $MAX_OS_VERSION;
+        print "4\n" if $MAX_OS_PATCH;
+    }
+
+    elsif ($this_machine_os eq 'el7')
+    {
+
+        my $el7minversion = "7";
+        my $el7minpatch = "0";
+        if ($this_machine_arch eq 'ppc64le')
+        {
+            $el7minpatch = "1";
+        }
+        print "Red Hat Enterprise Linux Server release $el7minversion.$el7minpatch (Maipo)\n" if $MIN_OS;
+        print "7\n" if $MIN_OS_VERSION;
+        print "$el7minpatch\n" if $MIN_OS_PATCH;
+        print "Red Hat Enterprise Linux Server release $el7minversion.$el7minpatch (Maipo)\n" if $MAX_OS;
+        print "7\n" if $MAX_OS_VERSION;
+        print "0\n" if $MAX_OS_PATCH;
+    }
+
+    elsif ($this_machine_os eq 'sles11')
+    {
+        print "SUSE Linux Enterprise Server 11.2\n" if $MIN_OS;
+        print "11\n" if $MIN_OS_VERSION;
+        print "2\n" if $MIN_OS_PATCH;
+        print "SUSE Linux Enterprise Server 11.2\n" if $MAX_OS;
+        print "11\n" if $MAX_OS_VERSION;
+        print "2\n" if $MAX_OS_PATCH;
+    }
+    elsif ($this_machine_os eq 'sles12')
+    {
+        print "SUSE Linux Enterprise Server 12.4\n" if $MIN_OS;
+        print "12\n" if $MIN_OS_VERSION;
+        print "0\n" if $MIN_OS_PATCH;
+        print "SUSE Linux Enterprise Server 12.4\n" if $MAX_OS;
+        print "12\n" if $MAX_OS_VERSION;
+        print "0\n" if $MAX_OS_PATCH;
+    }
+    elsif ($this_machine_os eq 'deb14')
+    {
+        print "Ubuntu 14.04.3 LTS\n" if $MIN_OS;
+        print "14\n" if $MIN_OS_VERSION;
+        print "04\n" if $MIN_OS_PATCH;
+        print "Ubuntu 14.04.3 LTS\n" if $MAX_OS;
+        print "14\n" if $MAX_OS_VERSION;
+        print "04\n" if $MAX_OS_PATCH;
+    }
+    else
+    {
+        print "Unsupported OS: $this_machine_os\n";
+        exit 1;
+    }
+}
+
+if ($FIX_BRAND_NAME)
+{
+    print "Information Management\n";
+}
+
+if ($FIX_BRAND_SHORT)
+{
+    print "IM\n";
+}
+
+if ($FIX_PRODUCT_NAME)
+{
+    print "Streams\n";
+}
+
+if ($FIX_PRODUCT_SHORT)
+{
+    print "Streams\n";
+}
+
+exit 0;

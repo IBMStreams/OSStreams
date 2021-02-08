@@ -1,0 +1,45 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+# Generate the main Source read loop body
+# outputPort Output Port 0
+# hasAssignments 1 if any output attribute has an assignment expression
+if ($hasAssignments) {
+    my $udpParam = $model->getContext()->getKind() eq 'spl.adapter::UDPSource' ? "sa" : "";
+    for (my $i = 0; $i < $outputPort->getNumberOfAttributes(); ++$i) {
+        my $attr = $outputPort->getAttributeAt($i);
+        next if !$attr->hasAssignment();
+        # We have to generate the right code for the assignment
+        my $attrName = $attr->getName();
+        if (!$attr->hasAssignmentWithOutputFunction()) {%>
+            tuple$.set_<%=$attrName%>(<%=$attr->getAssignmentValue()->getCppExpression()%>);
+        <%} else {
+            my $cofName = $attr->getAssignmentOutputFunctionName();
+            if ($cofName eq "AsIs") {%>
+                tuple$.set_<%=$attrName%>(<%=$attr->getAssignmentOutputFunctionParameterValueAt(0)->getCppExpression()%>);
+            <%} elsif ($cofName eq "TupleNumber") {%>
+                tuple$.set_<%=$attrName%>(_tupleNumber);
+            <%} elsif ($cofName eq "FileName") {%>
+                tuple$.set_<%=$attrName%>(path);
+            <%} elsif ($cofName eq "RemoteIP" || $cofName eq "RemotePort") {%>
+                tuple$.set_<%=$attrName%>(conn.get<%=$cofName%>(<%=$udpParam%>));
+            <%} elsif ($cofName eq "LocalPort" || $cofName eq "ServerPort") {%>
+                tuple$.set_<%=$attrName%>(conn.get<%=$cofName%>());
+            <%}
+        }
+    }
+}%>

@@ -1,0 +1,41 @@
+<?xml version="1.0" ?>
+<functionModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/function"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/function functionModel.xsd">
+  <functionSet>
+    <cppNamespaceName>SPL::fred::xx</cppNamespaceName>
+    <functions>
+      <function>
+        <prototype cppName="POW" ><![CDATA[ void pow(int,int) ]]></prototype>
+      </function>
+      <function>
+        <description>This is a description</description>
+        <prototype><![CDATA[ tuple<int a,float b> sum(list<tuple<int a,float b>>) ]]></prototype>
+      </function>
+    </functions>
+  </functionSet>
+  <functionSet>
+    <headerFileName>File.h</headerFileName>
+    <functions>
+      <function>
+        <prototype line="5" column="100"><![CDATA[ list<float> fft(list<float>) ]]></prototype>
+      </function>
+      <function>
+        <prototype line="5"><![CDATA[ void fft(mutable list<float>) ]]></prototype>
+      </function>
+    </functions>
+    <dependencies>
+      <library>
+          <cmn:description>fft-library</cmn:description>
+        <cmn:managedLibrary>
+            <cmn:lib>fft</cmn:lib>
+            <cmn:libPath>lib/</cmn:libPath>
+            <cmn:includePath>include/</cmn:includePath>
+            <cmn:command>fftGenCommand</cmn:command>
+        </cmn:managedLibrary>
+      </library>
+    </dependencies>
+  </functionSet>
+</functionModel>

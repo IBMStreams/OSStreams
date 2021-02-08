@@ -1,0 +1,89 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use UDPSinkCommon;
+    UDPSinkCommon::verify($model);
+    my $format = $model->getParameterByName("format");
+    my $encoding = $model->getParameterByName("encoding");
+    my $compression = $model->getParameterByName("compression");
+    my $hasDelayField = $model->getParameterByName("hasDelayField");
+    my $writePunctuations = $model->getParameterByName("writePunctuations");
+
+    # Apply defaults
+    if (!defined $format) {
+        $format = "csv";
+    } else {
+        $format = $format->getValueAt(0)->getSPLExpression();
+    }
+    $compression = $compression->getValueAt(0)->getSPLExpression()
+            if defined $compression;
+    if (!defined $hasDelayField) {
+        $hasDelayField = 0;
+    } else {
+        $hasDelayField = $hasDelayField->getValueAt(0)->getCppExpression() eq "true";
+    }
+    if (!defined $writePunctuations) {
+        $writePunctuations = 0;
+    } else {
+        $writePunctuations = $writePunctuations->getValueAt(0)->getCppExpression() eq "true";
+    }
+    my $binary = $format eq "bin" || $format eq "block";
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+
+    my @includes;
+    push @includes, "#include <sys/types.h>";
+    push @includes, "#include <sys/stat.h>";
+    push @includes, "#include <fcntl.h>";
+    push @includes, "#include <fstream>";
+    push @includes, "#include <boost/iostreams/filter/$compression.hpp>" if defined $compression;
+    push @includes, "#include <boost/iostreams/stream.hpp>";
+    push @includes, "#include <boost/iostreams/filtering_streambuf.hpp>";
+    push @includes, "#include <SPL/Runtime/Serialization/StreamByteBuffer.h>" if ($binary);
+    push @includes, "#include <boost/iostreams/device/file_descriptor.hpp>";
+    push @includes, "#include <SPL/Toolkit/UDPSink.h>";
+    push @includes, "#include <SPL/Toolkit/BufferStream.h>";
+    push @includes, "#include <SPL/Toolkit/FromUTF8.h>" if $encoding;
+%>
+<%SPL::CodeGen::headerPrologue($model, \@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR<%if ($ckptKind ne "none") {%>, public StateHandler<%}%>
+{
+public:
+    MY_OPERATOR();
+
+    virtual void prepareToShutdown();
+
+    virtual void allPortsReady();
+
+    virtual void process(uint32_t index);
+
+    virtual void process(Tuple const & tuple, uint32_t port);
+
+    <%if ($writePunctuations) {%>
+        virtual void process(Punctuation const & punct, uint32_t port);
+    <%}%>
+
+private:
+    SPL::UDPSink _conn;
+    <%print "double _lastTimeStamp;" if $hasDelayField;%>
+    bool _connected;
+    <%print "FromUTF8Filter _fromUTF8;" if $encoding;%>
+    Mutex _mutex;
+    void doWrite (const SPL::BufferStream& bs);
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

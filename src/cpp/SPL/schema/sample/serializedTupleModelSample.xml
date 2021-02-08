@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<tuple xmlns="http://www.ibm.com/xmlns/prod/streams/spl/tuple">
+  <attr name="a" type="int32">55</attr>
+  <attr name="b">
+    <tuple>
+      <attr name="x" type="rstring">"hi"</attr>
+      <attr name="c">
+        <list elementType="int32">
+          <value>5</value>
+          <value>65</value>
+        </list>
+      </attr>
+      <attr name="m">
+        <map keyType="rstring" valueType="rstring">
+          <key>"hi"</key>
+          <value>"ho"</value>
+          <key>"ho"</key>
+          <value>"hi"</value>
+        </map>
+      </attr>
+    </tuple>
+  </attr>
+  <attr name="x" type="xml&lt;&quot;file:/tmp/schema.xsd&quot;&gt;">&quot;&lt;foo&gt;&lt;/foo&gt;&quot;x</attr>
+</tuple>

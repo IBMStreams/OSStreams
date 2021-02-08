@@ -1,0 +1,783 @@
+<?xml version="1.0" encoding="utf-8"?>
+  <xliff version="1.1" xmlns="urn:oasis:names:tc:xliff:document:1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.1 ../../../../../../../etc/xliff/xliff-core-1.1.xsd">
+    <file datatype="plaintext" original="root.txt" source-language="en" target-language="ru" xml:space="preserve">
+      <body>
+        <!-- =============================================================== -->
+        <!-- TRNOTE Please refer to the "XML Localization Interchange File   -->
+        <!-- Format (.xlf) files" section in the translation instructions    -->
+        <!-- file for more information on this file.                         -->
+        <!--                                                                 -->
+        <!-- NLS_ENCODING=UTF-8                                              -->
+        <!-- TRNOTE Return this file using the UTF-8 encoding.               -->
+        <!--                                                                 -->
+        <!-- NLS_MESSAGEFORMAT_ALL                                          -->
+        <!-- TRNOTE Because of a behavior with the Java MessageFormat class, -->
+        <!-- any message in the Java Resource Bundle that has a {0} string   -->
+        <!-- in it, must escape all single quotes in that message. To escape -->
+        <!-- the single quote, just insert another single quote before it.   -->
+        <!-- For example, the following message                              -->
+        <!--    "Can't find card with name [{0}]"                            -->
+        <!-- would be changed to                                             -->
+        <!--    "Can''t find card with name [{0}]"                           -->
+        <!--                                                                 -->
+        <!-- TRNOTE Do not translate the text between the curly braces. This -->
+        <!-- text is reserved and should not be translated. For example,     -->
+        <!-- the text in the following curly braces should not be translated:-->
+        <!--    {0,number} {0,number,percent} {0,date} {0,time}              -->
+        <!--                                                                 -->
+        <!-- TRNOTE For the target language setting, please use the          -->
+        <!-- appropriate value for your locale as indicated in parenthesis:  -->
+        <!--   Danish (da), Dutch (nl), Finnish (fi), French (fr),           -->
+        <!--   German (de), Italian (it), Norwegian - Bokmal (no),           -->
+        <!--   Brazilian Portuguese (pt-BR), Portuguese (pt-PT),             -->
+        <!--   Spanish (es), Swedish (sv), Czech (cs), Hungarian (hu),       -->
+        <!--   Polish (pl), Russian (ru), Simplified Chinese (zh),           -->
+        <!--   Traditional Chinese (zh-TW), Japanese (ja), Korean (ko),      -->
+        <!--   Arabic (ar), Hebrew (he), Slovakian (sk), Slovenian (sl),     -->
+        <!--   Thai (th), Turkish (tr)                                       -->
+        <!--                                                                 -->
+        <!-- TRNOTE Please start translating the following entries.          -->
+        <!-- =============================================================== -->
+
+        <!-- messages CDISP7000-72000 -->
+        <group id="StreamsSPLDOCMessages" restype="table" xml:space="preserve">
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7000E" extraData="CDISP7000E" resname="CDISP7000E" xml:space="preserve">
+            <source xml:lang="en">No toolkit specified. Use either the -i or -t parameter to specify the toolkit path(s).</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The toolkit path was missing from the command.</EXPLANATION>
+              <USER_RESPONSE>Add the toolkit path using either the -i or -t parameter.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Не указан инструментарий. Чтобы задать пути инструментариев, используйте или параметр -i, или параметр -t.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7002I" extraData="CDISP7002I" resname="CDISP7002I" xml:space="preserve">
+            <source xml:lang="en">JVM locale: language: {0}, country: {1}, variant: {2}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="language"/>
+              <REPLACEMENT arg="{1}" value="country"/>
+              <REPLACEMENT arg="{2}" value="variant"/>
+              <EXPLANATION>This is the locale used by the Java virtual machine.</EXPLANATION>
+              <USER_RESPONSE>This is information only.  No action is needed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Локаль JVM: язык: {0}, страна: {1}, вариант: {2}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7003E" extraData="CDISP7003E" resname="CDISP7003E" xml:space="preserve">
+            <source xml:lang="en">Invalid argument: {0}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="argument"/>
+              <EXPLANATION>An unknown argument was used.</EXPLANATION>
+              <USER_RESPONSE>Check the documentation for the command to see the valid arguments.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Недопустимый аргумент: {0}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7004E" extraData="CDISP7004E" resname="CDISP7004E" xml:space="preserve">
+            <source xml:lang="en">Both -i and -t parameters are specified. Use either the -i or -t parameter to specify the toolkit path(s).</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The parameters -i and -t cannot both be used.</EXPLANATION>
+              <USER_RESPONSE>Specify the toolkit path using either -i or -t, but not both.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Задан и параметр -i, и параметр -t. Чтобы задать пути инструментариев, используйте или параметр -i, или параметр -t.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7005E" extraData="CDISP7005E" resname="CDISP7005E" xml:space="preserve">
+            <source xml:lang="en">The specified toolkit path {0} does not exist or is not a directory.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="path"/>
+              <EXPLANATION>A toolkit was not found at the specified path.</EXPLANATION>
+              <USER_RESPONSE>Check that the path was specified correctly.  Also check the permissions on the path.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Указанный путь инструментария {0} не существует или не является каталогом.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7006E" extraData="CDISP7006E" resname="CDISP7006E" xml:space="preserve">
+            <source xml:lang="en">Error loading model file: {0}. File does not exist, or: {1}. Try reindexing or recompiling the toolkit.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="model file"/>
+              <REPLACEMENT arg="{1}" value="error" />
+              <EXPLANATION>The model file was not found or is not a well-formed model file.</EXPLANATION>
+              <USER_RESPONSE>Check that the file was specified correctly.  Check the permission on the file and the directory containing it.  If the file exists and is readable, try reindexing or recompiling.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Ошибка при загрузке файла модели: {0}. Файл не существует или: {1}. Попробуйте повторную индексацию или повторно скомпилируйте инструментарий.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7007I" extraData="CDISP7007I" resname="CDISP7007I" xml:space="preserve">
+            <source xml:lang="en">Exiting spl-make-doc.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>spl-make-doc has completed.</EXPLANATION>
+              <USER_RESPONSE>This is information only.  No action is needed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">spl-make-doc закрывается.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7008E" extraData="CDISP7008E" resname="CDISP7008E" xml:space="preserve">
+            <source xml:lang="en">Error reading model file: {0}. Content missing. Try reindexing or recompiling the toolkit.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="model file"/>
+              <EXPLANATION>The model file was found, but is empty, or does not contain the expected contents.</EXPLANATION>
+              <USER_RESPONSE>Check that the file was specified correctly.  If the file exists, try reindexing or recompiling.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Ошибка при чтении файла модели: {0}. Отсутствует контент. Попробуйте повторную индексацию или повторно скомпилируйте инструментарий.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7009E" extraData="CDISP7009E" resname="CDISP7009E" xml:space="preserve">
+            <source xml:lang="en">Error reading SPL file: {0}. Verify that the SPL file exists and can be read.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="model file"/>
+              <EXPLANATION>The model file was either was not found, or could not be read.</EXPLANATION>
+              <USER_RESPONSE>Check that the file was specified correctly.  Check the permissions on the file and the directory containing it.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Ошибка при чтении файла SPL: {0}. Убедитесь, что файл SPL существует и его можно прочитать.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7010E" extraData="CDISP7010E" resname="CDISP7010E" xml:space="preserve">
+            <source xml:lang="en">Exception encountered:\n {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="exception"/>
+              <EXPLANATION>An unexpected problem happened.</EXPLANATION>
+              <USER_RESPONSE>Check the exception for information about the problem.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Обнаружена исключительная ситуация:\n {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7011I" extraData="CDISP7011I" resname="CDISP7011I" xml:space="preserve">
+            <source xml:lang="en">SPL composite operator image not displayed. Problem loading file: {0}\n</source>
+            <target xml:lang="ru">Образ составного оператора SPL не показан. Проблема при загрузке файла: {0}\n</target>
+          </trans-unit>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="image file"/>
+              <EXPLANATION>An image file could not be loaded.</EXPLANATION>
+              <USER_RESPONSE>Check that the file exists, is readable, and is a supported type.</USER_RESPONSE>
+            </MSGDOC> -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7012I" extraData="CDISP7012I" resname="CDISP7012I" xml:space="preserve">
+            <source xml:lang="en">Primitive operator image not displayed. Problem loading file: {0}\n</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="image file"/>
+              <EXPLANATION>An image file could not be loaded.</EXPLANATION>
+              <USER_RESPONSE>Check that the file exists, is readable, and is a supported type.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Образ примитивного оператора не показан. Проблема при загрузке файла: {0}\n</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7013E" extraData="CDISP7013E" resname="CDISP7013E" xml:space="preserve">
+            <source xml:lang="en">Exception loading the model file {0}. Try reindexing or recompiling the toolkit.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="model file"/>
+              <EXPLANATION>The model file could not be loaded.</EXPLANATION>
+              <USER_RESPONSE>Check that the file exists, and is readable.  Try reindexing or recompiling the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Исключительная ситуация при загрузке файла модели {0}. Попробуйте повторную индексацию или повторно скомпилируйте инструментарий.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7014E" extraData="CDISP7014E" resname="CDISP7014E" xml:space="preserve">
+            <source xml:lang="en">Source model inconsistency. Start column number {0} on line {1} exceeds line length {2}. Contact IBM Software Support.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="column"/>
+              <REPLACEMENT arg="{1}" value="line number"/>
+              <REPLACEMENT arg="{2}" value="line length"/>
+              <EXPLANATION>This is an unexpected error reading a model file.</EXPLANATION>
+              <USER_RESPONSE>Try reindexing or recompiling the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Несогласованность исходной модели. Номер начального столбца {0} в строке {1} превышает длину строки {2}. Свяжитесь со службой поддержки ПО IBM.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7015E" extraData="CDISP7015E" resname="CDISP7015E" xml:space="preserve">
+            <source xml:lang="en">Source model inconsistency. End column number {0} on line {1} exceeds line length {2}. Contact IBM Software Support.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="column"/>
+              <REPLACEMENT arg="{1}" value="line number"/>
+              <REPLACEMENT arg="{2}" value="line length"/>
+              <EXPLANATION>This is an unexpected error reading a model file.</EXPLANATION>
+              <USER_RESPONSE>Try reindexing or recompiling the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Несогласованность исходной модели. Номер конечного столбца {0} в строке {1} превышает длину строки {2}. Свяжитесь со службой поддержки ПО IBM.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7016E" extraData="CDISP7016E" resname="CDISP7016E" xml:space="preserve">
+            <source xml:lang="en">File does not exist, or incorrect path name: {0}. Try reindexing or recompiling the toolkit.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="file"/>
+              <EXPLANATION>The file could not be opened.</EXPLANATION>
+              <USER_RESPONSE>Check that the file exists.  Check the permissions on the file.  Try reindexing or recompiling the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Файл не существует, или неправильный путь: {0}. Попробуйте повторную индексацию или повторно скомпилируйте инструментарий.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7017E" extraData="CDISP7017E" resname="CDISP7017E" xml:space="preserve">
+            <source xml:lang="en">URI table not found for toolkit {0}. Try reindexing or recompiling the toolkit.</source>
+            <!-- TODO: how does this happen?  Is it even possible? -->
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="toolkit"/>
+              <EXPLANATION>A problem happened while reading the toolkit, or it did not contain the expected information.</EXPLANATION>
+              <USER_RESPONSE>Try reindexing or recompiling the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Таблица URI не найдена для инструментария {0}. Попробуйте повторную индексацию или повторно скомпилируйте инструментарий.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7018E" extraData="CDISP7018E" resname="CDISP7018E" xml:space="preserve">
+            <source xml:lang="en">URI index for toolkit {0} missing entry: {1}. Try reindexing or recompiling the toolkit.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="toolkit"/>
+              <REPLACEMENT arg="{1}" value="entry"/>
+              <EXPLANATION>A problem happened while reading the toolkit, or it did not contain the expected information.</EXPLANATION>
+              <USER_RESPONSE>Try reindexing or recompiling the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">В индексе URI для инструментария {0} отсутствует запись: {1}. Попробуйте повторную индексацию или повторно скомпилируйте инструментарий.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7019E" extraData="CDISP7019E" resname="CDISP7019E" xml:space="preserve">
+            <source xml:lang="en">The toolkit in directory {0} has the same name as the toolkit in directory {1}. Specify the toolkit {2} only once.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="toolkit directory"/>
+              <REPLACEMENT arg="{1}" value="toolkit directory"/>
+              <REPLACEMENT arg="{2}" value="toolkit"/>
+              <EXPLANATION>Two toolkits with the same name were found.</EXPLANATION>
+              <USER_RESPONSE>This could be two copies of the same toolkit, or two different toolkits with the same name.  If two copies of the same toolkit were found, delete one, or ensure that the toolkit path contains only one.  If two toolkits have the same name, and both are needed, rename one of them.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">У инструментария в каталоге {0} то же самое имя, что и у инструментария в каталоге {1}. Задайте инструментарий {2} только один раз.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7020E" extraData="CDISP7020E" resname="CDISP7020E" xml:space="preserve">
+            <source xml:lang="en">Toolkit model inconsistency for the toolkit in directory {0}. Try rebuilding the toolkit.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="toolkit directory"/>
+              <EXPLANATION>The toolkit model did not contain the expected information.</EXPLANATION>
+              <USER_RESPONSE>Try rebuilding the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Несоответствие модели инструментария инструментарию в каталоге {0}. Попробуйте перестроить инструментарий.</target>
+          </trans-unit>
+
+          <!-- SPLDOC markup messages -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7021E" extraData="CDISP7021E" resname="CDISP7021E" xml:space="preserve">
+            <source xml:lang="en">A line of SPLDOC markup text starts with characters reserved for possible future markup. Suppress interpretation by using the backslash (\\\\) escape character in this line: {0}</source>
+            <!-- TODO what are the reserved characters? -->
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="line"/>
+              <EXPLANATION>The line contains characters reserved for possible future use.</EXPLANATION>
+              <USER_RESPONSE>Escape the reserved characters with backslashes.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Строка текста разметки SPLDOC начинается с символов, зарезервированных для возможной будущей разметки SPLDOC. Подавите интерпретацию, используя управляющий символ обратной косой черты (\\\\) в этой строке: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7022E" extraData="CDISP7022E" resname="CDISP7022E" xml:space="preserve">
+            <source xml:lang="en">A title in SPLDOC markup text starts with characters reserved for possible future SPLDOC markup. Suppress interpretation by using the backslash (\\\\) escape character in this title: {0}</source>
+            <!-- TODO what are the reserved characters? -->
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="title"/>
+              <EXPLANATION>The title contains characters reserved for possible future use.</EXPLANATION>
+              <USER_RESPONSE>Escape the reserved characters with backslashes.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Заголовок в тексте разметки SPLDOC начинается с символов, зарезервированных для возможной будущей разметки SPLDOC. Подавите интерпретацию, используя управляющий символ обратной косой черты (\\\\) в этом заголовке: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7023E" extraData="CDISP7023E" resname="CDISP7023E" xml:space="preserve">
+            <source xml:lang="en">A line of SPLDOC markup text includes characters reserved for possible future SPLDOC markup. Suppress interpretation by using the backslash (\\\\) escape character in this text: {0}</source>
+            <!-- TODO what are the reserved characters? -->
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>The text contains characters reserved for possible future use.</EXPLANATION>
+              <USER_RESPONSE>Escape the reserved characters with backslashes.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Строка текста разметки SPLDOC содержит символы, зарезервированные для возможной будущей разметки SPLDOC. Подавите интерпретацию, используя управляющий символ обратной косой черты (\\\\) в этом тексте: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7024E" extraData="CDISP7024E" resname="CDISP7024E" xml:space="preserve">
+            <source xml:lang="en">A line of SPLDOC markup text that requires a title has no title.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>A title is missing where one is required.</EXPLANATION>
+              <USER_RESPONSE>Add the missing title.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">У строки текста разметки SPLDOC, которой требуется заголовок, нет заголовка.</target>
+          </trans-unit>
+          <!-- TODO add explanation and user response for this unhelpful message.  This is the default message when no more specific problem happened. -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7025E" extraData="CDISP7025E" resname="CDISP7025E" xml:space="preserve">
+            <source xml:lang="en">A line of SPLDOC markup text is incorrect.</source>
+            <target xml:lang="ru">Строка текста разметки SPLDOC - неправильная.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7026W" extraData="CDISP7026W" resname="CDISP7026W" xml:space="preserve">
+            <source xml:lang="en">A line of SPLDOC markup text contains in-line markup that is not closed or that contains incorrect SPLDOC markup. Correct the markup or suppress interpretation of the markup tag by using the backslash (\\\\) escape character in this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>An SPLDOC markup tag is not closed.</EXPLANATION>
+              <USER_RESPONSE>Close the tag, or escape it with a backslash if the tag was not intended.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Строка текста разметки SPLDOC содержит встроенную разметку, которая не закрыта или содержит неправильную разметку
+SPLDOC. Исправьте разметку или подавите интерпретацию, используя управляющий символ в виде обратной косой черты (\\\\) в этом тексте: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7027W" extraData="CDISP7027W" resname="CDISP7027W" xml:space="preserve">
+            <source xml:lang="en">An SPLDOC in-line markup tag is nested within other in-line markup where this is not currently supported. Suppress interpretation by using the backslash (\\\\) escape character in this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>An SPLDOC markup tag is contained within another tag.</EXPLANATION>
+              <USER_RESPONSE>Remove the nested tag, or escape it with a backslash if it was not intended.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Встроенный тег разметки SPLDOC вложен в другую встроенную разметку, где он в настоящее время не поддерживается. Подавите интерпретацию, используя управляющий символ обратной косой черты (\\\\) в этом тексте: {0}</target>
+          </trans-unit>
+          <!-- This message occurs only as part of another message, and
+          does not need to be documented on its own. -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7028E" extraData="CDISP7028E" resname="CDISP7028E" xml:space="preserve">
+            <source xml:lang="en">description line {0}</source>
+            <target xml:lang="ru">строка описания {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7029E" extraData="CDISP7029E" resname="CDISP7029E" xml:space="preserve">
+            <source xml:lang="en">The SPLDOC markup for a table is missing the markup to end the table at this line: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="line"/>
+              <EXPLANATION>An SPLDOC table is missing its end tag.</EXPLANATION>
+              <USER_RESPONSE>Add the missing tag.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">В разметке SPLDOC для таблицы отсутствует разметка для завершения таблицы в следующей строке: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7030E" extraData="CDISP7030E" resname="CDISP7030E" xml:space="preserve">
+            <source xml:lang="en">There is a syntax error in the SPLDOC markup for a table. Correct the markup at this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>An SPLDOC table has a syntax error.</EXPLANATION>
+              <USER_RESPONSE>Correct the syntax error.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">В разметке SPLDOC для таблицы есть синтаксическая ошибка. Исправьте разметку в следующем тексте: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7031E" extraData="CDISP7031E" resname="CDISP7031E" xml:space="preserve">
+            <source xml:lang="en">Required SPLDOC markup is missing from the end of this line of SPLDOC markup for a table: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="line"/>
+              <EXPLANATION>An SPLDOC table is missing markup from the end of a line.</EXPLANATION>
+              <USER_RESPONSE>Add the missing markup.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Отсутствует необходимая разметка SPLDOC в конце следующей строки разметки SPLDOC для таблицы: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7032E" extraData="CDISP7032E" resname="CDISP7032E" xml:space="preserve">
+            <source xml:lang="en">This line of SPLDOC markup for a table has fewer columns than the number already defined for the table: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="line"/>
+              <EXPLANATION>All lines of a table must contain the same number of columns.</EXPLANATION>
+              <USER_RESPONSE>Add or remove columns, so that all lines have the same number of columns.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">В этой строке разметки SPLDOC для таблицы меньше столбцов, чем их число, уже заданное для таблицы: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7033E" extraData="CDISP7033E" resname="CDISP7033E" xml:space="preserve">
+            <source xml:lang="en">A line of SPLDOC markup for a table has more columns than the number already defined for the table, starting at this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="line"/>
+              <EXPLANATION>All lines of a table must contain the same number of columns.</EXPLANATION>
+              <USER_RESPONSE>Add or remove columns, so that all lines have the same number of columns.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">В строке разметки SPLDOC для таблицы больше столбцов, чем их число, уже заданное для таблицы, начиная со
+следующего текста: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7034E" extraData="CDISP7034E" resname="CDISP7034E" xml:space="preserve">
+            <source xml:lang="en">The SPLDOC markup for a column boundary in a table uses both normal and row header column boundary markup for the same column, at this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>Column boundaries may be specified by only normal, or only row header column boundary markup.</EXPLANATION>
+              <USER_RESPONSE>Change the column boundaries to use only normal, or only row header column boundary markup.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Разметка SPLDOC для границы столбца в таблице использует как обычную разметку, так и разметку границы столбца заголовков строк для одного и того же столбца в следующем тексте: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7035E" extraData="CDISP7035E" resname="CDISP7035E" xml:space="preserve">
+            <source xml:lang="en">The SPLDOC markup for a row boundary in a table occurs before all columns have been defined, at this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>All columns must be defined before a row boundary.</EXPLANATION>
+              <USER_RESPONSE>Add the missing column definition markup.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Разметка SPLDOC для границы строки в таблице находится перед всеми заданными столбцами в следующем тексте: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7036E" extraData="CDISP7036E" resname="CDISP7036E" xml:space="preserve">
+            <source xml:lang="en">The SPLDOC markup for a row boundary in a table has fewer than three characters between columns before this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>At least three characters must be used between columns.</EXPLANATION>
+              <USER_RESPONSE>Add more characters between the columns in the row boundary SPL markup.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">В разметке SPLDOC для границы строки в таблице менее трех символов между столбцами перед следующим текстом: {0}</target>
+          </trans-unit>
+
+          <!-- Image generating messages -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7040E" extraData="CDISP7040E" resname="CDISP7040E" xml:space="preserve">
+            <source xml:lang="en">An error occurred during generation of image file: {0}. Contact IBM Software Support.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="image file"/>
+              <EXPLANATION>An unexpected error occurred during image generation.</EXPLANATION>
+              <USER_RESPONSE>Try the operation again.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Произошла ошибка при генерировании файла образа: {0}. Свяжитесь со службой поддержки ПО IBM.</target>
+          </trans-unit>
+
+          <!-- Trace messages -->
+          <!-- These messages are written when spl-make-doc is run in
+          verbose mode.  They will be written without message IDs, and
+          do not require documentation -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7060I" extraData="CDISP7060I" resname="CDISP7060I" xml:space="preserve">
+            <source xml:lang="en">Toolkit path(s): {0}</source>
+            <target xml:lang="ru">Пути инструментариев: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7061I" extraData="CDISP7061I" resname="CDISP7061I" xml:space="preserve">
+            <source xml:lang="en">Output directory: {0}</source>
+            <target xml:lang="ru">Выходной каталог: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7062I" extraData="CDISP7062I" resname="CDISP7062I" xml:space="preserve">
+            <source xml:lang="en">Document format: {0}</source>
+            <target xml:lang="ru">Формат документа: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7063I" extraData="CDISP7063I" resname="CDISP7063I" xml:space="preserve">
+            <source xml:lang="en">Author: {0}</source>
+            <target xml:lang="ru">Автор: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7064I" extraData="CDISP7064I" resname="CDISP7064I" xml:space="preserve">
+            <source xml:lang="en">Verbose: {0}</source>
+            <target xml:lang="ru">Подробно: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7065I" extraData="CDISP7065I" resname="CDISP7065I" xml:space="preserve">
+            <source xml:lang="en">Processing completed for: {0}</source>
+            <target xml:lang="ru">Обработка завершена для: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7066I" extraData="CDISP7066I" resname="CDISP7066I" xml:space="preserve">
+            <source xml:lang="en">Output warning if link is to an absent toolkit or namespace: {0}</source>
+            <target xml:lang="ru">Вывести предупреждение, если есть ссылка на отсутствующий комплект инструментов или пространство имен: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7067I" extraData="CDISP7067I" resname="CDISP7067I" xml:space="preserve">
+            <source xml:lang="en">DitaDriver translating: {0} to {1}</source>
+            <target xml:lang="ru">Преобразование DitaDriver: {0} в {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7068I" extraData="CDISP7068I" resname="CDISP7068I" xml:space="preserve">
+            <source xml:lang="en">DitaDriver using ditamap: {0}</source>
+            <target xml:lang="ru">DitaDriver с использованием ditamap: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7069I" extraData="CDISP7069I" resname="CDISP7069I" xml:space="preserve">
+            <source xml:lang="en">{0}</source>
+            <target xml:lang="ru">{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7070I" extraData="CDISP7070I" resname="CDISP7070I" xml:space="preserve">
+            <source xml:lang="en">Command exit value: {0}</source>
+            <target xml:lang="ru">Значение выхода для команды: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7071I" extraData="CDISP7071I" resname="CDISP7071I" xml:space="preserve">
+            <source xml:lang="en">Image format: {0}</source>
+            <target xml:lang="ru">Формат изображения: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7072I" extraData="CDISP7072I" resname="CDISP7072I" xml:space="preserve">
+            <source xml:lang="en">Using default dimensions for image: {0}</source>
+            <target xml:lang="ru">Используются размеры изображения по умолчанию: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7073I" extraData="CDISP7073I" resname="CDISP7073I" xml:space="preserve">
+            <source xml:lang="en">No dimension defined for image: {0}. Using default dimensions.</source>
+            <target xml:lang="ru">Не задано никаких измерений для изображения: {0}. Используются размеры по умолчанию.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7074I" extraData="CDISP7074I" resname="CDISP7074I" xml:space="preserve">
+            <source xml:lang="en">Processing primitive operator: {0}</source>
+            <target xml:lang="ru">Обрабатывается примитивный оператор: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7075I" extraData="CDISP7075I" resname="CDISP7075I" xml:space="preserve">
+            <source xml:lang="en">Processing native function model: {0}</source>
+            <target xml:lang="ru">Обрабатывается собственная модель функций: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7076I" extraData="CDISP7076I" resname="CDISP7076I" xml:space="preserve">
+            <source xml:lang="en">Generation complete. Top-level document: {0}</source>
+            <target xml:lang="ru">Генерирование завершено. Документ высшего уровня: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7077I" extraData="CDISP7077I" resname="CDISP7077I" xml:space="preserve">
+            <source xml:lang="en">Check tags: {0}</source>
+            <target xml:lang="ru">Проверить теги: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7078I" extraData="CDISP7078I" resname="CDISP7078I" xml:space="preserve">
+            <source xml:lang="en">Output warning if no SPLDOC comment provided: {0}</source>
+            <target xml:lang="ru">Вывести предупреждение, если не задан комментарий для SPLDOC: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7079I" extraData="CDISP7079I" resname="CDISP7079I" xml:space="preserve">
+            <source xml:lang="en">Copy image files: {0}</source>
+            <target xml:lang="ru">Копировать файлы изображения: {0}</target>
+          </trans-unit>
+
+          <!-- Miscellaneous messages -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7080W" extraData="CDISP7080W" resname="CDISP7080W" xml:space="preserve">
+            <source xml:lang="en">No SPLDOC comment provided for composite &quot;{0}&quot;.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="composite"/>
+              <EXPLANATION>The composite contains no SPLDOC comment.</EXPLANATION>
+              <USER_RESPONSE>Add an SPLDOC comment.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Не задан комментарий SPLDOC для составного &quot;{0}&quot;.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7081W" extraData="CDISP7081W" resname="CDISP7081W" xml:space="preserve">
+            <source xml:lang="en">No SPLDOC comment provided for function &quot;{0}&quot;.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="function"/>
+              <EXPLANATION>The function contains no SPLDOC comment.</EXPLANATION>
+              <USER_RESPONSE>Add an SPLDOC comment.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Не предоставлен комментарий SPLDOC для функции &quot;{0}&quot;.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7082W" extraData="CDISP7082W" resname="CDISP7082W" xml:space="preserve">
+            <source xml:lang="en">No SPLDOC comment provided for type &quot;{0}&quot;.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="type"/>
+              <EXPLANATION>The type contains no SPLDOC comment.</EXPLANATION>
+              <USER_RESPONSE>Add an SPLDOC comment.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Не предоставлен комментарий SPLDOC для типа &quot;{0}&quot;.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7083I" extraData="CDISP7083I" resname="CDISP7083I" xml:space="preserve">
+            <source xml:lang="en">Processing SPL artifacts.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>SPL artifacts are being processed.</EXPLANATION>
+              <USER_RESPONSE>This is information only.  No action is needed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Обработка артефактов SPL.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7084I" extraData="CDISP7084I" resname="CDISP7084I" xml:space="preserve">
+            <source xml:lang="en">Loading toolkit: {0} : {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="toolkit name"/>
+              <REPLACEMENT arg="{1}" value="toolkit version"/>
+              <EXPLANATION>The toolkit is being loaded.</EXPLANATION>
+              <USER_RESPONSE>This is information only.  No action is needed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Загрузка инструментария: {0} : {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7085W" extraData="CDISP7085W" resname="CDISP7085W" xml:space="preserve">
+            <source xml:lang="en">Unrecognized SPLDOC annotation tag &quot;{0}&quot; for artifact &quot;{1}&quot;. Skipping tag.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="tag"/>
+              <REPLACEMENT arg="{1}" value="artifact"/>
+              <EXPLANATION>An unrecognized SPLDOC annotation tag was skipped.</EXPLANATION>
+              <USER_RESPONSE>Check the tag.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Нераспознанный тег аннотации SPLDOC &quot;{0}&quot; для артефакта &quot;{1}&quot;. Тег пропускается.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7086E" extraData="CDISP7086E" resname="CDISP7086E" xml:space="preserve">
+            <source xml:lang="en">SPLDOC annotation tag for artifact &quot;{0}&quot; has no name.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="artifact"/>
+              <EXPLANATION>Every SPLDOC annotation tag must have a name.</EXPLANATION>
+              <USER_RESPONSE>Add a name to the tag.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">У тега аннотации SPLDOC для артефакта &quot;{0}&quot; нет имени.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7087E" extraData="CDISP7087E" resname="CDISP7087E" xml:space="preserve">
+            <source xml:lang="en">SPLDOC annotation &quot;@{0}&quot; for artifact &quot;{1}&quot; has no value.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="artifact"/>
+              <EXPLANATION>The value is missing for an SPLDOC annotation which must have a value.</EXPLANATION>
+              <USER_RESPONSE>Add a value to the annotation.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">У &quot;@{0}&quot; аннотации SPLDOC для артефакта &quot;{1}&quot; нет значения.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7088W" extraData="CDISP7088W" resname="CDISP7088W" xml:space="preserve">
+            <source xml:lang="en">No SPLDOC comment provided for operator &quot;{0}&quot;.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <EXPLANATION>The operator contains no SPLDOC comment.</EXPLANATION>
+              <USER_RESPONSE>Add an SPLDOC comment.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Не предоставлен комментарий SPLDOC для оператора &quot;{0}&quot;.</target>
+          </trans-unit>
+          <!-- trace messages, no documentation needed -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7089I" extraData="CDISP7089I" resname="CDISP7089I" xml:space="preserve">
+            <source xml:lang="en">Include function set header: {0}</source>
+            <target xml:lang="ru">Включить заголовок набора функций: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7090I" extraData="CDISP7090I" resname="CDISP7090I" xml:space="preserve">
+            <source xml:lang="en">Include excluded SPL artifacts: {0}</source>
+            <target xml:lang="ru">Включить исключенные артефакты SPL: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7091I" extraData="CDISP7091I" resname="CDISP7091I" xml:space="preserve">
+            <source xml:lang="en">Include non-public SPL artifacts: {0}</source>
+            <target xml:lang="ru">Включить артефакты SPL, не являющиеся общедоступными: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7092I" extraData="CDISP7092I" resname="CDISP7092I" xml:space="preserve">
+            <source xml:lang="en">Include SPL source code: {0}</source>
+            <target xml:lang="ru">Включить исходный код SPL: {0}</target>
+          </trans-unit>
+
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7093E" extraData="CDISP7093E" resname="CDISP7093E" xml:space="preserve">
+            <source xml:lang="en">Generation complete with {0} errors and {1} warnings. Generation of the SPL documentation failed.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="error count"/>
+              <REPLACEMENT arg="{1}" value="warning count"/>
+              <EXPLANATION>The generation of SPL documentation failed because of previous errors.</EXPLANATION>
+              <USER_RESPONSE>Correct the errors, and retry the SPL documentation generation.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Генерация завершена с {0} ошибками и {1} предупреждениями. Генерирование документации SPL завершилось неудачно.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7095I" extraData="CDISP7095I" resname="CDISP7095I" xml:space="preserve">
+            <source xml:lang="en">Debug mode enabled: {0}</source>
+            <target xml:lang="ru">Включен: режим отладки: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7096I" extraData="CDISP7096I" resname="CDISP7096I" xml:space="preserve">
+            <source xml:lang="en">Command: {0}</source>
+            <target xml:lang="ru">Команда: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7097E" extraData="CDISP7097E" resname="CDISP7097E" xml:space="preserve">
+            <source xml:lang="en">Generation complete with {0} errors and {1} warnings. Top-level document: {2}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="error count"/>
+              <REPLACEMENT arg="{1}" value="warning count"/>
+              <REPLACEMENT arg="{2}" value="document"/>
+              <EXPLANATION>The generation of SPL documentation failed because of previous errors.</EXPLANATION>
+              <USER_RESPONSE>Correct the errors, and retry the SPL documentation generation.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Генерация завершена с {0} ошибками и {1} предупреждениями. Документ высшего уровня: {2}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7101W" extraData="CDISP7101W" resname="CDISP7101W" xml:space="preserve">
+            <source xml:lang="en">Generation complete with 0 errors and {0} warnings. Top-level document: {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="warning count"/>
+              <REPLACEMENT arg="{1}" value="document"/>
+              <EXPLANATION>The generation of SPL documentation succeeded, but there were warnings.</EXPLANATION>
+              <USER_RESPONSE>Evaluate the warnings and determine whether they need to be fixed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Генерация завершена с 0 ошибок и {0} предупреждениями. Документ высшего уровня: {1}</target>
+          </trans-unit>
+<!--
+START-NON-TRANSLATABLE
+-->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7102E" extraData="CDISP7102E" resname="CDISP7102E" xml:space="preserve">
+            <source xml:lang="en">{0}</source>
+            <target xml:lang="ru">{0}</target>
+          </trans-unit>
+<!--
+END-NON-TRANSLATABLE
+-->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7103E" extraData="CDISP7103E" resname="CDISP7103E" xml:space="preserve">
+            <source xml:lang="en">Invalid image URI: {0}. Correct the image file name in the SPLDOC comment.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="image URI"/>
+              <EXPLANATION>The image URI is malformed.</EXPLANATION>
+              <USER_RESPONSE>Fix the image URI.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Недопустимый URI изображения: {0}. Исправьте имя файла образа в комментарии SPLDOC.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7104E" extraData="CDISP7104E" resname="CDISP7104E" xml:space="preserve">
+            <source xml:lang="en">Image file not found or cannot be read: {0}. Correct the image file name in the SPLDOC comment or correct its access permissions.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="image file"/>
+              <EXPLANATION>The image file was not found or was not readable.</EXPLANATION>
+              <USER_RESPONSE>Correct the image file name in the SPLDOC comment or correct its access permissions.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Файл образа не найден или не может быть прочитан: {0}. Исправьте имя файла образа в комментарии SPLDOC или исправьте его полномочия доступа.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7105W" extraData="CDISP7105W" resname="CDISP7105W" xml:space="preserve">
+            <source xml:lang="en">The &quot;@return&quot; annotation for function &quot;{0}&quot; with return type void has been skipped.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="function"/>
+              <EXPLANATION>A function that returns void cannot have a return annotation.</EXPLANATION>
+              <USER_RESPONSE>Remove the return annotation.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Аннотация &quot;@return&quot; для функции &quot;{0}&quot; с типом возврата void пропущена.</target>
+          </trans-unit>
+          <!-- CDISP7106 is unused -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7107E" extraData="CDISP7107E" resname="CDISP7107E" xml:space="preserve">
+            <source xml:lang="en">Ambiguous link to SPL artifact &quot;{0}&quot;. Link matches: {1}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="artifact"/>
+              <REPLACEMENT arg="{1}" value="list of matches"/>
+              <EXPLANATION>The link matched more than one artifact.</EXPLANATION>
+              <USER_RESPONSE>Add a namespace to the link to resolve the ambiguity.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Неоднозначная ссылка на артефакт SPL &quot;{0}&quot;. Ссылка соответствует: {1}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7108E" extraData="CDISP7108E" resname="CDISP7108E" xml:space="preserve">
+            <source xml:lang="en">The link to SPL artifact &quot;{0}&quot; must include a namespace to reference an artifact in another toolkit. The link matches: {1}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="artifact"/>
+              <REPLACEMENT arg="{1}" value="matching artifact"/>
+              <EXPLANATION>A link between toolkits must include a namespace.</EXPLANATION>
+              <USER_RESPONSE>Add the namespace to the link.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Ссылка на артефакт SPL &quot;{0}&quot; должна включать в себя пространство имен для ссылки на артефакт в другом
+инструментарии. Ссылка соответствует: {1}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7109E" extraData="CDISP7109E" resname="CDISP7109E" xml:space="preserve">
+            <source xml:lang="en">The SPL artifact referenced by the link &quot;{0}&quot; is not in the document. Correct the reference to the SPL artifact in the SPLDOC link. If the link is to a function with parameters, include the parameter types.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="link"/>
+              <EXPLANATION>A document contained a link to an artifact.  This artifact is not in the document.</EXPLANATION>
+              <USER_RESPONSE>Correct the link.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="ru">Артефакт SPL, указанный в ссылке &quot;{0}&quot;, отсутствует в документе. Исправьте ссылку на артефакт SPL в
+ссылке SPLDOC. Если ссылка указывает на функцию с параметрами, включите типы параметров.</target>
+          </trans-unit>
+          <!-- TODO add MSGDOC sections for messages below. -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7110W" extraData="CDISP7110W" resname="CDISP7110W" xml:space="preserve">
+            <source xml:lang="en">Missing &quot;@param {0}&quot; annotation, or annotation description, for composite operator parameter &quot;{1}&quot;.</source>
+            <target xml:lang="ru">Отсутствует аннотация &quot;@param {0}&quot; или описание аннотации для параметра составного оператора &quot;{1}&quot;.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7111W" extraData="CDISP7111W" resname="CDISP7111W" xml:space="preserve">
+            <source xml:lang="en">Missing &quot;{0}&quot; annotation, or annotation description, on operator port &quot;{1}&quot; for composite operator &quot;{2}&quot;.</source>
+            <target xml:lang="ru">Отсутствует аннотация &quot;{0}&quot; или описание аннотации для порта оператора &quot;{1}&quot; для составного оператора &quot;{2}&quot;.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7112W" extraData="CDISP7112W" resname="CDISP7112W" xml:space="preserve">
+            <source xml:lang="en">Missing &quot;{0}&quot; annotation, or annotation description, for SPL or native function &quot;{1}&quot;.</source>
+            <target xml:lang="ru">Отсутствует аннотация &quot;{0}&quot; или описание аннотации для SPL или собственной функции &quot;{1}&quot;.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7113W" extraData="CDISP7113W" resname="CDISP7113W" xml:space="preserve">
+            <source xml:lang="en">The &quot;@param {0}&quot; annotation does not match any parameter defined by the SPL or native function &quot;{1}&quot;.</source>
+            <target xml:lang="ru">Аннотация &quot;@param {0}&quot; не соответствует никаким параметрам, заданным SPL или собственной функцией &quot;{1}&quot;.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7115W" extraData="CDISP7115W" resname="CDISP7115W" xml:space="preserve">
+            <source xml:lang="en">The &quot;{0} {1}&quot; annotation does not match any port for the composite operator &quot;{2}&quot;.</source>
+            <target xml:lang="ru">Аннотация &quot;{0} {1}&quot; не соответствует никаким портам для составного оператора &quot;{2}&quot;.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7116W" extraData="CDISP7116W" resname="CDISP7116W" xml:space="preserve">
+            <source xml:lang="en">The &quot;@param {0}&quot; annotation does not match any parameter defined by the composite operator &quot;{1}&quot;.</source>
+            <target xml:lang="ru">Аннотация &quot;@param {0}&quot; не соответствует никаким параметрам, заданным составным оператором &quot;{1}&quot;.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7117W" extraData="CDISP7117W" resname="CDISP7117W" xml:space="preserve">
+            <source xml:lang="en">The link to SPL artifact &quot;{0}&quot; references a toolkit or namespace that is not in the document.</source>
+            <target xml:lang="ru">Ссылка на артефакт SPL &quot;{0}&quot; указывает инструментарий или пространство имен, которых нет в документе.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7118I" extraData="CDISP7118I" resname="CDISP7118I" xml:space="preserve">
+            <source xml:lang="en">Suppress generation of SPL reference documents: {0}</source>
+            <target xml:lang="ru">Подавить генерирование ссылочных документов SPL: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7119E" extraData="CDISP7119E" resname="CDISP7119E" xml:space="preserve">
+            <source xml:lang="en">Error reading SPL model or reference file: {0}. Contact IBM Software Support.</source>
+            <target xml:lang="ru">Ошибка при чтении модели SPL или файла ссылок: {0}. Свяжитесь со службой поддержки ПО IBM.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7120I" extraData="CDISP7120I" resname="CDISP7120I" xml:space="preserve">
+            <source xml:lang="en">Loading file: {0}</source>
+            <target xml:lang="ru">Загрузка файла: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7121E" extraData="CDISP7121E" resname="CDISP7121E" xml:space="preserve">
+            <source xml:lang="en">The link &quot;{0}&quot; is not a valid SPL artifact, local file or URI link.</source>
+            <target xml:lang="ru">Ссылка &quot;{0}&quot; не является действительным артефактом SPL, локальным файлом или ссылкой URI.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7122I" extraData="CDISP7122I" resname="CDISP7122I" xml:space="preserve">
+            <source xml:lang="en">Include composite operator diagram: {0}</source>
+            <target xml:lang="ru">Включить диаграмму составного оператора: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7123I" extraData="CDISP7123I" resname="CDISP7123I" xml:space="preserve">
+            <source xml:lang="en">Suppress primitive operator diagram: {0}</source>
+            <target xml:lang="ru">Подавить диаграмму примитивного оператора: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7124E" extraData="CDISP7124E" resname="CDISP7124E" xml:space="preserve">
+            <source xml:lang="en">Internal error: {0}. Contact IBM Software Support.</source>
+            <target xml:lang="ru">Внутренняя ошибка: {0} Свяжитесь со службой поддержки ПО IBM.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7125I" extraData="CDISP7125I" resname="CDISP7125I" xml:space="preserve">
+            <source xml:lang="en">Document title: {0}</source>
+            <target xml:lang="ru">Заголовок документа: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7126E" extraData="CDISP7126E" resname="CDISP7126E" xml:space="preserve">
+            <source xml:lang="en">Command exit value: {0}</source>
+            <target xml:lang="ru">Значение выхода для команды: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7127E" extraData="CDISP7127E" resname="CDISP7127E" xml:space="preserve">
+            <source xml:lang="en">Malformed SPLDOC link: {0}, {1}. Link is output as plain text. Update SPLDOC to enable link.</source>
+            <target xml:lang="ru">Неправильно сформированная ссылка SPLDOC: {0}, {1}. Ссылка выводится в виде простого текста. Обновите SPLDOC, чтобы разрешить ссылку.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7128E" extraData="CDISP7128E" resname="CDISP7128E" xml:space="preserve">
+            <source xml:lang="en">Unexpected path for native function model: {0} in toolkit directory {1}.</source>
+            <target xml:lang="ru">Неожиданный путь для собственной модели функций {0} в каталоге инструментария {1}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7129E" extraData="COMPOSITE_NOT_SUPPORTED_WINDOWS" resname="CDISP7129E" xml:space="preserve">
+            <source xml:lang="en">Composite operator diagram is not supported on Windows.</source>
+            <target xml:lang="ru">Диаграмма составных операторов не поддерживается в Windows.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7130E" extraData="OPERATOR_MODEL_OBJECT_MISSING" resname="CDISP7130E" xml:space="preserve">
+            <source xml:lang="en">Operator model object is missing.</source>
+            <target xml:lang="ru">Отсутствует объект модели оператора.</target>
+          </trans-unit>
+
+        </group>
+
+        <!-- =============================================================== -->
+        <!-- TRNOTE Do not translate the following group                     -->
+        <!-- =============================================================== -->
+<!--
+START-NON-TRANSLATABLE
+-->
+        <group id="Example" restype="table" xml:space="preserve">
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5186E" extraData="SPL_EXAMPLE_TEST_MESSAGE" resname="CDISR5186E" xml:space="preserve">
+            <source xml:lang="en">This is a test message - String: {0} - Integer: {1,number,0} - Formatted Integer: {2,number} - Real: {3,number,integer.##########} - Formatted Real: {4,number} - Date: {5,date} - Time: {6,time} - DateTime: {7,date} {7,time}.</source>
+            <target xml:lang="ru">Это тестовое сообщение - String: {0} - Integer: {1,number,0} - Formatted Integer: {2,number} - Real: {3,number,integer.##########} - Formatted Real: {4,number} - Date: {5,date} - Time: {6,time} - DateTime: {7,date} {7,time}.</target>
+          </trans-unit>
+        </group>
+<!--
+END-NON-TRANSLATABLE
+-->
+      </body>
+  </file>
+</xliff>

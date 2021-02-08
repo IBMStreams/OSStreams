@@ -1,0 +1,57 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <SPL/Runtime/Utility/FinalPunctPayload.h>
+
+#include <SPL/Runtime/Serialization/NativeByteBuffer.h>
+#include <SPL/Runtime/Serialization/NetworkByteBuffer.h>
+
+using namespace SPL;
+
+const std::string FinalPunctPayload::name("finalPunct");
+
+FinalPunctPayload* FinalPunctPayload::clone() const
+{
+    return new FinalPunctPayload(_peID, _opIndex, _portIndex);
+}
+
+void FinalPunctPayload::serialize(NativeByteBuffer& buf) const
+{
+    buf.addUInt64(_peID);
+    buf.addUInt32(_opIndex);
+    buf.addUInt32(_portIndex);
+}
+
+void FinalPunctPayload::deserialize(NativeByteBuffer& buf)
+{
+    _peID = buf.getUInt64();
+    _opIndex = buf.getUInt32();
+    _portIndex = buf.getUInt32();
+}
+
+void FinalPunctPayload::serialize(NetworkByteBuffer& buf) const
+{
+    buf.addUInt64(_peID);
+    buf.addUInt32(_opIndex);
+    buf.addUInt32(_portIndex);
+}
+
+void FinalPunctPayload::deserialize(NetworkByteBuffer& buf)
+{
+    _peID = buf.getUInt64();
+    _opIndex = buf.getUInt32();
+    _portIndex = buf.getUInt32();
+}

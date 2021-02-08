@@ -1,0 +1,164 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Throttle.html">
+The `Throttle` operator is used to pace a stream to make it flow at a specified rate.
+
+# Checkpointed data
+
+When the `Throttle` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Throttle` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+In a consistent region, a `Throttle` operator stores its state when a checkpoint is taken.
+When the region is reset, the operator restores the state from the checkpoint.
+When in a consistent region, the operator finishes draining only after processing all its input tuples that must be delayed.
+It is recommended for the `Throttle` operator to be run by the same thread (that is, fused and without threaded ports)
+as the start operator of the region to reduce the number of pending input tuples to be processed during a drain and reset.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Throttle` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Throttle` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `Throttle` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring name, uint32 age&gt; Beat = Beacon() {}
+        // with rate only
+        stream&lt;rstring name, uint32 age&gt; Throttled1 = Throttle(Beat)
+        {
+          param rate : 100.0;
+        }
+        // with optional period
+        stream&lt;rstring name, uint32 age&gt; Throttled2 = Throttle(Beat)
+        {
+          param rate   : 100.0;
+                period : 0.05;
+        }
+        // with punctuations included
+        stream&lt;rstring name, uint32 age&gt; Throttled3 = Throttle(Beat)
+        {
+          param rate               : 100.0;
+                period             : 0.05;
+               includePunctuations : true;
+        }
+    }
+
+</description>
+      <iconUri size="16">throttle_16.gif</iconUri>
+      <iconUri size="32">throttle_32.gif</iconUri>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Throttle">
+          <description>Basic Throttle template</description>
+          <template>stream&lt;${inputStream}&gt; ${outputStream} = Throttle(${inputStream}){
+            param
+                rate: ${throttleRate};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>rate</name>
+        <description>
+Specifies the wanted rate in tuples per seconds.</description>
+        <optional>false</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>period</name>
+        <description>
+Specifies the period to be used for maintaining the wanted rate in seconds.
+When making rate adjustments, the `Throttle` operator considers only the last period, going back from the current time.
+By default, the period is set to `10.0/**rate**`.
+        </description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>includePunctuations</name>
+        <description>
+Specifies whether punctuation is to be included in the rate computation. The default value is `false`.
+        </description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>precise</name>
+        <description>
+Specifies whether precise blocking is used.
+Some systems lack the required resolution to block for very small durations.
+In such cases, this option enables precise blocking with the use of busy wait.
+        </description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Throttle` operator is configurable with a single input port, which ingests tuples to be rate throttled.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Throttle` operator is configurable with a single output port, which produces tuples at the specified rate.
+The schema of the output port must match that of the input port.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

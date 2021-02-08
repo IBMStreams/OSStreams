@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns="http://www.ibm.com/xmlns/prod/streams/spl/tuple"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema"
+   targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/tuple"
+   elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+   <xs:element name="tupleModel" type="tupleModelType"/>
+
+   <xs:complexType name="tupleModelType">
+      <xs:sequence>
+         <xs:element name="headers" type="headersType"/>
+         <xs:element name="attributes" type="attributesType"/>
+      </xs:sequence>
+      <xs:attribute name="class" use="required" type="xs:token"/>
+      <xs:attribute name="splType" use="required" type="xs:token"/>
+      <xs:attribute name="facade" use="required" type="xs:boolean"/>
+      <xs:attribute name="equalitySupported" use="required" type="xs:boolean"/>
+   </xs:complexType>
+
+   <xs:complexType name="headersType">
+      <xs:sequence>
+         <xs:element name="header" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+   </xs:complexType>
+
+   <xs:complexType name="attributesType">
+      <xs:sequence>
+         <xs:element name="attribute" type="attributeType" maxOccurs="unbounded"/>
+      </xs:sequence>
+   </xs:complexType>
+
+   <xs:complexType name="attributeType">
+      <xs:sequence>
+         <xs:element name="name" type="xs:token"/>
+         <xs:element name="cppType" type="xs:token"/>
+         <xs:element name="splType" type="xs:token"/>
+         <xs:element name="fixedSize" type="xs:integer" minOccurs="0" maxOccurs="1"/>
+      </xs:sequence>
+   </xs:complexType>
+</xs:schema>

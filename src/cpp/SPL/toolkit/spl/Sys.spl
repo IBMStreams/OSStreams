@@ -1,0 +1,304 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+namespace spl;
+
+/**
+ * Defines types used in `config` specifications and built-in
+ * functions.
+ */
+public composite Sys {
+  type
+
+/**
+* This enum is used with SPL config specifications.
+*
+* * Shared: The nodes specified in the host pool are shared with other jobs in the instance.
+* * Exclusive: The nodes specified in the host pool are not shared with other jobs in the instance.
+*
+* Example Use:
+*
+*     ComputingPool = createPool( size=15u, tags=\["ib","blue"\] , Sys.Shared);
+*
+*/
+    static PoolSharingMode = enum { Shared, Exclusive };
+
+/**
+* The Log level for message logging.
+* Note that the use of the `log` function is deprecated in preference to the `appTrc` function.
+* The use of this type is also deprecated because it is specific to the `log` function.
+* The Level enum, which is defined in the `spl::Trace` composite, is used with the `appTrc` function.
+*
+* * error: The error message always appears in the log.
+* * info: The error message appears if the log level is info or higher.
+* * debug: The error message appears if the log level is debug or higher.
+* * trace: The error message appears if the log level is trace or higher.
+*
+* Example Use:
+*
+*     log (Sys.info, "hi there");
+*
+*/
+    static LogLevel = enum { error, info, debug, trace};
+
+/**
+* This enum is used when custom metrics are created.
+*
+* * `Counter`: The metric is a counter value.
+* * `Gauge`: The metric is a guage value.
+* * `Time`: The metric is a time value.
+*
+* Example Use:
+*
+*      createCustomMetric("myMetric", "Tracks my stats", Sys.Counter, 0);
+*
+*/
+    static Kind = enum { Gauge, Counter, Time };
+
+/**
+* This enum is used to specify the format used for the `toTimestamp` built-in function.
+*
+* * `YYYYMMDDhhmmss`: Format as "YYYYMMDDhhmmss".
+* * `YYYY_MM_DD_hh_mm_ss`: Format as "YYYY-MM-DD hh:mm:ss" (where any separator can be used).
+* * `MM_DD_YYYY_hh_mm_ss`: Format as "MM-DD-YYYY hh:mm:ss" (where any separator can be used).
+* * `DD_MM_YYYY_hh_mm_ss`: Format as "DD-MM-YYYY hh:mm:ss" (where any separator can be used).
+* * `YYYY_MM_DD_hh_mm_ss_mmm`: Format as "YYYY-MM-DD hh:mm:ss.mmm" (where any separator can be used).
+* * `MM_DD_YYYY_hh_mm_ss_mmm`: Format as "MM-DD-YYYY hh:mm:ss.mmm" (where any separator can be used).
+* * `DD_MM_YYYY_hh_mm_ss_mmm`: Format as "DD-MM-YYYY hh:mm:ss.mmm" (where any separator can be used).
+*
+* Example Use:
+*
+*       timestamp ts = toTimestamp(Sys.YYYY_MM_DD_hh_mm_ss, "2009-02-23-13-42-35");
+*
+*/
+    static TimestampFormat = enum
+        {
+            YYYYMMDDhhmmss,
+            YYYY_MM_DD_hh_mm_ss,
+            MM_DD_YYYY_hh_mm_ss,
+            DD_MM_YYYY_hh_mm_ss,
+            YYYY_MM_DD_hh_mm_ss_mmm,
+            MM_DD_YYYY_hh_mm_ss_mmm,
+            DD_MM_YYYY_hh_mm_ss_mmm
+        };
+
+/**
+* Punctuation types returned by `currentPunct()`.
+*
+* * WindowMarker: This punctuation represents a window punctuation.
+* * FinalMarker: This punctuation is the final punctuation on a stream.
+*   No additional punctuation or tuples can be received after the final punctuation.
+*
+* Example Use:
+*
+*     if (currentPunct() == Sys.FinalMarker) { ... do some action ... }
+*     submit (Sys.WindowMarker, streamName);
+*
+*/
+    static Punctuation = enum { WindowMarker, FinalMarker };
+
+/**
+* `CongestionPolicy` is used for the config `threadedPort` clause.
+* It specifies what action to take when a `threadedPort` queue is full.
+*
+* * `Wait`: Wait until the queue has room for a tuple.
+* * `DropFirst`: Remove the earliest tuple on the queue before adding the new tuple to the end.
+* * `DropLast`: Discard the current tuple. Do not put it on the queue.
+*
+* Example Use:
+*
+*       config threadedPort : queue(P1, Sys.Wait, 10), queue(P2, Sys.DropFirst);
+*
+*/
+    static CongestionPolicy = enum { Wait, DropFirst, DropLast };
+
+/**
+* `tm` is used for the `time` and `gmtime` built-in functions.
+* The attributes in the mutable parameter of type tm are set to the corresponding fields from the input timestamp.
+*
+* Example Use:
+*
+*       mutable Sys.tm t = ;
+*       time (timeStampExpn, t);
+*       if (t.mon == 0) { }
+*
+*/
+    static tm = int32 sec, int32 min, int32 hour, int32 mday, int32 mon, int32 year, int32 wday,
+                int32 yday, int32 isdst, int32 gmtoff, rstring zone;
+
+/**
+* This enum is used when input port metrics are accessed.
+*
+* * `nTuplesProcessed`: The number of tuples processed by the input port.
+* * `nTuplesDropped`: The number of tuples dropped by the threaded input port.
+* * `nTuplesQueued`: The number of tuples queued in the threaded input port.
+* * `nWindowPunctsProcessed`: The number of window punctuations processed by the input port.
+* * `nFinalPunctsProcessed`: The number of final punctuations processed by the input port.
+* * `nWindowPunctsQueued`: The number of window punctuations queued by the threaded port.
+* * `nFinalPunctsQueued`: The number of final punctuations queued by the threaded port.
+* * `queueSize`: The size of the threaded port queue.
+* * `maxItemsQueued`: The largest number of items queued by the threaded port.
+* * `recentMaxItemsQueued`: The recent largest number of items queued by the threaded port.
+* * `recentMaxItemsQueuedInterval`: The interval in milliseconds used to determine the recent largest number of items queued by the threaded port.
+* * `nEnqueueWaits`: The number of waits due to a full queue for the threaded port.
+*
+* Example Use:
+*
+*      getInputPortMetricValue(0u, Sys.nTuplesProcessed, value);
+*
+*/
+    static OperatorInputPortMetricName = enum { nTuplesProcessed, nTuplesDropped, nTuplesQueued, nWindowPunctsProcessed, nFinalPunctsProcessed, nWindowPunctsQueued, nFinalPunctsQueued, queueSize, maxItemsQueued, recentMaxItemsQueued, recentMaxItemsQueuedInterval, nEnqueueWaits };
+
+/**
+* This enum is used when output port metrics are accessed.
+*
+* * `nTuplesSubmitted`: The number of tuples submitted to the output port.
+* * `nWindowPunctsSubmitted`: The number of window punctuations submitted to the output port.
+* * `nFinalPunctsSubmitted`: The number of final punctuations submitted to the output port.
+*
+* Example Use:
+*
+*      getOutputPortMetricValue(0u, Sys.nTuplesSubmitted, value);
+*
+*/
+    static OperatorOutputPortMetricName = enum { nTuplesSubmitted, nWindowPunctsSubmitted, nFinalPunctsSubmitted };
+
+/**
+* This enum is used when operator system metrics are accessed.
+*
+* * `relativeOperatorCost`: Relative cost of the operator within PE scope.
+*
+* Example Use:
+*
+*      getOperatorMetricValue(Sys.relativeOperatorCost, value);
+*
+*/
+    static OperatorSystemMetricName = enum { relativeOperatorCost };
+
+/**
+* This enum is used to specify the partition eviction policy for a window.
+*
+* * `PartitionAge`: Partitions are evicted based on age.
+* * `PartitionCount`: Partitions are evicted based on the number of partitions.
+* * `TupleCount`: Partitions are evicted based on the number of tuples.
+*
+* Example Use:
+*
+*      window
+*        L : sliding, count(0);
+*        R : sliding, delta(tm, 10ul), partitioned, partitionAge(60.0);
+*
+*/
+    static PartitionEvictionKind = enum
+        {
+            PartitionAge,       /** Partitions are too old */
+            PartitionCount,     /** Too many partitions in the window */
+            TupleCount          /** Too many tuples in the window */
+        };
+
+/**
+* This enum is used to specify the method for evicting a partition from a window.
+*
+* * `LRU`: Discard the least recently used partitions.
+*
+*/
+    static PartitionEvictionSelection = enum
+        {
+            LRU       /** Discard the least recently used partitions */
+        };
+
+/**
+* This tuple type gets connection information for a processing element output port.
+*
+* * `pe`: The PE index for the connection.
+* * `port`: The port index for the connection.
+* * `congestionFactor`: The congestion factor for the connection.
+* * `nTuplesFilteredOut`: The value of the `nTuplesFilteredOut` metric for the connection.
+*
+*/
+    static PEConnection = tuple<int64 pe, int64 port, uint8 congestionFactor,
+                                uint64 nTuplesFilteredOut>;
+
+/**
+* This type is a list of PEConnection tuple types.
+*
+* Example Use:
+*
+*      mutable Sys.PEConnections con;
+*      int32 res = getPEOutputPortConnections (0u, con);
+*
+*/
+    static PEConnections = list<PEConnection>;
+
+/**
+ * This is the resolution of the event time of an event-time window.
+ */
+    static Resolution = enum { Milliseconds, Microseconds, Nanoseconds };
+
+/**
+ * The timing of a window pane triggering in relation to the enclosing
+ * operator's watermark that is used for predicting pane completion.
+ * * `paneEarly`: The system has not yet predicted that it has seen all data which may contribute to a pane's window.
+ * * `paneOnComplete`: The system predicts that it has seen all data which may contribute to a pane's window.
+ * * `paneLate`: The system encountered new data for a pane's window after predicting no more could arrive.
+ */
+    static PaneTiming = enum {paneEarly, paneOnComplete, paneLate};
+}
+
+
+/**
+ * Defines a type used to specify the log level for the `appLog` function.
+ */
+public composite Log {
+  type
+
+/**
+* This type, when it is used with the `appLog` function, species the logging level.
+*
+* * `error`: The message always appears in the application log.
+* * `warn`: The message appears if the log level is `warn` or higher.
+* * `info`: The message appears if the log level is `info` or higher.
+*
+* Example Use:
+*
+*     appLog (Log.info, "hi there", "myApp");
+*
+*/
+    static Level = enum { error, warn, info};
+}
+
+/**
+ * Defines a type used to specify the trace level for the `appTrc` function.
+ */
+public composite Trace {
+  type
+
+/**
+* This type, when it is used with the `appTrc` function, specifies the tracing level.
+*
+* * `error`: The message always appears in the trace.
+* * `warn`: The message appears if the trace level is `warn` or higher.
+* * `info`: The message appears if the trace level is `info` or higher.
+* * `debug`: The message appears if the trace level is `debug` or higher.
+* * `trace`: The message appears if the trace level is `trace` or higher.
+*
+* Example Use:
+*
+*     appTrc (Trace.info, "hi there", "myApp");
+*
+*/
+    static Level = enum { error, warn, info, debug, trace};
+}

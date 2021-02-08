@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/toolkitInfo"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:common="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/toolkitInfo"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/common"
+           schemaLocation="commonModel.xsd"/>
+
+<xs:element name="toolkitInfoModel" type="toolkitInfoModelType"/>
+
+<xs:complexType name="toolkitInfoModelType">
+  <xs:sequence>
+    <xs:element name="identity" type="identityType"/>
+    <xs:element name="dependencies" type="dependenciesType"/>
+    <xs:element name="resources" type="resourcesType" minOccurs="0"/>
+    <xs:element name="sabFiles" type="sabFilesType" minOccurs="0"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="identityType">
+  <xs:sequence>
+    <xs:element name="name" type="xs:string"/>
+    <xs:element name="description" type="common:descriptionType"/>
+    <xs:element name="version" type="common:versionType"/>
+    <xs:element name="requiredProductVersion" type="common:versionRangeType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="dependenciesType">
+  <xs:sequence>
+    <xs:element name="toolkit" type="common:toolkitDependencyType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="resourcesType">
+  <xs:sequence>
+    <xs:element name="messageSet" type="messageSetType" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="messageSetType">
+  <xs:sequence>
+     <xs:element name="lang" type="langType" maxOccurs="unbounded"/>
+  </xs:sequence>
+  <xs:attribute name="name" type="xs:token" use="required"/>
+</xs:complexType>
+
+<xs:complexType name="langType">
+  <xs:simpleContent>
+    <xs:extension base="xs:string">
+      <xs:attribute name="default" type="xs:boolean" use="optional"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+
+<xs:complexType name="sabFilesType">
+  <xs:choice minOccurs="0" maxOccurs="unbounded">
+    <xs:element name="include" type="includeType"/>
+    <xs:element name="exclude" type="excludeType"/>
+  </xs:choice>
+</xs:complexType>
+
+<xs:complexType name="includeType">
+  <xs:attribute name="path" type="xs:string" use="required"/>
+  <xs:attribute name="root" type="rootType" use="optional"/>
+</xs:complexType>
+
+<xs:simpleType name="rootType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="toolkitDir"/>
+    <xs:enumeration value="applicationDir"/>
+    <xs:enumeration value="outputDir"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="excludeType">
+  <xs:attribute name="path" type="xs:string" use="required"/>
+</xs:complexType>
+
+</xs:schema>

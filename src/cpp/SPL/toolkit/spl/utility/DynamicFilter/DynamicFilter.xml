@@ -1,0 +1,171 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator
+  operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$DynamicFilter.html">
+The `DynamicFilter` is a version of the `Filter` operator that can decide at run time
+which input tuples are passed through, based on control input it receives.
+
+# Checkpointed data
+
+When the `DynamicFilter` operator is checkpointed, the current set of valid expression to match the input tuples is saved in checkpoint.
+Logic state variables (if present) are also included in checkpoint.
+
+# Behavior in a consistent region
+
+The `DynamicFilter` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+When in a consistent region, the `DynamicFilter` checkpoints and
+resets the current set of valid expression to match the input tuples.
+In a consistent region, the Streams instance automatically checkpoints and resets logic state variables (if there is any).
+
+# Checkpointing behavior in an autonomous region
+
+When the `DynamicFilter` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+
+When the `DynamicFilter` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Such operator driven checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `DynamicFilter` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring key, uint32 age&gt; Data = Beacon () {}
+        stream&lt;uint32 age&gt; AddKeys = Beacon () {}
+        stream&lt;uint32 removeKey&gt; RemoveKeys = Beacon () {}
+       // Only pass tuples that match the current key
+        stream&lt;rstring key, uint32 age&gt; Out = DynamicFilter(Data; AddKeys; RemoveKeys)
+        {
+          param
+            key       : Data.age;  // key expression to be used for for matches
+            addKey    : AddKeys.age - 1u; // value to be add to valid keys
+            removeKey : removeKey + 1u;   // value to be removed from valid keys
+        }
+    }
+
+</description>
+      <iconUri size="16">dynamicFilter_16.gif</iconUri>
+      <iconUri size="32">dynamicFilter_32.gif</iconUri>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="DynamicFilter">
+          <description>Basic DynamicFilter template</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = DynamicFilter(${inputStream1};${inputStream2})   {
+            param
+                key: ${keyExpression};
+                addKey: ${addKeyExpression};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>key</name>
+        <description>
+Specifies a list of expressions that are used to determine the key on the input tuple.</description>
+        <optional>false</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <portScope><port>0</port></portScope>
+      </parameter>
+      <parameter>
+        <name>addKey</name>
+        <description>
+Specifies a list of expressions that are used to used to add keys to the set of valid keys.
+The number and types of the **addKey** expressions must match those specified in the **key** parameter.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <portScope><port>1</port></portScope>
+      </parameter>
+      <parameter>
+        <name>removeKey</name>
+        <description>
+Specifies a list of expressions that are used to remove keys from the set of valid keys.
+This parameter cannot be specified when the operator is not configured with three input ports.
+Otherwise, it must be specified.
+
+The number and types of the **removeKey** expressions must match those specified in the **key** parameter.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <portScope><port>2</port></portScope>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `DynamicFilter` operator has three input ports. The first port is the stream of tuples to be filtered.
+The tuples on the first port are passed through the `DynamicFilter` if their key matches a valid key within the operator.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+      <inputPortSet>
+        <description>
+The second port is a stream of tuples that contain expressions to be added to the valid keys in the `DynamicFilter` operator.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+      <inputPortSet>
+        <description>
+The third port is a stream of tuples that contain expressions to be removed from the valid keys in the `DynamicFilter` operator.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>true</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `DynamicFilter` operator has one or two output ports, which produce tuples that match the filter list.
+Tuples from the first input stream that contain valid keys are submitted to the first output port.
+The schemas of the output ports must match the schema of the first input port.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <windowPunctuationInputPort>0</windowPunctuationInputPort>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+      <outputPortSet>
+        <description>
+If present, this output port contains the tuples that do not contain a valid key.
+The schemas of the output ports must match the schema of the first input port.
+</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <windowPunctuationInputPort>0</windowPunctuationInputPort>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>true</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

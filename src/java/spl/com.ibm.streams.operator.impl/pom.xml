@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <name>Streams Java Operator Implementation</name>
+
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <organization>
+    <name>IBM Corporation</name>
+    <url>http://www.ibm.com</url>
+  </organization>
+
+  <parent>
+    <groupId>com.ibm.streams</groupId>
+    <artifactId>streams</artifactId>
+    <version>${revision}</version>
+    <relativePath>../../../..</relativePath>
+  </parent>
+  <artifactId>streams.operator.internal</artifactId>
+  <version>${revision}</version>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>javax.xml.bind</groupId>
+      <artifactId>jaxb-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.ibm.streams</groupId>
+      <artifactId>streams.base</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.ibm.streams</groupId>
+      <artifactId>streams.spl.messages</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.ibm.streams</groupId>
+      <artifactId>streams.operator</artifactId>
+      <version>${project.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-math</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <directory>${target.directory}</directory>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.1.0</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <addClasspath>true</addClasspath>
+              <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+    <resources>
+      <resource>
+        <directory>
+          src/main/resources
+        </directory>
+      </resource>
+      <resource>
+        <directory>src</directory>
+        <includes>
+          <include>com/ibm/streams/operator/internal/logtrace/log4j/log4j.properties</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>${project.basedir}/../../schema/SPL</directory>
+        <targetPath>com/ibm/streams/operator/internal/schema</targetPath>
+        <includes>
+          <include>tupleTypeModel.xsd</include>
+        </includes>
+      </resource>
+    </resources>
+  </build>
+
+</project>

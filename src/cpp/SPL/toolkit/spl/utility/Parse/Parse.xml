@@ -1,0 +1,409 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Parse.html">
+The `Parse` operator is similar to the `FileSource`, `TCPSource`, and `UDPSource` operators,
+in that it transforms input data in a raw form into well-structured SPL tuples.
+The difference is that unlike source adapters, the Parse operator is not tied to a particular external resource.
+Instead, it can be used inside an SPL application on data that came from any external source.
+
+The `Parse` operator accepts data in many formats (such as line or bin), therefore the data is passed in using a blob attribute.
+The `Parse` operator generates the SPL tuples corresponding to the input format.
+
+# Checkpointed data
+
+When the `Parse` operator is checkpointed in a consistent region, any partially parsed input data and logic state variables (if present) are saved in checkpoint.
+When the `Parse` operator is checkpointed in an autonomous region, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Parse` operator can be used in a consistent region, but not as a start operator.
+When a region is drained, the `Parse` operator reads as much of its input as it can produce output tuples from,
+but there might be some residual data that is not sufficient to produce an output tuple.
+This residual data, if any, is stored in the checkpoint.
+On reset, the `Parse` operator clears any input data it has,
+reads the residual data from the checkpoint, and adds that as the start of its read buffer.
+Logic state variables (if present) are also automatically checkpointed and reset.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Parse` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its internal state to its initial state, and restores logic state variables (if present) from the last checkpoint.
+
+When the `Parse` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Exceptions
+
+If there are errors while extracting tuples from the input data,
+the `Parse` operator generates a tracing message or throws an exception.
+You can use the **parsing** parameter to control this behavior.
+
++ Examples
+
+These examples use the `Parse` operator.
+
+# Application with the blob type and block format that calls the Parse operator
+
+The following application reads the blob type from a file by using the block format
+then calls the `Parse` operator to convert the data to tuples.
+Any operator that produces tuples with data in a blob type attribute can be used to feed `Parse`.
+
+    composite Main {
+      graph
+        stream&lt;blob b&gt; A = FileSource() {
+          param file      : "in";
+                format    : block;
+                blockSize : 1024u;
+        }
+
+        stream&lt;rstring s, float64 d, rstring q&gt; B = Parse (A) {
+          param format : txt;
+        }
+    }
+
+    () as Nul = FileSink (B) {
+          param file   : "out.normal";
+                format : txt;
+    }
+
+# Application with the blob type and line format that calls the Parse operator
+
+The following example shows the distinction between binary encoding and the binary format.
+
+In ASCII encoding, the A character is represented as 65, the at symbol, \@, is represented as 64,
+and the control character for the line feed format is represented as 10.
+The application encodes the line format in a binary form.
+So while the application is encoded in binary, that encoding is different from the bin format.
+
+    composite Main {
+        graph
+            stream&lt;blob msg&gt;  Raw = Beacon() {
+               param iterations: 10u;
+               output Raw: msg=(blob)[65ub, 64ub, 10ub];
+           }
+
+            stream&lt;rstring msg&gt;  Parsed = Parse(Raw) {
+               param format: line;
+           }
+
+           () as Writer = FileSink(Parsed) {
+               param file: "output.txt";
+           }
+       }
+
+That application outputs the following data:
+
+    "A@"
+    "A@"
+    "A@"
+    "A@"
+    "A@"
+    "A@"
+    "A@"
+    "A@"
+    "A@"
+    "A@"
+
+# Application with the blob type and line format that calls the Format operator
+
+By default the `Format` operator writes in the bin format,
+so the `Parse` operator on the other side must also read in the bin format.
+The `FileSource` and `FileSink` formats must match each other as well.
+
+The following `Format` application produces output for a `Parse` application:
+
+    composite FormatTest {
+         graph
+           stream&lt;rstring s, float64 d, rstring q&gt; A = Beacon() {
+              param iterations: 100u;
+              output A: s="hi", q="ho", d=(float64)IterationCount();
+            }
+
+            stream&lt;blob b, rstring inputData&gt; B = Format(A) {
+               param suppress: s;
+               output B: b=Output(), inputData=s;
+            }
+
+            stream&lt;blob b&gt;  JustBlob = Functor(B) {
+              output JustBlob: b=b;
+            }
+
+            () as Nul = FileSink(JustBlob){
+               param file: "out";
+                   format: txt;
+            }
+    }
+
+The following application is the `Parse` application that consumes the output of the `Format` application:
+
+    composite ParseTest {
+         graph
+             stream&lt;blob b&gt; Raw = FileSource() {
+                   param file: "out";
+                         format: txt;
+            }
+             stream&lt;float64 d, rstring q&gt; Recovered = Parse(Raw) {}
+
+             () as Sink = FileSink(Recovered){
+                param file: "recovered.txt";
+                      format: txt;
+            }
+    }
+
+The last 10 lines of the `recovered.txt` file, which is produced by the `ParseTest` application, shows:
+
+    {d=90,q="ho"}
+    {d=91,q="ho"}
+    {d=92,q="ho"}
+    {d=93,q="ho"}
+    {d=94,q="ho"}
+    {d=95,q="ho"}
+    {d=96,q="ho"}
+    {d=97,q="ho"}
+    {d=98,q="ho"}
+    {d=99,q="ho"}
+
+</description>
+      <iconUri size="16">parse_16.gif</iconUri>
+      <iconUri size="32">parse_32.gif</iconUri>
+      <metrics>
+        <metric>
+          <name>nInvalidTuples</name>
+          <description>The number of tuples that failed to read correctly in csv or txt format.</description>
+          <kind>Counter</kind>
+        </metric>
+      </metrics>
+      <customLiterals>
+        <enumeration>
+          <name>DataFormat</name>
+          <value>csv</value>
+          <value>txt</value>
+          <value>bin</value>
+          <value>block</value>
+          <value>line</value>
+        </enumeration>
+        <enumeration>
+          <name>ParseOption</name>
+          <value>strict</value>
+          <value>permissive</value>
+          <value>fast</value>
+        </enumeration>
+      </customLiterals>
+      <customOutputFunctions>
+        <customOutputFunction>
+          <name>OutputFunctions</name>
+          <function>
+            <description>Tuple number generated in this file</description>
+            <prototype><![CDATA[int64 TupleNumber()]]></prototype>
+          </function>
+          <function>
+            <description>Return the input value</description>
+            <prototype><![CDATA[<any T> T AsIs(T)]]></prototype>
+          </function>
+        </customOutputFunction>
+      </customOutputFunctions>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Parse">
+          <description>Basic Parse template</description>
+          <template>stream&lt;${streamType}&gt; ${streamName} = Parse(${inputSchema}) {
+            param
+                format : "${format}";
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>format</name>
+        <description>
+Specifies the format of the data.
+For more information, see the **format** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>DataFormat</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>defaultTuple</name>
+        <description>
+Specifies the default tuple to use for missing fields.
+For more information, see the **defaultTuple** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>parsing</name>
+        <description>
+Specifies the parsing mode.
+For more information, see the **parsing** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>ParseOption</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>hasDelayField</name>
+        <description>
+Specifies whether the format contains inter-arrival delays as the first field.
+For more information, see the **hasDelayField** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>eolMarker</name>
+        <description>
+Specifies the end of line marker.
+For more information, see the **eolMarker** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>blockSize</name>
+        <description>
+Specifies the block size for the block format.
+For more information, see the **blockSize** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>separator</name>
+        <description>
+Specifies the separator character for the csv format.
+For more information, see the **separator** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>hasHeaderLine</name>
+        <description>
+Specifies to ignore the first line or lines of the file in CSV format.
+For more information, see the **hasHeaderLine** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>readPunctuations</name>
+        <description>
+Specifies whether to read punctuations from bin format input.
+For more information, see the **readPunctuations** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>ignoreExtraCSVValues</name>
+        <description>
+Specifies whether to skip any extra fields before end of line when reading in CSV format.
+For more information, see the **ignoreExtraCSVValues** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>parseInput</name>
+        <description>
+Specifies which input attribute is parsed.
+
+If this parameter is not specified, the input stream must contain only one attribute of type blob.
+
+**Note**: Because this parameter must be of type blob, the data is binary
+in the sense that it is written as a sequence of bytes to a blob data type.
+However, that binary data can represent different formats, such as txt, line, or bin.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <type>blob</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Parse` operator is configurable with a single input port, which ingests tuples that contain data to be parsed into tuples.</description>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Parse` operator is configurable with a single output port, which produces tuples that are parsed from the input data.
+
+If the **format** parameter value is `bin` and the the **readPunctuations** parameter value is `true`,
+then a window punctuation and final punctuation is generated based on the input data in the blob.
+Otherwise, a window punctuation and a final punctuation are generated when a final punctuation is received.
+
+The output stream from the `Parse` operator must meet all the requirements of the first output stream of the `FileSource` operator,
+with respect to the **format** parameter.
+For example, if the format is block, then the output stream must have exactly one attribute of type blob that is not set in an output clause.
+</description>
+        <expressionMode>AttributeFree</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <outputFunctions>
+          <default>AsIs</default>
+          <type>OutputFunctions</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns="http://www.ibm.com/xmlns/prod/streams/api/state"
+            targetNamespace="http://www.ibm.com/xmlns/prod/streams/api/state"
+            elementFormDefault="qualified"
+            attributeFormDefault="unqualified">
+
+<!-- This schema provides the definition of the metric information
+     available for artifacts in a Streams instance. -->
+
+<xsd:include schemaLocation="streamsTypes.xsd"/>
+
+<!-- metricType -->
+<xsd:complexType name="metricType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This provides a metric that is associated with a Streams object. Each
+      metric has the following information:
+
+      name               - The name of the metric.
+      metricValue        - The value of the metric. The metricValue element
+                           contains an xsi:type attribute that defines
+                           the type of the metric value. All metrics of type
+                           streams:longType, which represents a signed long data type.
+                           This data type is equivalent to an int64 in SPL.
+                           The metricValue element also contains a value attribute that
+                           contains the actual value of the metric.
+      lastChangeObserved - The last time the metric was changed by the host controller
+                           service. The time is represented in seconds since the epoch.
+      userDefined        - An indication of whether the metric is defined by
+                           an operator. If false, the metric is managed by IBM Streams.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:choice>
+     <xsd:element name="metricValue" type="baseType" minOccurs="1" maxOccurs="1"/>
+  </xsd:choice>
+  <xsd:attribute name="name" type="xsd:string" use="required"/>
+  <xsd:attribute name="lastChangeObserved" type="timeInSeconds" use="required"/>
+  <xsd:attribute name="userDefined" type="xsd:boolean" default="false"/>
+</xsd:complexType>
+
+</xsd:schema>

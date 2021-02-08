@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<wireformat
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/wireFormatType"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:tt="http://www.ibm.com/xmlns/prod/streams/spl/tupleType"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/wireFormatType
+  http://www.ibm.com/xmlns/prod/streams/endpoint/wireFormatModel.xsd"
+  format="streams_bin" encoding="fred" compression="gzip" includesPunctuations="true" hasDelay="false">
+    <schema>
+      <tt:attr name="a" type="int32"/>
+      <tt:attr name="b">
+        <tt:tuple>
+          <tt:attr name="x" type="rstring"/>
+          <tt:attr name="c">
+            <tt:list elementType="int32"/>
+          </tt:attr>
+          <tt:attr name="d">
+            <tt:list>
+              <tt:tuple>
+                <tt:attr name="x" type="rstring[10]"/>
+              </tt:tuple>
+            </tt:list>
+          </tt:attr>
+          <tt:attr name="m">
+            <tt:map valueType="rstring" bound="100">
+              <tt:key>
+                <tt:list elementType="int64"/>
+              </tt:key>
+            </tt:map>
+          </tt:attr>
+        </tt:tuple>
+      </tt:attr>
+    </schema>
+  </wireformat>

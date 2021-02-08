@@ -1,0 +1,65 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <SPL/Runtime/Utility/Mutex.h>
+<%
+   use BeaconCommon;
+   BeaconCommon::verify($model);
+   my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+   my $triggerCount = $model->getParameterByName("triggerCount");
+   my @includes;
+   push @includes, "#include <SPL/Runtime/Operator/State/StateHandler.h>";
+   if ($isInConsistentRegion) {
+       push @includes, "#include <SPL/Runtime/Operator/State/ConsistentRegionContext.h>";
+   }
+   my $outputPort = $model->getOutputPortAt(0);
+   my $tupleType = $outputPort->getCppTupleType();
+   SPL::CodeGen::headerPrologue($model,\@includes);
+%>
+
+
+class MY_OPERATOR : public MY_BASE_OPERATOR
+  , public StateHandler
+{
+public:
+   MY_OPERATOR();
+
+   void allPortsReady();
+   void process(uint32_t index);
+   virtual void getCheckpoint(NetworkByteBuffer & opstate);
+   virtual void restoreCheckpoint(NetworkByteBuffer & opstate);
+
+   virtual void checkpoint(Checkpoint & ckpt);
+   virtual void reset(Checkpoint & ckpt);
+   virtual void resetToInitialState();
+
+private:
+   <%=$tupleType%> _tuple;
+   SPL::uint32 _iters;
+   Mutex _mutex;
+   uint64_t _iterationCount;
+   uint64_t IterationCount() const { return _iterationCount;}
+
+   <%if ($isInConsistentRegion) {%>
+       <%if ($triggerCount) {%>
+          uint32_t _triggerCount;
+       <%}%>
+       bool _sentWatermark;
+       ConsistentRegionContext *_crContext;
+   <%}%>
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

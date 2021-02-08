@@ -1,0 +1,81 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use FindBin;
+use lib "${FindBin::Bin}";
+use lib "${FindBin::Bin}/../..";
+use lib "${FindBin::Bin}/../../../bin";
+use Getopt::Long qw(:config no_ignore_case bundling);
+use SPL::Msg;
+use File::Basename;
+use SPL::Helper;
+use SPL::CodeGen;
+use SPL::CodeGenHelper;
+use Cwd 'realpath';
+use File::Basename;
+use SPL::Operator::Instance::OperatorInstance;
+use SPL::Operator::Instance::Context;
+use SPL::Operator::Instance::Expression;
+use SPL::Operator::Instance::InputAttribute;
+use SPL::Operator::Instance::InputPort;
+use SPL::Operator::Instance::OutputAttribute;
+use SPL::Operator::Instance::OutputPort;
+use SPL::Operator::Instance::Parameter;
+use SPL::Operator::Instance::StateVariable;
+use SPL::Operator::Instance::Window;
+use sigtrap qw{handler cleanup normal-signals error-signals};
+
+use XML::Simple;
+$XML::Simple::PREFERRED_PARSER = "XML::Parser";
+
+my $rc = 0;
+
+# Parse the options
+my %opts=();
+my @options = ('help|h', 'verifier|v=s',
+               'model|x=s');
+SPLGetOptionsLong(\&SPL::Msg::SVG_USAGE, \%opts, @options);
+($opts{verifier} ne "" && $opts{model} ne "") or SPLUsage(\&SPL::Msg::SVG_USAGE, 1);
+
+# The v option is the fully qualified name (without the .pm) of the verifier
+require "$opts{verifier}" . ".pm";
+
+$SIG{__DIE__}  = \&cleanup;
+
+# Disable interrupts while we generate code
+SPL::CodeGenHelper::disableInterruptRequests(\$rc);
+
+# The verify method is declared in the main namespace so we don't need to qualify it.
+my $model = SPL::Operator::Instance::OperatorInstance->new($opts{model});
+$SPL::CodeGenHelper::verboseMode = $model->getContext()->isVerboseModeOn();
+verify($model);
+
+# Restore interrupts
+SPL::CodeGenHelper::enableInterruptRequests();
+
+exit $SPL::CodeGen::USER_ERROR if ($SPL::CodeGen::sawError);
+
+# A return code of 2 indicates an interrupt was caught
+exit $rc;
+
+sub cleanup
+{
+    print STDERR @_;
+    exit 1;
+}

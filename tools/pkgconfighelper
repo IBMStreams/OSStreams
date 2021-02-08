@@ -1,0 +1,85 @@
+#!/bin/sh
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+if [ -z $1 ]; then
+    echo "Must specify a filename."
+    exit 1
+fi
+
+filename=$1
+filenamebase=`basename $filename`
+at=$2
+disablenewdtags=$3
+mv=$4
+mr=$5
+mm=$6
+mf=$7
+
+# dst-spl-pe-install-ext
+
+if [ "$filenamebase" = "dst-spl-pe-install-ext.pc.tmpl" ]; then
+
+    libopts=""
+    cflagopts="-I/usr/local/include/decNumber++"
+    libopts="-ldecNumber++"
+
+    if [ "$disablenewdtags" = "true" ]; then
+        cflagopts="$cflagopts -Wl,--disable-new-dtags"
+    fi
+
+cat > $filename.tmp << EOF
+prefix=\${distinst}
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/ext/lib
+
+Name: spl-pe-install-ext
+Version: 1
+Description: necessary packages for PE-building (using installation)
+Libs: -L\${libdir} $libopts
+Cflags: -isystem\${prefix}/ext/include $cflagopts
+EOF
+
+mv -f $filename.tmp $filename
+
+fi
+
+# dst-spl-pe-install
+
+if [ "$filenamebase" = "dst-spl-pe-install.pc.tmpl" ]; then
+
+    libopts="-rdynamic"
+    cflagopts="-D_REENTRANT -fPIC -D_IBM_STREAMS_VER_=$mv -D_IBM_STREAMS_REL_=$mr -D_IBM_STREAMS_MOD_=$mm -D_IBM_STREAMS_FIX_=$mf"
+
+    if [ "$disablenewdtags" = "true" ]; then
+        cflagopts="$cflagopts -Wl,--disable-new-dtags"
+    fi
+
+cat > $filename.tmp << EOF
+prefix=\${distinst}
+
+Name: spl-pe-install
+Version: 1
+Description: necessary packages for PE-building (using installation)
+Libs: $libopts
+Cflags: $cflagopts
+Requires: dst-spl-pe-install-core dst-spl-pe-install-ext
+EOF
+
+mv -f $filename.tmp $filename
+
+fi

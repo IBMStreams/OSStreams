@@ -1,0 +1,62 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use KeyedJoinCommon;
+    KeyedJoinCommon::verify($model);
+
+    my $replacementKey1 = $model->getParameterByName("ReplacementKey1");
+    my @rkeys1 = SPL::CodeGen::getParameterCppTypes($replacementKey1);
+    my $rkey1CppType = SPL::CodeGen::emitClass($model, 'RType1', @rkeys1);
+    my $replacementKey2 = $model->getParameterByName("ReplacementKey2");
+    my @rkeys2 = SPL::CodeGen::getParameterCppTypes($replacementKey2);
+    my $rkey2CppType = SPL::CodeGen::emitClass($model, 'RType2', @rkeys2);
+
+    my $eqCond1 = $model->getParameterByName("EqualityCondition1");
+    my @ekeys1 = SPL::CodeGen::getParameterCppTypes($eqCond1);
+    my $ekey1CppType = SPL::CodeGen::emitClass($model, 'MType1', @ekeys1);
+
+
+SPL::CodeGen::headerPrologue($model);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR
+{
+public:
+    MY_OPERATOR();
+    ~MY_OPERATOR();
+
+    void process(Tuple const & tuple, uint32_t port);
+private:
+    Mutex _mutex;
+    typedef <%=$rkey1CppType%> Replacement1KeyType;
+    typedef <%=$rkey2CppType%> Replacement2KeyType;
+    typedef <%=$ekey1CppType%> MatchKeyType;
+
+    typedef std::tr1::unordered_map<Replacement1KeyType, IPort0Type*> Replacement1Table;
+    typedef std::tr1::unordered_map<Replacement2KeyType, IPort1Type*> Replacement2Table;
+
+    Replacement1Table _replacement1Table;
+    Replacement2Table _replacement2Table;
+
+    typedef std::tr1::unordered_map<MatchKeyType, std::tr1::unordered_set<Replacement1KeyType>*> Match1Index;
+    typedef std::tr1::unordered_map<MatchKeyType, std::tr1::unordered_set<Replacement2KeyType>*> Match2Index;
+
+    Match1Index _match1Index;
+    Match2Index _match2Index;
+
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

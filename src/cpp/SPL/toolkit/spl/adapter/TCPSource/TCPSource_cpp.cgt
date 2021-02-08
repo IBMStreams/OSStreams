@@ -1,0 +1,350 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    unshift @INC, dirname($model->getContext()->getOperatorDirectory()) . "/Common";
+    require AdapterHelper;
+    use TCPSourceCommon;
+    TCPSourceCommon::verify($model);
+    AdapterHelper::verifySecureModel($model);
+    my $format = $model->getParameterByName("format");
+    my $hasDelayField = $model->getParameterByName("hasDelayField");
+    my $parsing = $model->getParameterByName("parsing");
+    my $eolMarker = $model->getParameterByName("eolMarker");
+    my $blockSize = $model->getParameterByName("blockSize");
+    my $compression = $model->getParameterByName("compression");
+    my $outputPort = $model->getOutputPortAt(0);
+    my $tupleType = $outputPort->getCppTupleType();
+    my $address = $model->getParameterByName("address");
+    my $port = $model->getParameterByName("port");
+    my $name = $model->getParameterByName("name");
+    my $interface = $model->getParameterByName("interface");
+    my $role = $model->getParameterByName("role");
+    my $encoding = $model->getParameterByName("encoding");
+    my $receiveBufferSize = $model->getParameterByName("receiveBufferSize");
+    my $reconnectionBound = $model->getParameterByName("reconnectionBound");
+    my $reconnectionPolicy = $model->getParameterByName("reconnectionPolicy");
+    my $initDelay = $model->getParameterByName("initDelay");
+    my $separator = $model->getParameterByName("separator");
+    my $defaultTuple = $model->getParameterByName("defaultTuple");
+    my $readPunctuations = $model->getParameterByName("readPunctuations");
+    my $ignoreExtraCSVValues = $model->getParameterByName("ignoreExtraCSVValues");
+    my $confirmWireFormat = $model->getParameterByName("confirmWireFormat");
+    my $keepAlive = $model->getParameterByName("keepAlive");
+    my $sslConfigName = $model->getParameterByName("sslConfigName");
+    my $sslProtocol = $model->getParameterByName("sslProtocol");
+    my $sslCertificateFile = $model->getParameterByName("sslCertificateFile");
+    my $password = $model->getParameterByName("password");
+    my $sslCAFile = $model->getParameterByName("sslCertificateAuthorityFile");
+    my $sslAuthenticateClient = $model->getParameterByName("sslAuthenticateClient");
+    my $sslCipherSuites = $model->getParameterByName("sslCipherSuites");
+
+    # Apply defaults
+    $format = $format ? $format->getValueAt(0)->getSPLExpression() : "csv";
+    my ($eolChar1, $eolChar2) = ('\n', undef);
+    ($eolChar1, $eolChar2) = AdapterHelper::extractEolChars ($eolMarker) if $eolMarker;
+    $readPunctuations = $readPunctuations ? $readPunctuations->getValueAt(0)->getSPLExpression() eq "true" : 0;
+
+    $hasDelayField = $hasDelayField ? $hasDelayField->getValueAt(0)->getCppExpression() eq "true" : 0;
+    $parsing = $parsing ? $parsing->getValueAt(0)->getSPLExpression() : "strict";
+    $ignoreExtraCSVValues = $ignoreExtraCSVValues ? $ignoreExtraCSVValues->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    $confirmWireFormat = $confirmWireFormat ? $confirmWireFormat->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    $keepAlive = $keepAlive ? $keepAlive->getValueAt(0)->getCppExpression() : "";
+
+    my $sslEnabled = defined $sslConfigName || defined $sslProtocol;
+    my $sslProtocol = $sslProtocol ? $sslProtocol->getValueAt(0)->getCppExpression() : '"none"';
+    my $sslConfigName = $sslConfigName ? $sslConfigName->getValueAt(0)->getCppExpression() : '""';
+    my $sslCertificateFile = $sslCertificateFile ? $sslCertificateFile->getValueAt(0)->getCppExpression() : '""';
+    my $password = $password ? $password->getValueAt(0)->getCppExpression() : '""';
+    my $sslCAFile = $sslCAFile ? $sslCAFile->getValueAt(0)->getCppExpression() : '""';
+    my $sslAuthenticateClient = $sslAuthenticateClient ? '"' . $sslAuthenticateClient->getValueAt(0)->getSPLExpression() . '"' : '"request"';
+    my $sslCipherSuites = $sslCipherSuites ? $sslCipherSuites->getValueAt(0)->getCppExpression() : '"HIGH:!aNULL:!PSK:!SRP:!MD5:!RC4:!3DES"';
+
+    # other corrections
+    $blockSize = $blockSize->getValueAt(0)->getCppExpression() if $blockSize;
+    $compression = $compression->getValueAt(0)->getSPLExpression() if $compression;
+    $receiveBufferSize = $receiveBufferSize->getValueAt(0)->getCppExpression() if $receiveBufferSize;
+    $name = $name->getValueAt(0)->getCppExpression() if $name;
+    $interface = $interface->getValueAt(0)->getCppExpression() if $interface;
+    $address = $address->getValueAt(0)->getCppExpression() if $address;
+    $port = $port ? $port->getValueAt(0)->getCppExpression() : "0";
+    $role = $role->getValueAt(0)->getSPLExpression();
+    $encoding = $encoding->getValueAt(0)->getCppExpression() if $encoding;
+    $initDelay = $initDelay->getValueAt(0)->getCppExpression() if defined $initDelay;
+    $reconnectionBound = $reconnectionBound->getValueAt(0)->getCppExpression() if $reconnectionBound;
+    $reconnectionPolicy = $reconnectionPolicy ? $reconnectionPolicy->getValueAt(0)->getSPLExpression() : "InfiniteRetry";
+    my $binary = $format eq "bin" || $format eq "block";
+    my $defaultTuple = $defaultTuple->getValueAt(0)->getCppExpression() if ($defaultTuple);
+
+    # compute which attributes we will generate
+    my $numAttrs = $outputPort->getNumberOfAttributes();
+    my $hasAssignments = 0;
+    my @genAttrs;
+    my $needsExtendedConnector = $confirmWireFormat;
+    for (my $i = 0; $i < $numAttrs; $i++) {
+        my $attr = $outputPort->getAttributeAt($i);
+        if ($attr->hasAssignment()) {
+            $hasAssignments = 1;
+            if ($attr->hasAssignmentWithOutputFunction()) {
+                my $cofName = $attr->getAssignmentOutputFunctionName();
+
+                if ($cofName eq "RemoteIP" || $cofName eq "RemotePort" || $cofName eq "LocalPort") {
+                    $needsExtendedConnector = 1;
+                } elsif ($cofName eq "ServerPort") {
+                    $needsExtendedConnector = 1;
+                    SPL::CodeGen::exitln(SPL::Msg::STDTK_SOURCE_BAD_SERVER_PORT(),
+                                       $attr->getAssignmentSourceLocation())
+                        if $role eq "client";
+                }
+            }
+            next;
+        }
+        push @genAttrs, $attr;
+    }
+
+    # this is how many are left
+    $numAttrs = scalar(@genAttrs);
+
+    my $roleClass;
+    if ($role eq "client") {
+        $roleClass = "Client";
+    } else {
+        $roleClass = "Server";
+    }
+    my $connectorType;
+    my $connectorBaseType;
+    if ($sslEnabled) {
+        $connectorType = "MY_OPERATOR::SecureTCP" . $roleClass;
+        $connectorBaseType = "SPL::TCP" . $roleClass;
+        $connectorBaseType .= "Extended" if $needsExtendedConnector;
+    } else {
+        $connectorType = "SPL::TCP" . $roleClass;
+        $connectorType .= "Extended" if $needsExtendedConnector;
+    }
+
+    # consistent region support requires tell and seek on the
+    # input stream, which is not available in this operator.
+    my $generateConsistentRegionSupport = 0;
+    my $needsCRPermit = 0;
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fstream>
+<%if ($compression) {%>
+    #include <boost/iostreams/filter/<%=$compression%>.hpp>
+<%}%>
+<%if ($encoding) {%>
+    #include <SPL/Toolkit/ToUTF8.h>
+<%}%>
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
+<%print "#include <SPL/Runtime/Serialization/StreamByteBuffer.h>" if ($binary);%>
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Toolkit/IOHelper.h>
+#include <SPL/Toolkit/RuntimeException.h>
+#include <SPL/Runtime/Operator/OperatorMetrics.h>
+
+using namespace std;
+using namespace boost::iostreams;
+
+@include "../Common/GenerateSourceReadLoopErrorChecks.cgt"
+
+<%if ($sslEnabled) {%>
+    @include "../Common/SecureConnectionImpl.cgt"
+<%}%>
+
+MY_OPERATOR::MY_OPERATOR()
+    : MY_BASE_OPERATOR(), _fd(0), _tupleNumber(0),
+        <%if (defined $reconnectionBound) {%>
+           _reconnectsLeft (<%=$reconnectionBound%>),
+        <%}%>
+        <%if (defined $defaultTuple) {%>
+           _defaultTuple (<%=$defaultTuple%>),
+        <%}%>
+        <%if ($encoding) {%>
+           _encoding(<%=$encoding%>),
+        <%}%>
+        <%if ($readPunctuations) {%>
+           _sawFinal(false),
+        <%}%>
+        _numInvalidTuples( getContext().getMetrics().getCustomMetricByName("nInvalidTuples")),
+        _numReconnects(getContext().getMetrics().getCustomMetricByName("nReconnections")),
+        _numConnections(getContext().getMetrics().getCustomMetricByName("nConnections")),
+        _numWireFormatHandshakesFailed(getContext().getMetrics().getCustomMetricByName("nConfirmWireFormatFailures"))
+{
+    _numInvalidTuples.setValueNoLock(0);
+    _numReconnects.setValueNoLock(0);
+    _numConnections.setValueNoLock(0);
+    _numWireFormatHandshakesFailed.setValueNoLock(0);
+}
+
+
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads (1);
+}
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    if (_fd) {
+        // This won't clean up nicely for SSL
+        shutdown (_fd, SHUT_RDWR);
+        _fd = 0;
+    }
+}
+
+void MY_OPERATOR::process(uint32_t)
+{
+    SPLAPPTRC(L_DEBUG, "TCPSource startup...", SPL_OPER_DBG);
+    <%=$tupleType%> tuple$;
+    <%print "double delay;" if $hasDelayField;%>
+    <%if ($initDelay) {%>
+        getPE().blockUntilShutdownRequest(<%=$initDelay%>);
+    <%}%>
+    try {
+        <%if ($sslEnabled) {%>
+            std::auto_ptr<<%=$connectorType%>> pconn;
+            pconn.reset(<%=$connectorType%>::createSecureConnection(getPE(),
+                    <%=$sslConfigName%>, <%=$sslProtocol%>,
+                    <%=$sslCertificateFile%>, <%=$password%>,
+                    <%=$sslCAFile%>, <%=$sslAuthenticateClient%>,
+                    <%=$sslCipherSuites%>));
+            <%=$connectorType%> & conn (*pconn.get());
+        <%} else {%>
+            <%=$connectorType%> conn (getPE());
+        <%}%>
+        <%if ($receiveBufferSize) {%>
+            conn.setReceiveBufferSize(<%=$receiveBufferSize%>);
+        <%}%>
+        <%if ($confirmWireFormat) {
+            my $comp = $compression ? " compression=\\\"$compression\\\"" : "";
+            my $encoding = $encoding ? " encoding=\\\"\" + _encoding + \"\\\"" : "";
+            my $hasDelay = $hasDelayField ? " hasDelay=\\\"true\\\"" : "";
+            my $includesPunctuations = $format eq 'bin' && $readPunctuations ? " includesPunctuations=\\\"true\\\"" : "";
+            my $tupleSchema = $outputPort->getSchema("schema");
+            $tupleSchema =~ s/"/\\"/g;
+            $tupleSchema =~ s/\n/\\n\\\n/g;
+            my $wireFormat .=
+    "<?xml version=\\\"1.0\\\"?>\\n\\
+    <wireformat\\
+      xmlns=\\\"http://www.ibm.com/xmlns/prod/streams/spl/wireFormatType\\\"\\
+      xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\"\\
+      xmlns:tt=\\\"http://www.ibm.com/xmlns/prod/streams/spl/tupleType\\\"\\
+      xsi:schemaLocation=\\\"http://www.ibm.com/xmlns/prod/streams/spl/wireFormatType\\
+          http://www.ibm.com/xmlns/prod/streams/endpoint/wireFormatModel.xsd\\\"\\
+     format=\\\"streams_$format\\\"$comp$encoding$includesPunctuations$hasDelay>\\n\\
+      $tupleSchema</wireformat>\\n"; %>
+            conn.setWireFormat("<%=$wireFormat%>", _numWireFormatHandshakesFailed);
+        <%}%>
+        <%if ($role eq "client") {%>
+            <%if ($name) {%>
+                conn.setup (<%=$name%>);
+            <%} else {%>
+                conn.setup (<%="$address,$port"%>);
+            <%}%>
+        <%} else {%>
+            <%if ($interface) {%>
+                conn.setInterface (<%=$interface%>);
+            <%}%>
+            <%if ($keepAlive ne "") {%>
+                conn.setKeepAlive(<%=$keepAlive%>.get_time(), <%=$keepAlive%>.get_probes(), <%=$keepAlive%>.get_interval());
+            <%}%>
+            <%if ($name) {%>
+                conn.setup (<%="$name,$port"%>);
+            <%} else {%>
+                conn.setup (<%=$port%>);
+            <%}%>
+        <%}%>
+
+        _fd = conn.fileDescriptor();
+        SPLAPPTRC(L_DEBUG, "TCPSource connected.  File descriptor = " << _fd, SPL_OPER_DBG);
+        _numConnections.setValueNoLock(1);
+
+        <%if ($reconnectionPolicy eq "InfiniteRetry") {%>
+            while (!getPE().getShutdownRequested()<%=$readPunctuations ? " && !_sawFinal" : ""%>) {
+        <%} elsif ($reconnectionBound) {%>
+            while (!getPE().getShutdownRequested() && _reconnectsLeft-- != 0<%=$readPunctuations ? " && !_sawFinal" : ""%>) {
+        <%}%>
+                // We might have failed due to handshake failure
+                if (conn.connected()) {
+                    _tupleNumber = 0;
+                    <%if ($sslEnabled) {%>
+                        SecureSource fd_src (conn);
+                    <%} else {%>
+                        file_descriptor_source fd_src (_fd, never_close_handle);
+                    <%}%>
+                    filtering_streambuf<input> filt_str;
+                    <%if ($encoding) {%>
+                        ToUTF8Filter toUTF8(_encoding);
+                        filt_str.push (toUTF8);
+                    <%}%>
+                    <%if ($compression) {%>
+                        filt_str.push (<%=$compression%>_decompressor());
+                    <%}%>
+                    filt_str.push (fd_src);
+                    <%if ($binary) {%>
+                        iostream fs (&filt_str);
+                        SPL::StreamByteBuffer sbfs(fs);
+                    <%} else {%>
+                        istream fs (&filt_str);
+                    <%}%>
+                    fs.imbue(locale::classic());
+
+                    @include "../Common/GenerateSourceReadLoop.cgt"
+
+                    <%if (!$readPunctuations) {%>
+                        submit (Punctuation::WindowMarker, 0);
+                    <%}%>
+                }
+                _numConnections.setValueNoLock(0);
+
+                <%if ($readPunctuations && $reconnectionPolicy ne 'NoRetry') {%>
+                    if (_sawFinal) break;
+                <%}%>
+        <%if ($reconnectionPolicy ne "NoRetry") {%>
+                // Do not try to reconnect if we are shutting down
+                if (getPE().getShutdownRequested()) break;
+
+                _fd = conn.reconnect();
+                if (conn.connected()) {
+                    _numConnections.setValueNoLock(1);
+                }
+                _numReconnects.incrementValueNoLock();
+            }
+        <%}%>
+        conn.terminate();
+    } catch (...) {
+        // If we get here, we had an exception, and the throw will destruct conn.
+        // Ensure that we don't try to do it twice.
+        _fd = 0; // no longer using this
+        throw;
+    }
+    _fd = 0; // no longer using this
+    <%if ($reconnectionBound) {%>
+        if (_reconnectsLeft == 0)
+            submit (Punctuation::FinalMarker, 0);
+    <%} elsif ($reconnectionPolicy eq "NoRetry") {%>
+        submit (Punctuation::FinalMarker, 0);
+    <%}%>
+    SPLAPPTRC(L_DEBUG, "TCPSource exiting...", SPL_OPER_DBG);
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

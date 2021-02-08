@@ -1,0 +1,864 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use FindBin;
+use lib "${FindBin::Bin}";
+use lib "${FindBin::Bin}/../..";
+use lib "${FindBin::Bin}/../../../bin";
+
+use strict;
+use SPL::Msg;
+use SPL::Helper;
+use FileHandle;
+use Getopt::Std;
+use File::Basename;
+use File::Temp qw(tempfile);
+use File::Spec;
+use SPL::CodeGen;
+use SPL::CodeGenHelper;
+use FileHandle;
+use Cwd qw(realpath getcwd);;
+
+sub findCommonSubpath($$);
+sub computeRelativePath($$);
+sub writeDependencies($);
+sub addLineMappings($$$);
+sub printPerlCode($$$$);
+sub printCPPCode($$$$);
+sub mismatchAtLine($$$);
+sub createDir($);
+sub populateGenerator($$);
+sub parseSourceLine($$$$$$$);
+sub emitGenerated($$$);
+sub emitVerbatim($$$);
+sub processPerlClause($$$$);
+sub validateGenerator($$$);
+
+my $tgtLineNo = 1;
+my %tgtLineMap = (); # tgt-line-no -> [src-line-no, src-file-id]
+my %srcFileMap = (); # src-file-id -> src-file-name
+my $verbatimPending = 0;
+my $generatedPending = 0;
+my $mmStart = 0;
+my $mmPos = 0;
+
+#### MAIN
+
+# Parse the options
+my %opts;
+my @options = ('help|h', 'type|t=s', 'output|o=s', 'noindex|n', 'nsroot|r=s', 'resdir=s');
+SPLGetOptionsLong(\&SPL::Msg::SMM_USAGE, \%opts, @options);
+
+@ARGV > 0 or SPLUsage(\&SPL::Msg::SMM_USAGE, 1);
+
+# make sure base bame is provided
+my $baseName = shift @ARGV;
+
+# based on the t (type) parameter decide what we are generating
+$opts{type} or SPLUsage(\&SPL::Msg::SMM_USAGE, 1);
+
+# model must be one of enum, tuple, operator, pe or standalone
+# standalone generates a code generator for processing mixed mode user code
+my $model = $opts{type};
+my $generator = $baseName;
+my $template = $baseName;
+($model eq "EnumerationModel" ||
+ $model eq "TupleModel" ||
+ $model eq "XMLModel" ||
+ $model eq "OperatorInstanceModel" ||
+ $model eq "PEModel" ||
+ $model eq "StandaloneModel" ||
+ $model eq "Script") or SPLUsage(\&SPL::Msg::SMM_USAGE, 1);
+
+my $isScript = ($model eq "Script") ? 1 : 0;
+
+my $start; my $end;
+if ($isScript) {
+   $generator .= ".pl";
+   my $dir = ($opts{output} ? $opts{output} : dirname($template) ) . "/etc/config/";
+   # strip out the namespace root from the file path and add to the config path
+   if($opts{nsroot}) {
+       my $root = realpath($opts{nsroot});
+       my $full = realpath(dirname($template));
+       $full =~ s/^$root//;
+       $dir .= $full;
+   } else {
+       $dir .= dirname($template);
+   }
+   my $indexFile = "${dir}/" . basename("${template}.idx");
+   my $mapFile = "${dir}/" . basename("${template}.xml");
+   $start = <<EOL;
+#!/usr/bin/perl\nuse strict;
+use lib \"$FindBin::Bin\";
+use SPL::Msg;
+use Time::HiRes qw(ualarm);
+
+my \$splStart = 0;
+my \$splEnd;
+my \$splPos = 0;
+my \@mappings;
+
+my \%dmm2dps = ();
+my \$dpsline = 1;
+
+local \$SIG{PIPE} = sub { exit(1); };
+sub timeout()
+{
+   SPL::Helper::SPLDie(1, SPL::Msg::MAX_TIME_REACHED);
+}
+
+if (defined \$ENV{SPL_MMP_DRIVER_TIMEOUT}) {
+    my \$maxTime = \$ENV{SPL_MMP_DRIVER_TIMEOUT};
+    timeout() if \$maxTime == 0;
+    if (\$maxTime > 0) {
+       \$SIG{ALRM} = \\&timeout;
+       if (\$maxTime < 2000) {
+           \$maxTime *= 1000000;
+           ualarm(\$maxTime);
+       } else {
+           alarm(\$maxTime);
+       }
+    }
+}
+
+sub createIndexFile
+{
+   my \$indexFile = \'$indexFile\';
+   unlink \$indexFile;
+   open INDEXFILE, '>', \$indexFile || SPLDie(1, SPL::Msg::CANNOT_OPEN_FILE_FOR_WRITING(\$indexFile));
+   print INDEXFILE "# splmmLine -> (splLine)+\\n";
+   foreach my \$sline (sort { \$a <=> \$b } keys \%dmm2dps) {
+      print INDEXFILE \$sline, \":\";
+      foreach my \$tline (sort { \$a <=> \$b } keys \%{\$dmm2dps{\$sline}}) {
+         print INDEXFILE \" \", \$tline;
+      }
+      print INDEXFILE \"\\n\";
+   }
+   close INDEXFILE;
+
+   my \$mapFile = \'$mapFile\';
+   unlink \$mapFile;
+   open MAPFILE, '>', \$mapFile || SPLDie(1, SPL::Msg::CANNOT_OPEN_FILE_FOR_WRITING(\$mapFile));
+   print MAPFILE \"<?xml version=\\\"1.0\\\" ?>\\n";
+   print MAPFILE \"<i:Spltosplmm\\n";
+   print MAPFILE \"  xmlns:i=\\\"http://www.ibm.com/xmlns/prod/streams/spl/splmmindex\\\">\\n";
+   foreach my \$map (\@mappings) {
+      print MAPFILE "    \$map";
+   }
+   print MAPFILE \"</i:Spltosplmm>\\n";
+   close MAPFILE;
+}
+
+sub emitFromLine
+{
+   my (\$dmmline, \@params) = \@_;
+   print \@params;
+
+   foreach my \$parm (\@params) {
+      \$splPos += length(\$parm);
+   }
+
+   my \$nln = 0; # number of lines to be emitted
+   my \$last; # last piece in \@params to be emmitted
+   foreach my \$token (\@params) {
+      my \$cnt = 0;
+      ++\$cnt while \$token =~ /\\n/g;
+      \$nln += \$cnt;
+      \$last = \$token;
+   }
+   # find last char to be emitted
+   my \@chars = split(//, \$last);
+   my \$lastc = \$chars[\$#chars];
+
+   # if the last character is a new line then it does not
+   # contribute to the next line. E.g.:
+   # abc\\ndef\\n should contribute to lines x, x+1
+   # abc\\ndef\\ngh should contribute to lines x, x+1, x+2
+   for(my \$i=0; \$i<=\$nln; ++\$i) {
+      if(\$i!=\$nln or \$lastc ne "\\n") {
+         \$dmm2dps{\$dmmline} = {}
+                        unless(\$dmm2dps{\$dmmline});
+         \$dmm2dps{\$dmmline}->{\$dpsline} = 1;
+      }
+      ++\$dpsline if(\$i!=\$nln);
+   }
+
+}
+
+EOL
+   $end = <<END;
+   createIndexFile();
+END
+
+   createDir($dir) unless ($opts{noindex});  # Make sure the directory for the index file exits
+} else {
+   $template .= ".cgt";
+   $generator .= ".pm";
+   my $generatorDir = dirname($generator);
+   my $moduleName = basename($baseName);
+   my $useStatements;
+   my $verboseSetStatement = "";
+   my $cwd = getcwd();
+   my $module;
+   my $resInclude;
+   if ($model eq "EnumerationModel") {
+      $module = "SPL::Enumeration::EnumerationModel";
+      $useStatements = "use SPL::Enumeration::EnumerationModel; ".
+                       "use SPL::Enumeration::Enumerator; ";
+   } elsif ($model eq "XMLModel") {
+      $module = "SPL::XML::XMLModel";
+      $useStatements = "use SPL::XML::XMLModel; ";
+   } elsif ($model eq "TupleModel") {
+      $module = "SPL::Tuple::TupleModel";
+      $useStatements = "use SPL::Tuple::TupleModel; ".
+                       "use SPL::Tuple::Attribute; ";
+   } elsif ($model eq "OperatorInstanceModel") {
+      $module= "SPL::Operator::Instance::OperatorInstance";
+      $resInclude = "unshift \@INC, dirname (\$model->getContext()->getOperatorDirectory()) . \"/../impl/nl/include\";";
+      $useStatements = "use Cwd 'realpath';  " .
+                       "use File::Basename;  " .
+                       "use lib dirname(__FILE__);  " .
+                       "use SPL::Operator::Instance::OperatorInstance; " .
+                       "use SPL::Operator::Instance::Annotation; " .
+                       "use SPL::Operator::Instance::Context; " .
+                       "use SPL::Operator::Instance::Expression; " .
+                       "use SPL::Operator::Instance::ExpressionTree; " .
+                       "use SPL::Operator::Instance::ExpressionTreeEvaluator; " .
+                       "use SPL::Operator::Instance::ExpressionTreeVisitor; " .
+                       "use SPL::Operator::Instance::ExpressionTreeCppGenVisitor; " .
+                       "use SPL::Operator::Instance::InputAttribute; " .
+                       "use SPL::Operator::Instance::InputPort; " .
+                       "use SPL::Operator::Instance::OutputAttribute; " .
+                       "use SPL::Operator::Instance::OutputPort; " .
+                       "use SPL::Operator::Instance::Parameter; " .
+                       "use SPL::Operator::Instance::StateVariable; " .
+                       "use SPL::Operator::Instance::TupleValue; " .
+                       "use SPL::Operator::Instance::Window; ";
+      $verboseSetStatement = "\$SPL::CodeGenHelper::verboseMode = \$model->getContext()->isVerboseModeOn();";
+   } elsif ($model eq "PEModel") {
+      $module = "SPL::PE::PEModel";
+      $useStatements = "use SPL::PE::PEModel; ".
+                       "use SPL::PE::Context; ".
+                       "use SPL::PE::Operator; ";
+   } elsif ($model eq "StandaloneModel") {
+      $module = "SPL::Standalone::StandaloneModel";
+      $useStatements = "use SPL::Standalone::StandaloneModel;\n";
+   } else {
+      die "Unknown model type '$model'";
+   }
+
+   $start = <<EOL;
+package $moduleName;
+use strict; $useStatements
+sub main::generate(\$\$) {
+   my (\$xml, \$signature) = \@_;
+   print "// \$\$signature\\n";
+   my \$model = $module->new(\$\$xml);
+   $resInclude
+   $verboseSetStatement
+EOL
+   $end = <<EOL2
+   CORE::exit \$SPL::CodeGen::USER_ERROR if (\$SPL::CodeGen::sawError);
+}
+1;
+EOL2
+}
+
+my $rc = 0;
+# disable interrupts while we generate code
+SPL::CodeGenHelper::disableInterruptRequests(\$rc);
+
+# create the code generator
+my ($outfile, $tempFile) = tempfile(UNLINK => 1, SUFFIX => ".pmt") or SPLDie(1, SPL::Msg::CANT_CREATE_TEMP_FILE());
+
+print $outfile $start;
+addLineMappings($start, 0, 0);
+populateGenerator($template, $outfile);
+print $outfile $end unless ($opts{noindex});
+$outfile->close();
+
+my $lineAdjust = 0;
+if ($isScript) {
+   my $mvArgs = "$tempFile \"$generator\"";
+   $mvArgs =~ s/\$/\\\$/g;
+   system("mv $mvArgs") and SPLDie(1, SPL::Msg::CANT_RENAME_FILE("$tempFile", "$generator"));
+   my $chmodArgs = "ugo+x \"$generator\"";
+   $chmodArgs =~ s/\$/\\\$/g;
+   system("chmod $chmodArgs");
+} else {
+   $outfile->open("> $generator") or SPLDie(1, SPL::Msg::CANNOT_OPEN_FILE_FOR_WRITING($generator));
+   $lineAdjust = writeDependencies($outfile);
+   my $fh = new FileHandle;
+   $fh->open("<$tempFile") or SPLDie(1, SPL::Msg::CANNOT_OPEN_FILE_FOR_READING($tempFile));
+   while (<$fh>) {
+      print $outfile $_;
+   }
+   $fh->close();
+   $outfile->close();
+}
+
+# restore interrupts
+SPL::CodeGenHelper::enableInterruptRequests();
+# a return code of 2 indicates an interrupt was caught
+exit $rc if($rc==2);
+
+#validate the generator
+$rc = validateGenerator($baseName, $generator, $lineAdjust);
+
+exit $rc;
+
+sub findCommonSubpath($$)
+{
+   my ($dir1, $dir2) = @_;
+   # len(dir1) should be <= len($dir2)
+   my $commonPath = "/";  # both paths are fully qualified so at least the root is common
+
+   my $start = 1;
+   my $end1 = index($dir1, '/', $start);
+   while ($end1 != -1) {
+      my $len1 = $end1 - $start + 1;
+      my $sub1 = substr($dir1, $start, $len1);
+
+      my $end2 = index($dir2, '/', $start);
+      my $len2 = $end2 - $start + 1;
+      last if ($len1 != $len2);
+      my $sub2 = substr($dir2, $start, $len2);
+      last if ($sub1 ne $sub2);  # same len but different content
+      $commonPath = $commonPath . $sub1;
+      $start = $end1 + 1;
+      $end1 = index($dir1, '/', $start);
+      }
+   # At this point we may have some leftover in dir1 that could still match dir2
+   my $final1 = substr($dir1, $start);
+   my $end = index($dir2, '/', $start);
+   my $final2 = ($end == -1) ? substr($dir2, $start) : substr($dir2, $start, $end - $start);
+
+   if ($final1 eq $final2) {
+      $commonPath = $commonPath . $final1;
+   }
+   return $commonPath;
+}
+
+sub computeRelativePath($$)
+{
+   my ($templateDir, $includeDir) = @_;
+   my $relativePath = "";
+
+   if ($templateDir ne $includeDir) {
+      my $commonPath = (length($templateDir) <= length($includeDir)) ?
+            findCommonSubpath($templateDir, $includeDir) :
+            findCommonSubpath($includeDir, $templateDir);
+      # The relative path is now built by adding a .. segment for each section missing from the template path
+      # and adding whatever is extra from the include path
+      my $remainder = substr($templateDir, length($commonPath));
+      if ($remainder ne "") {
+         # do we have more than one segment?
+         my $start = 1;
+         my $end = index($remainder, '/', $start);
+         while ($end != -1) {
+            if ($relativePath ne "") {
+               $relativePath = $relativePath . "/";
+            }
+            $relativePath = $relativePath . "../";
+            $start = $end + 1;
+            $end = index($remainder, '/', $start);
+         }
+         if ($relativePath ne "") {
+            $relativePath = $relativePath . "/";
+         }
+         $relativePath = $relativePath . "../"; # for the final section
+      }
+      my $extra = substr($includeDir, length($commonPath));
+      if ($extra ne "") {
+         if ($relativePath eq "") {
+            $relativePath = substr($extra, 1);
+         } else {
+            $relativePath = $relativePath . $extra;
+         }
+         $relativePath = $relativePath . "/";
+      }
+   }
+   return $relativePath;
+}
+
+sub writeDependencies($)
+{
+   my ($outfile) = @_;
+   my $lineAdjust = 0;
+   my $template = $srcFileMap{0};
+   my $templateDir = dirname($template);
+   if (not File::Spec->file_name_is_absolute($templateDir)) {
+      $templateDir = File::Spec->rel2abs($templateDir);
+   }
+   # We always want a path relative to the template
+   foreach my $key (keys %srcFileMap) {
+      next if ($key == 0);  # This is the template file itself
+      my $file = $srcFileMap{$key};
+      my $includeDir = dirname($file);
+      if (not File::Spec->file_name_is_absolute($includeDir)) {
+         $includeDir = File::Spec->rel2abs($includeDir);
+      }
+      my $path = computeRelativePath($templateDir, $includeDir);
+      $file = basename($file);
+      $file = $path . $file;
+      print $outfile "# SPL_CGT_INCLUDE: ${file}\n";
+      ++$lineAdjust;
+   }
+   print $outfile "\n";
+   ++$lineAdjust;
+   return $lineAdjust;
+}
+
+sub addLineMappings($$$)
+{
+   my ($line, $srcLineNo, $srcFileNo) = @_;
+   my $cnt = 0;
+   ++$cnt while $line =~ /\n/g;
+   for (my $i = 0; $i < $cnt; ++$i) {
+      $tgtLineMap{$tgtLineNo} = [$srcLineNo, $srcFileNo];
+      ++$tgtLineNo;
+   }
+}
+
+sub printPerlCode($$$$)
+{
+   my ($line, $srcLineNo, $srcFileNo, $outfile) = @_;
+   if ($isScript) {
+      $line =~ s/\@print/emitFromLine $srcLineNo,/g;
+      $line =~ s/^\s*print\s+\"/emitFromLine  $srcLineNo, \"/;
+   }
+   print $outfile "   $line\n";
+   addLineMappings("$line\n", $srcLineNo, $srcFileNo);
+}
+
+sub fixUpOperatorNamespaces ($)
+{
+    my ($cppLine) = @_;
+    # fast exit if we don't need to do anything
+    return $cppLine if ! $cppLine =~ m/\bMY_OPERATOR::/;
+
+    my %quotes;
+    my @chars = split(//, $cppLine);
+    my $inQuotes = 0;
+    my $opening = 0;
+    my $ending = 0;
+    my $numSlashes = 0;
+    for(my $i=0; $i<scalar(@chars); ++$i)
+    {
+        if($inQuotes) {
+            if($chars[$i] eq "\\") {
+                ++$numSlashes;
+            } else {
+                if(($chars[$i] eq "\"") &&
+                   ($numSlashes % 2 == 0)) {
+                    $ending = $i;
+                    $quotes{$opening} = $ending;
+                    $inQuotes = 0;
+                }
+                $numSlashes = 0;
+            }
+        } else {
+            if($chars[$i] eq '"') {
+                $opening = $i;
+                $quotes{$opening} = undef;
+                $inQuotes = 1;
+            }
+        }
+    }
+
+    my $newString;
+    my $lastPos=0;
+    while($cppLine =~ m/\bMY_OPERATOR::/g) {
+        my $p = length($`);
+        my $l = length($&);
+        $inQuotes = 0;
+        foreach my $b (keys %quotes) {
+            my $e = $quotes{$b};
+            if($p>$b && $p<$e)
+            {
+                $inQuotes = 1;
+                last;
+            }
+        }
+        unless($inQuotes) {
+            $newString .= substr($cppLine, $lastPos, $p-$lastPos);
+            $newString .= "MY_OPERATOR_SCOPE::MY_OPERATOR::";
+            $lastPos=$p+$l;
+        }
+    }
+    $newString .= substr($cppLine, $lastPos, length($cppLine)-$lastPos);
+    return $newString;
+}
+
+sub printCPPCode($$$$)
+{
+   my ($line, $srcLineNo, $srcFileNo, $outfile) = @_;
+   my $cmd = ($isScript) ? "emitFromLine $srcLineNo," : "print";
+   $line = fixUpOperatorNamespaces ($line) if $model eq "OperatorInstanceModel";
+   $line =~ s/\\/\\\\/g;  # escape all slashes
+   $line =~ s/\'/\\\'/g;  # escape all single quotes
+   if ($line =~ m/\n$/) {  # if the last char of the line is a newline...
+      chop $line;
+      if ($line eq '') {
+         print $outfile "   $cmd \"\\n\";\n";
+      } else {
+         print $outfile "   $cmd \'$line\', \"\\n\";\n";
+      }
+   } else {
+      print $outfile "   $cmd \'$line\';\n";
+   }
+   addLineMappings("$line\n", $srcLineNo, $srcFileNo);
+}
+
+sub mismatchAtLine($$$)
+{
+   my ($seperator, $srcLineNo, $template) = @_;
+   SPLStdErr(SPL::Msg::VERBATIM_TRANS("$template:$srcLineNo:0: "));
+   SPLDie(1, SPL::Msg::SEPARATOR_NOT_PAIRED($seperator));
+}
+
+sub createDir($)
+{
+   my ($dir) = @_;
+   return if -d $dir;
+   my $parent = File::Basename::dirname($dir);
+   createDir ($parent) unless -d $parent || $dir eq $parent;
+   -d $dir or mkdir $dir or SPLDie(1, SPL::Msg::CANNOT_CREATE_DIRECTORY($dir));
+   # set the new directory permission from its parent
+   my ($dev,$ino,$mode) = stat ($parent);
+   chmod $mode, $dir;
+}
+
+sub populateGenerator($$)
+{
+    my ($template, $OUTFILE) = @_;
+
+    my $curLine;
+    my $srcFileNo = 0;
+    my $maxFileNo = 0;
+    my $srcLineNo = 0;
+    my @descriptors; # queue of file descriptors and tmp vars
+    my $inSeparator = 0; # tells of we are in a <%%> block
+    my $perlCodeSeen = 0;
+    my $nonGenericOperator = 0;
+
+    my $TEMPLATE = new FileHandle;
+    $TEMPLATE->open("<${template}")
+        or SPLDie(1, SPL::Msg::CANNOT_OPEN_FILE_FOR_READING($template));
+    $srcFileMap{$srcFileNo} = $template;
+    my $srcFile = $srcFileMap{$srcFileNo};
+
+    while (1) {
+        while ($curLine = <$TEMPLATE>) {
+            $srcLineNo++;
+            my $add = 1;
+            chomp($curLine);
+            $add += 1 if ($curLine =~ /\r$/);
+            $curLine =~ s/\r$//;  # remove carriage return character if there is one
+
+            # if we need to include another .cgt file
+            if(not $isScript and not $inSeparator
+               and $curLine =~ m/^\s*\@include \s*\"([^\"]*)\"/) {
+                my $fileName = $1;
+                $fileName = dirname($srcFile) . "/" . $fileName
+                    unless ($fileName=~m/^\// || dirname($srcFile) eq ".");
+                # skip this file if we have seen it before
+                next if(grep($_ eq $fileName, values %srcFileMap));
+                unless(-f $fileName and -r $fileName and ($fileName =~ m/.cgt$/)) {
+                    SPLStdErr(SPL::Msg::VERBATIM_TRANS("$srcFile:$srcLineNo:0: "));
+                    SPLDie(1, SPL::Msg::INCLUDE_DIRECTIVE_TARGET_CANNOT_BE_PROCESSED($fileName));
+                }
+                push @descriptors, [$srcLineNo, $srcFileNo, $TEMPLATE];
+                $srcFileNo = ++$maxFileNo;
+                $srcLineNo = 0;
+                $TEMPLATE = new FileHandle;
+                $TEMPLATE->open("<${fileName}")
+                    or SPLDie(1, SPL::Msg::CANNOT_OPEN_FILE_FOR_READING($fileName));
+                $srcFileMap{$srcFileNo} = $fileName;
+                $srcFile = $srcFileMap{$srcFileNo};
+                next;
+            }
+
+            # parse the line and update the $inSeparator value
+            $inSeparator = parseSourceLine($curLine, $inSeparator, \$perlCodeSeen,
+                                           \$nonGenericOperator, $srcLineNo, $srcFileNo,
+                                           $OUTFILE);
+            $mmPos += $add;
+        }
+        emitVerbatim($srcLineNo, $srcFileNo, $OUTFILE) if ($isScript && $verbatimPending);
+        $TEMPLATE->close;
+        last unless(scalar(@descriptors));
+        ($srcLineNo, $srcFileNo, $TEMPLATE) = @{$descriptors[$#descriptors]};
+        $srcFile = $srcFileMap{$srcFileNo};
+        $#descriptors = $#descriptors - 1;
+    }
+
+    # Report an unmatched <% at the end of the file
+    mismatchAtLine("<%", $srcLineNo, $srcFile) if ($inSeparator == 1);
+
+    # ensure the last line(s) are mapped properly
+    addLineMappings($end, $srcLineNo, $srcFileNo);
+}
+
+sub findComments($)
+{
+    my ($text) = @_;
+    my $offset = index($text, '#');
+    if ($offset > -1) {
+        return (substr($text, 0, $offset), substr($text, $offset));
+    }
+    return ($text, "");
+}
+
+sub mySplit($)
+{
+   my ($text) = @_;
+   my $head = "";
+   my $print = "";
+   my $tail = "";
+   my $comment = "";
+
+   ($text, $comment) = findComments($text);
+   if ($text =~ /(\@print|(^.*print\s\"))/) {
+       $_ = $text;
+       my ($sep) = /(\@print|print)/;
+       ($head, $print) = split($sep, $text, 2);
+       # Find the end of the print statement
+       my $cCount = 0;
+       my @chars = split(//, $print);
+       for (my $i = 0, my $j = length($print); $i < $j; ++$i) {
+           ++$cCount if ($chars[$i] eq "\"");
+           if ($chars[$i] eq ";" && $cCount % 2 == 0) {
+               $tail = substr($print, $i+1);
+               $print = "$sep" . substr($print, 0, $i+1);
+               last;
+           }
+       }
+       $tail .= $comment;
+   } else {
+       $head = $text . $comment;
+   }
+   return ($head, $print, $tail);
+}
+
+sub parseSourceLine($$$$$$$)
+{
+    my ($curLine, $inSeparator, $perlCodeSeen,
+        $nonGenericOperator, $srcLineNo, $srcFileNo, $OUTFILE) = @_;
+
+    my $srcFile = $srcFileMap{$srcFileNo};
+    # determine what sort of line we are in and process it appropriately
+    # if this is a blank line just echo it
+    if ($curLine eq "") {
+        if ($inSeparator == 0) {
+            printCPPCode("\n", $srcLineNo, $srcFileNo, $OUTFILE);
+        } else {
+            printPerlCode("", $srcLineNo, $srcFileNo, $OUTFILE);
+        }
+        return $inSeparator;
+    }
+
+    # special handling for non-generic operators
+    if ($inSeparator == 0) {
+        if($curLine =~ /^\s*#pragma SPL_NON_GENERIC_OPERATOR/) {
+            $$nonGenericOperator = 1;
+            SPLDie(1, SPL::Msg::PERL_DISALLOWED_IN_NON_GENERIC_OPERATOR()) if ($$perlCodeSeen);
+            printPerlCode('SPL::CodeGenHelper::headerPrologueImpl($model,0,undef,'.$srcLineNo.');', $srcLineNo, $srcFileNo, $OUTFILE)
+                if($curLine =~ "HEADER_PROLOGUE");
+            printPerlCode('SPL::CodeGenHelper::headerEpilogueImpl($model, 0);', $srcLineNo, $srcFileNo, $OUTFILE)
+                if($curLine =~ "HEADER_EPILOGUE");
+            printPerlCode('SPL::CodeGenHelper::implementationPrologueImpl($model,0,'.$srcLineNo.');', $srcLineNo, $srcFileNo, $OUTFILE)
+                if($curLine =~ "IMPLEMENTATION_PROLOGUE");
+            printPerlCode('SPL::CodeGenHelper::implementationEpilogueImpl($model, 0);', $srcLineNo, $srcFileNo, $OUTFILE)
+                if($curLine =~ "IMPLEMENTATION_EPILOGUE");
+            return $inSeparator;
+        }
+    }
+
+    # A line that contains one or more of either a <% or a %>
+    while (($curLine ne "") && ($curLine =~ /<%|%>/)) {
+        my ($head, $rest);
+        $_ = $curLine;
+        (my $sep) = /(<%|%>)/;
+        if ($sep eq "<%") {
+            mismatchAtLine("<%", $srcLineNo, $srcFile) if ($inSeparator == 1);
+            SPLDie(1, SPL::Msg::PERL_DISALLOWED_IN_NON_GENERIC_OPERATOR()) if ($$nonGenericOperator);
+            $inSeparator = 1;
+            $$perlCodeSeen = 1;
+            ($head, $rest) = split(/<%/, $curLine, 2);
+            printCPPCode($head, $srcLineNo, $srcFileNo, $OUTFILE) if ($head ne "");
+            $mmPos += length($head);
+            $curLine = $rest;
+            if ($isScript) {
+                emitVerbatim($srcLineNo, $srcFileNo, $OUTFILE);
+                printPerlCode("\$splStart = \$splPos;", $srcLineNo, $srcFileNo, $OUTFILE);
+            }
+            $mmStart = $mmPos;
+            $mmPos += 2;
+        } elsif ($sep eq "%>") {
+            mismatchAtLine("%>", $srcLineNo, $srcFile) if ($inSeparator == 0);
+            $inSeparator = 0;
+            ($head, $rest) = split(/%>/, $curLine, 2);
+            processPerlClause($head, $srcLineNo, $srcFileNo, $OUTFILE) if ($head ne "");
+            $mmPos += 2;
+            if ($isScript && $generatedPending) {
+                emitGenerated($srcLineNo, $srcFileNo, $OUTFILE);
+                $generatedPending = 0;
+            }
+            printCPPCode("\n", $srcLineNo, $srcFileNo, $OUTFILE) if ($rest eq "");
+            $mmStart = $mmPos;
+            $curLine = $rest;
+        }
+    }
+    # A non-blank line that has no <% or %> or the remains of a line that had one
+    if ($curLine ne "") {
+        if ($inSeparator == 0) {
+            $mmPos += length($curLine);
+            chomp($curLine);
+            printCPPCode("$curLine\n", $srcLineNo, $srcFileNo, $OUTFILE);
+            $verbatimPending = 1 if ($isScript);
+        } else {
+            # We are in a Perl line.  There could be a print in it.
+            if ($isScript) {
+                while ($curLine ne "") {
+                   my ($hd, $print, $tail) = mySplit($curLine);
+                   printPerlCode($hd, $srcLineNo, $srcFileNo, $OUTFILE) if ($hd ne"");
+                   $mmPos += length($hd);
+                   last if ($print eq "");
+                   $mmStart = $mmPos;
+                   printPerlCode($print, $srcLineNo, $srcFileNo, $OUTFILE);
+                   $mmPos += length($print);
+                   emitGenerated($srcLineNo, $srcFileNo, $OUTFILE);
+                   $curLine = $tail;
+                }
+            } else {
+                printPerlCode($curLine, $srcLineNo, $srcFileNo, $OUTFILE);
+            }
+        }
+    }
+    return $inSeparator;
+}
+
+sub processPerlClause($$$$)
+{
+    my ($head, $srcLineNo, $srcFileNo, $outFile) = @_;
+
+    # There are two cases to consider here.  First is the implicit print <%=...%>.
+    # Second is the explicit print <% ... print ...; %>.  This print can split across lines.
+    # The second print can also be composed of multiple expressions.  ie: print a, b, c;
+    # We want to produce a generated element in the mapping file that maps the range of characters
+    # from the p in print to the ';' that terminates the print.
+    # BTW...We want to ignore any print that has STDERR as its target.
+    if ($head =~ m/^=/) {  # If the first character of $head is an = then we need to insert a print
+        if ($isScript) {
+            $mmPos += length($head);
+            $head =~ s/^=/emitFromLine $srcLineNo, /;
+            $generatedPending = 1;
+        } else {
+            $head =~ s/^=/print /;
+        }
+        $head .= ";";
+    } else {
+        if ($isScript) {
+            # We are ending a perl line that is not an implicit print
+            # There could be a print in this line
+            while ($head ne "") {
+                my ($hd, $print, $tail) = mySplit($head);
+                printPerlCode($hd, $srcLineNo, $srcFileNo, $outFile) if ($hd ne"");
+                $mmPos += length($hd);
+                last if ($print eq "");
+                $mmStart = $mmPos;
+                printPerlCode($print, $srcLineNo, $srcFileNo, $outFile);
+                $mmPos += length($print);
+                emitGenerated($srcLineNo, $srcFileNo, $outFile);
+                $head = $tail;
+            }
+            return;
+        }
+    }
+    printPerlCode($head, $srcLineNo, $srcFileNo, $outFile);
+}
+
+sub emitVerbatim($$$)
+{
+    my ($srcLineNo, $srcFileNo, $outFile) = @_;
+    printPerlCode("\$splEnd = \$splPos - 1;", $srcLineNo, $srcFileNo, $outFile);
+    printPerlCode("push \@mappings, \"<i:verbatim splStart=\\\"\${splStart}\\\" splEnd=\\\"\${splEnd}\\\" mmStart=\\\"${mmStart}\\\"/>\\n\";", $srcLineNo, $srcFileNo, $outFile);
+    $verbatimPending = 0;
+}
+
+sub emitGenerated($$$)
+{
+    my ($srcLineNo, $srcFileNo, $outFile) = @_;
+    my $mmEnd = $mmPos-1;
+    printPerlCode("\$splEnd = \$splPos - 1;", $srcLineNo, $srcFileNo, $outFile);
+    printPerlCode("push \@mappings, \"<i:generated splStart=\\\"\${splStart}\\\" splEnd=\\\"\${splEnd}\\\" mmStart=\\\"${mmStart}\\\" mmEnd=\\\"${mmEnd}\\\"/>\\n\";", $srcLineNo, $srcFileNo, $outFile);
+    printPerlCode("\$splStart = \$splPos;", $srcLineNo, $srcFileNo, $outFile);
+}
+
+sub validateGenerator($$$)
+{
+    my ($baseName, $generator, $lineAdjust) = @_;
+
+    # Now validate the generated file to ensure it is valid perl
+    my ($fh, $tempErrorFile) = tempfile(UNLINK => 1, SUFFIX => ".stf");
+
+    if ($isScript) {
+        # If the model is standalone then we've generated a perl script which we syntax check directly
+        my $cmdArgs = "-c \"$generator\" >/dev/null 2>$tempErrorFile";
+        $cmdArgs =~ s/\$/\\\$/g;
+        system("/usr/bin/perl $cmdArgs");
+    } else {
+        # Otherwise we have a perl module (.pm).  Invoke perl with a small inline program that includes the module being checked
+        my $cmdArgs =
+            "-e 'use strict; " .
+            "use lib \"" . dirname($baseName) . "\"; " .
+            "use lib \"" . dirname($0) . "\"; " .
+            "use lib \"" . dirname($0) . "/../..\"; " .
+            "use lib \"" . dirname($0) . "/../../../bin\"; " .
+            "use " . basename($baseName) .  ";' >/dev/null 2>$tempErrorFile";
+        system("/usr/bin/perl $cmdArgs");
+    }
+
+    my $rc = 0;
+    # If the compile failed dump the error messages
+    return $rc unless ($?);
+    if (-e $tempErrorFile) {
+        open my $ERRORFILE, '<', $tempErrorFile or
+            SPLDie(1, $SPLMmsg::CANNOT_OPEN_FILE_FOR_READING, $tempErrorFile);
+        while (<$ERRORFILE>) {
+            if (/\Q$generator\E line (\d+)(.*)/) {
+                my $info = $_;
+                my $errorLine = $1;
+                my $adjustedLine = $1 - $lineAdjust;
+                my $extraMsg = $2;
+                my $lineNo = $tgtLineMap{$adjustedLine}->[0];
+                my $fileNo = $tgtLineMap{$adjustedLine}->[1];
+                my $fileName = $srcFileMap{$fileNo};
+                $info=~s/\Q$generator\E line $errorLine/$fileName line $lineNo/g;
+                SPLStdErr(SPL::Msg::VERBATIM_TRANS("$fileName:$lineNo:0: "));
+                SPLError(SPL::Msg::VERBATIM_ERROR("(Perl) $info"));
+            } else {
+                SPLError(SPL::Msg::VERBATIM_ERROR("(Perl) $_"));
+            }
+        }
+        close($ERRORFILE);
+        $rc = 1;
+    }
+    return $rc;
+}

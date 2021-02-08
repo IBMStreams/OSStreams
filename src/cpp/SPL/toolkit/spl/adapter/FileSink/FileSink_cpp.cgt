@@ -1,0 +1,769 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use FileSinkCommon;
+    FileSinkCommon::verify($model);
+    my $file =  $model->getParameterByName("file");
+    my $format = $model->getParameterByName("format");
+    my $hasDelayField = $model->getParameterByName("hasDelayField");
+    my $flush = $model->getParameterByName("flush");
+    my $flushOnPunctuation = $model->getParameterByName("flushOnPunctuation");
+    my $writePunctuations = $model->getParameterByName("writePunctuations");
+    my $eolMarker = $model->getParameterByName("eolMarker");
+    my $compression = $model->getParameterByName("compression");
+    my $separator = $model->getParameterByName("separator");
+    my $encoding = $model->getParameterByName("encoding");
+    my $inputPort = $model->getInputPortAt(0);
+    my $inTupleName = $inputPort->getCppTupleName();
+    my $quoteStrings = $model->getParameterByName("quoteStrings");
+    my $closeMode = $model->getParameterByName("closeMode");
+    my $moveFileToDirectory = $model->getParameterByName("moveFileToDirectory");
+    my $tuplesPerFile = $model->getParameterByName("tuplesPerFile");
+    my $bytesPerFile = $model->getParameterByName("bytesPerFile");
+    my $timePerFile = $model->getParameterByName("timePerFile");
+    my $append = $model->getParameterByName("append");
+    my $writeFailureAction = $model->getParameterByName("writeFailureAction");
+    my $suppress = $model->getParameterByName("suppress");
+
+    # Apply defaults
+    $format = $format ? $format->getValueAt(0)->getSPLExpression() : "csv";
+    $eolMarker = $eolMarker ? $eolMarker->getValueAt(0)->getSPLExpression() : '"\n"';
+    $quoteStrings = $quoteStrings ? $quoteStrings->getValueAt(0)->getSPLExpression() eq "true" : 1;
+    $closeMode = $closeMode ? $closeMode->getValueAt(0)->getSPLExpression() : "never";
+    $append = $append->getValueAt(0)->getCppExpression() if $append;
+    $writeFailureAction = $writeFailureAction ? $writeFailureAction->getValueAt(0)->getSPLExpression() : "ignore";
+
+    # other corrections
+    $compression = $compression->getValueAt(0)->getSPLExpression() if $compression;
+    $encoding = $encoding->getValueAt(0)->getCppExpression() if $encoding;
+    $tuplesPerFile = $tuplesPerFile->getValueAt(0)->getCppExpression() if $tuplesPerFile;
+    $bytesPerFile = $bytesPerFile->getValueAt(0)->getCppExpression() if $bytesPerFile;
+    $timePerFile = $timePerFile->getValueAt(0)->getCppExpression() if $timePerFile;
+    my $sepExpr = "','";
+    if ($separator) {
+        my $sepValue = $separator->getValueAt(0);
+        my $sepType = $sepValue->getSPLType();
+        if ($sepType eq 'rstring') {
+            $sepExpr = $sepValue->getCppExpression();
+            $sepExpr =~ /SPL::rstring\(\"(.*)\".*\)/;
+            $sepExpr = "'$1'";
+        } else {
+           $sepExpr = "(unsigned char)" . $sepValue->getSPLExpression();
+        }
+    }
+    $moveFileToDirectory = $moveFileToDirectory->getValueAt(0)->getCppExpression() if $moveFileToDirectory;
+
+    $flush = $flush->getValueAt(0)->getCppExpression() if $flush;
+    $flushOnPunctuation = $flushOnPunctuation ?  $flushOnPunctuation->getValueAt(0)->getSPLExpression() eq "true" : 1;
+    $hasDelayField = $hasDelayField ? $hasDelayField->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    $writePunctuations = $writePunctuations ?  $writePunctuations->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    my $fileExpressionHasAttributes = $file->getValueAt(0)->hasStreamAttributes();
+    $file = $file->getValueAt(0)->getCppExpression();
+
+    my $binary = $format eq "bin" || $format eq "block";
+    my $processPunct = $writePunctuations || $flushOnPunctuation || $closeMode eq "punct" || $model->getNumberOfOutputPorts() == 1;
+
+    # Handle suppressed attributes
+    my %suppressedAttrs;
+    if ($suppress) {
+        my $numValues = $suppress->getNumberOfValues();
+        for (my $i = 0; $i < $numValues; $i++) {
+            my $e = $suppress->getValueAt($i);
+            my $a = $e->getSPLExpression();
+            # remove the stream name
+            $a =~ s/^.*\.//;
+            $suppressedAttrs{$a} = 1;
+        }
+    }
+    my @genAttrs;
+    my $numAttrs = $inputPort->getNumberOfAttributes();
+    for (my $i = 0; $i < $numAttrs; ++$i) {
+       my $attr = $inputPort->getAttributeAt($i);
+       push @genAttrs, $attr if !$suppressedAttrs{$attr->getName()};
+    }
+    $numAttrs = scalar (@genAttrs);
+
+    # first attribute name - first non-suppressed attribute
+    my $firstAttrName = $genAttrs[0]->getName();
+
+    # CC related configs
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $truncateOnReset = $model->getParameterByName("truncateOnReset");
+    $truncateOnReset = $truncateOnReset ? ($truncateOnReset->getValueAt(0)->getSPLExpression() eq "true") : 1;
+    my $writeStateHandlerCallbacks = $model->getParameterByName("writeStateHandlerCallbacks");
+    $writeStateHandlerCallbacks = $writeStateHandlerCallbacks ? ($writeStateHandlerCallbacks->getValueAt(0)->getSPLExpression() eq "true") : 0;
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Runtime/Utility/LogTraceMessage.h>
+#include <SPL/Runtime/Operator/OperatorMetrics.h>
+#include <SPL/Toolkit/RuntimeException.h>
+#include <boost/filesystem/path.hpp>
+#include <signal.h>
+<%if ($moveFileToDirectory) {%>
+    #include <boost/filesystem/operations.hpp>
+    #include <boost/filesystem/exception.hpp>
+    #include <SPL/Toolkit/Utility.h>
+<%}%>
+<%if ($isInConsistentRegion) {%>
+    #include <SPL/Runtime/Common/RuntimeException.h>
+    #include <unistd.h>
+<%}%>
+
+using namespace std;
+using namespace boost::iostreams;
+
+// substitute sequence numbers and date/time patterns in filename
+std::string MY_OPERATOR::genFilename()
+{
+    // copy the pattern in preparation for creating the filename
+    std::string pathName = _pattern;
+
+    // convert the file sequence number into a string for the {id} substitution
+    ostringstream s;
+    s.imbue(locale::classic());
+    s << _fileGeneration++;
+    const string& id = s.str();
+
+    // substitute the file sequence number for {id}
+    string::size_type p;
+    while ((p = pathName.find ("{id}")) != string::npos) {
+        pathName.replace (p, 4, id);
+    }
+
+    bool needsLocaltime = ((pathName.find("{localtime:")) != string::npos);
+    bool needsGMTime = ((pathName.find("{gmtime:")) != string::npos);
+
+    if (needsLocaltime || needsGMTime) {
+        // get the current time for the {localtime:format} and {gmtime:format} substitutions
+        time_t now;
+        time(&now);
+
+        char buffer[1024*10] = "";
+
+        if (needsLocaltime) {
+            // substitute the time in the local timezone for the {localtime:format} pattern
+            struct tm local_tm;
+            localtime_r(&now, &local_tm);
+            while ((p = pathName.find("{localtime:")) != string::npos) {
+    	        string::size_type q = pathName.find ("}", p);
+                if (q == string::npos) {
+                    SPLTRACEMSGANDTHROW(SPLRuntimeFileSinkOperator, L_ERROR, SPL_APPLICATION_RUNTIME_FILESINK_BAD_PATTERN(_pattern, "{localtime:...}"), SPL_FUNC_DBG);
+	        }
+    	        string format = pathName.substr(p+11, q-p-11);
+    	        strftime(buffer, sizeof(buffer), format.c_str(), &local_tm);
+    	        pathName.replace(p, q-p+1, buffer);
+            }
+        }
+
+        if (needsGMTime) {
+            // substitute the time in the local timezone for the {gmtime:format} pattern
+            struct tm gmt_tm;
+            gmtime_r(&now, &gmt_tm);
+            while ((p = pathName.find("{gmtime:")) != string::npos) {
+    	        string::size_type q = pathName.find ("}", p);
+                if (q == string::npos) {
+                    SPLTRACEMSGANDTHROW(SPLRuntimeFileSinkOperator, L_ERROR, SPL_APPLICATION_RUNTIME_FILESINK_BAD_PATTERN(_pattern, "{gmtime:...}"), SPL_FUNC_DBG);
+                }
+    	        string format = pathName.substr(p+8, q-p-8);
+    	        strftime(buffer, sizeof(buffer), format.c_str(), &gmt_tm);
+    	        pathName.replace(p, q-p+1, buffer);
+            }
+        }
+    }
+    // Anything left?
+    if (!pathName.size()) {
+        SPLTRACEMSGANDTHROW(SPLRuntimeFileSinkOperator, L_ERROR, SPL_APPLICATION_RUNTIME_FILESINK_EMPTY_FILENAME, SPL_FUNC_DBG);
+    }
+
+    return makeAbsolute(pathName);
+}
+
+<%if ($closeMode eq "time") {%>
+void MY_OPERATOR::process(uint32_t)
+{
+    // Thread to handle close on time
+    SPLAPPTRC(L_DEBUG, "FileSink close timer startup...", SPL_OPER_DBG);
+    while (!_shutdown) {
+        {
+            AutoMutex am (_mutex);
+            // wait until the file is opened
+            while (!_f.get() && !_shutdown)
+                _openCV.wait(_mutex);
+        }
+        getPE().blockUntilShutdownRequest(_secondsToClose);
+        // _shutdown might not yet be set
+        if (getPE().getShutdownRequested())
+            break;
+
+        // okay, we waited the right time.  do the dirty work
+        AutoMutex am (_mutex);
+        closeFile();
+    }
+
+    SPLAPPTRC(L_DEBUG, "FileSink close timer exiting...", SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads (1);
+}
+<%}%>
+
+void MY_OPERATOR::closeFile()
+{
+    if (!_f.get())
+        return; // we don't want to do this twice
+
+    delete _f.release();
+    <%if ($moveFileToDirectory) {%>
+        // Need to move the file to a new directory
+        namespace bf = boost::filesystem;
+        try {
+            _pathName = _renamer.rename (_pathName);
+        } catch (const bf::filesystem_error& error) {
+            SPLTRACEMSG(L_ERROR, SPL_APPLICATION_RUNTIME_FILESINK_FILE_MOVE_ERROR(error.what()), SPL_OPER_DBG);
+        } catch (const SPL::SPLRuntimeOperatorException& error) {
+            SPLTRACEMSG(L_ERROR, SPL_APPLICATION_RUNTIME_FILESINK_FILE_MOVE_ERROR(error.getExplanation()), SPL_OPER_DBG);
+        }
+    <%}%>
+    <%if ($moveFileToDirectory || $model->getNumberOfOutputPorts() == 1 || $closeMode ne "never") {%>
+        if (_shutdown)
+            return; // don't take action if we have shut down
+    <%}%>
+
+    <%if ($model->getNumberOfOutputPorts() == 1) {%>
+        // We need to submit the filename
+        OPort0Type t(static_cast<SPL::rstring>(_pathName));
+        submit (t, 0);
+    <%}%>
+}
+
+MY_OPERATOR::Helper::Helper(const string& fName, bool restoring
+                            <%print ", const string& encoding" if $encoding;%>
+                            <%print ", bool append" if $append;%>)
+: _fs(&_filt_str)
+<%print ",_sbfs(_fs) " if $binary;%>
+<%print ",_fromUTF8(encoding)" if $encoding;%>
+{
+    SPLAPPTRC(L_DEBUG, "open '" << fName << "' as the output file...", SPL_OPER_DBG);
+
+    <%if ($isInConsistentRegion){%>
+        if (restoring) {
+            // When restoring, do not truncate it
+            _fd = ::open(fName.c_str(), O_WRONLY|O_CREAT|O_LARGEFILE, 0666);
+            ::lseek64(_fd, 0, SEEK_END);
+        } else {
+    <%}%>
+    <%if ($append) {%>
+        _fd = ::open (fName.c_str(), O_WRONLY|O_CREAT|O_LARGEFILE|(append?O_APPEND:O_TRUNC), 0666);
+    <%} else {%>
+        _fd = ::open (fName.c_str(), O_WRONLY|O_CREAT|O_LARGEFILE|O_TRUNC, 0666);
+    <%}%>
+    <%if ($isInConsistentRegion) { %>
+        } // End of else clause above
+    <%}%>
+    if (_fd < 0)
+        SPLTRACEMSGANDTHROW (SPLRuntimeFileSinkOperator, L_ERROR, SPL_APPLICATION_RUNTIME_FAILED_OPEN_OUTPUT_FILE(fName, RuntimeUtility::getErrorNoStr()), SPL_FUNC_DBG);
+
+    _fd_sink.reset (new file_descriptor_sink (_fd, close_handle));
+    <%if (defined $encoding) {%>
+        _filt_str.push (_fromUTF8);
+    <%}
+    if (defined $compression) {%>
+        _filt_str.push (<%=$compression%>_compressor());
+    <%}%>
+    _filt_str.push (*_fd_sink);
+    _fs.imbue(locale::classic());
+}
+
+void MY_OPERATOR::openFile(bool restoring)
+{
+    if (!_shutdown) {
+        SPLAPPTRC(L_DEBUG, "Opening file: " << _pathName, SPL_OPER_DBG);
+        _f.reset (new Helper(_pathName, restoring
+                             <%print ", _encoding" if $encoding;%>
+                             <%print ", _append" if $append;%>));
+        _numFilesOpenedMetric.incrementValueNoLock();
+        <%if ($closeMode eq "time") {%>
+            _openCV.signal();
+        <%}%>
+    }
+}
+
+std::string MY_OPERATOR::makeAbsolute(const std::string & fileName)
+{
+    namespace bf = boost::filesystem;
+    bf::path file(fileName);
+    if (!file.is_absolute()) {
+        // getDataDirectory will throw an exception if there is no data dir
+        file = getPE().getDataDirectory();
+        file /= fileName;
+    }
+    return file.string();
+}
+
+MY_OPERATOR::MY_OPERATOR()
+: MY_BASE_OPERATOR(),
+  _shutdown(false),
+  <%print "_pattern($file),"  unless $fileExpressionHasAttributes; %>
+  _numFilesOpenedMetric(getContext().getMetrics().getCustomMetricByName("nFilesOpened")),
+  _numTupleWriteErrorsMetric(getContext().getMetrics().getCustomMetricByName("nTupleWriteErrors")),
+  _fileGeneration(0)
+  <%print ", _encoding($encoding)" if $encoding;%>
+  <%print ", _renamer(getPE(), boost::filesystem::path(makeAbsolute($moveFileToDirectory)))" if $moveFileToDirectory;%>
+  <%print ", _append($append)" if $append;%>
+  , _ckptOffset(0), _resetting(false)
+{
+    SPLAPPTRC(L_DEBUG, "FileSink startup...", SPL_OPER_DBG);
+
+    _numFilesOpenedMetric.setValueNoLock(0);
+    _numTupleWriteErrorsMetric.setValueNoLock(0);
+
+    // Figure out output file and open it
+    <%if ($closeMode ne "dynamic") {%>
+        <%if ($isInConsistentRegion && $fileExpressionHasAttributes == 0) {%>
+            _resetting = getPE().getRelaunchCount() > 0 ? true:false;
+            <%if ($closeMode eq "never") {%>
+                _pathName = genFilename();
+                // Do not reopen file if operator has closeMode set. File will be
+                // reopened by the process(Tuple) method
+                openFile(_resetting);
+            <%}%>
+        <%} else {
+# If file name as attributes, then we don't open the file now, we open when we get to the process(Tuple) method.
+            if (!$fileExpressionHasAttributes) { %>
+                _pathName = genFilename();
+               // Not restoring
+               openFile(false);
+           <%}%>
+        <%}%>
+    <%}%>
+<%if ($file){%>
+     try {
+         SPLAPPTRC(L_DEBUG, "Register tag data for governance", SPL_OPER_DBG);
+         std::map<string,string> props;
+         props["outputOperatorType"]="FileSink";
+         namespace bf = boost::filesystem;
+         bf::path absPath(makeAbsolute(_pathName));
+         props["srcName"]=absPath.filename().string();
+         props["srcType"]="data_file";
+         props["p1srcName"]=absPath.parent_path().string();
+         props["srcParent"]="p1";
+         props["p1parentType"]="parent_folder_or_host";
+         props["p1srcType"]="data_file_folder";
+         props["registerType"] = "output";
+         setTagData("OperatorIGC", props);
+     } catch (std::exception const & e) {
+         SPLAPPTRC(L_DEBUG, "Exception received when registering tag data: " << e.what(), SPL_OPER_DBG);
+     }
+ <%}%>
+    <%print "_lastTimeStamp = SPL::Functions::Time::getTimestampInSecs();" if $hasDelayField;%>
+    <%print "_tuplesUntilFlush = _flushCount = $flush;" if $flush;%>
+    <%print "_tuplesUntilClose = _tupleCount = $tuplesPerFile;" if $tuplesPerFile;%>
+    <%print "_maxFileSize = $bytesPerFile;" if $bytesPerFile;%>
+    <%print "_secondsToClose = $timePerFile;" if $timePerFile;%>
+    signal(SIGPIPE,SIG_IGN);
+
+    <%print "_ccContext = static_cast<ConsistentRegionContext *> " .
+            "    (getContext().getOptionalContext(CONSISTENT_REGION));" if $isInConsistentRegion;%>
+}
+
+<%if ($processPunct) {%>
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port) {
+    AutoMutex am(_mutex);
+    if (_shutdown) {
+        return;
+    }
+    try {
+        <%if ($writePunctuations) {%>
+            <%if ($closeMode eq "dynamic" && !$fileExpressionHasAttributes) {%>
+                // See if the file has been opened yet
+                if (!_f.get() && _pathName.empty()) {
+                    // Nope
+                    _pattern = <%=$file%>;
+                    std::string newFile = genFilename();
+                    _pathName = newFile;
+                    openFile(false);
+                }
+            <%}%>
+
+            <%if ($closeMode eq "dynamic" or $closeMode eq "count" or $closeMode eq "size" or $closeMode eq "punct" or $closeMode eq "time") {%>
+                if (_f.get()) {
+            <%}%>
+            <%if ($hasDelayField) {%>
+                double currentTimeStamp = SPL::Functions::Time::getTimestampInSecs();
+                <%if ($binary) {%>
+                    _f->writeTo() << currentTimeStamp - _lastTimeStamp;
+                <%} else { %>
+                    SPL::serializeWithPrecision(_f->fs(), static_cast<SPL::float64>(currentTimeStamp - _lastTimeStamp)) << ',';
+                <%}%>
+                _lastTimeStamp = currentTimeStamp;
+            <%}
+            if ($binary) {%>
+                _f->writeTo() << (punct == Punctuation::WindowMarker ? '\1' : '\2');
+            <%} else {%>
+                _f->fs() << "Punctuation received: " << punct << '\n';
+            <%}%>
+            <%if ($closeMode eq "dynamic" or $closeMode eq "count" or $closeMode eq "size" or $closeMode eq "punct" or $closeMode eq "time") {%>
+                }
+		else {
+		    SPLAPPTRC(L_DEBUG, "Punctuation received: " << punct, SPL_OPER_DBG);
+		}
+            <%}%>
+        <%}%>
+        <%if ($flushOnPunctuation) {%>
+            <%if ($closeMode eq "dynamic" or $closeMode eq "count" or $closeMode eq "size" or $closeMode eq "punct" or $closeMode eq "time") {%>
+                if (_f.get())
+            <%}%>
+                    _f->flush();
+        <%}%>
+    } catch (const std::exception& e) {
+        SPLAPPTRC(L_ERROR, SPL_APPLICATION_RUNTIME_EXCEPTION(e.what()), SPL_OPER_DBG);
+    } catch (...) {
+        SPLAPPTRC(L_ERROR, SPL_APPLICATION_RUNTIME_UNKNOWN_EXCEPTION, SPL_OPER_DBG);
+    }
+    <%if ($closeMode eq "punct") {%>
+            closeFile();
+    <%} elsif ($model->getNumberOfOutputPorts() == 1) {%>
+        if (punct == Punctuation::FinalMarker)
+            closeFile();
+    <%}%>
+    <%print "_tuplesUntilFlush = _flushCount;" if $flush;%>
+}
+<%}%>
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    AutoMutex am(_mutex);
+    _shutdown = true;
+    <%if ($closeMode ne "never") {%>
+        <%if ($closeMode eq "time") {%>
+            _openCV.signal();
+        <%}%>
+        closeFile();
+    <%} else {%>
+        delete _f.release();
+    <%}%>
+}
+
+void MY_OPERATOR::process(Tuple const & tuple$, uint32_t port)
+{
+    AutoMutex am(_mutex);
+    if (_shutdown) {
+        return;
+    }
+    const IPort0Type <%=$inTupleName%> = static_cast<const IPort0Type&>(tuple$);
+
+    <%if ($closeMode eq "dynamic") {%>
+        // re-evaluate the 'file' attribute expression for this input tuple, and start
+        // a new output file if it differs from the previous one
+        const string oldName = _pathName;
+        _pattern = <%=$file%>;
+        // Need to compare the filenames after modifiers replaced
+        std::string newFile = genFilename();
+        if (newFile != _pathName) {
+            closeFile();
+            _pathName = newFile;
+            openFile(false);
+        }
+        if (_shutdown)
+            return;
+    <%}%>
+
+    <%if ($fileExpressionHasAttributes or $closeMode eq "count" or $closeMode eq "size" or $closeMode eq "punct" or $closeMode eq "time") {%>
+        if (!_f.get()) {
+	    _pattern = <%=$file%>;
+            // We need to reopen a new file if we are still running
+            _pathName = genFilename();
+            openFile(false);
+	}
+    <%}%>
+
+    // Write to output
+    try {
+        <%if ($hasDelayField) {%>
+            SPL::float64 currentTimeStamp = SPL::Functions::Time::getTimestampInSecs();
+            <%if ($binary) {%>
+                _f->writeTo() << currentTimeStamp - _lastTimeStamp;
+            <%} else { %>
+                SPL::serializeWithPrecision(_f->writeTo(), static_cast<SPL::float64>(currentTimeStamp - _lastTimeStamp)) << ',';
+            <%}%>
+            _lastTimeStamp = currentTimeStamp;
+        <%}%>
+        <%if ($format eq "line") {%>
+            const string& l = <%=$inTupleName%>.get_<%=$firstAttrName%>();
+            _f->fs() << l << <%=$eolMarker%>;
+        <%} elsif ($format eq "block") {%>
+            const SPL::blob& b = <%=$inTupleName%>.get_<%=$firstAttrName%>();
+            uint64_t size;
+            const unsigned char *data = b.getData (size);
+            _f->writeTo().addCharSequence(reinterpret_cast<const char*>(data), size);
+        <%} elsif ($format eq "txt") {
+            if (scalar(%suppressedAttrs) == 0) {%>
+                SPL::serializeWithPrecision(_f->fs(), <%=$inTupleName%>) << '\n';
+            <%} else {%>
+                _f->fs() << '{';
+                <%for (my $i = 0; $i < $numAttrs; ++$i) {
+                   my $attrName = $genAttrs[$i]->getName();
+                   print "\t\t" if $i != 0;
+                   print "_f->fs() << \"$attrName=\";";
+                   print "SPL::serializeWithPrecision(_f->fs(), $inTupleName.get_", $attrName, "())";
+                   print " << ','" if $i != $numAttrs-1;
+                   print ";\n";
+                }%>
+                _f->fs() << "}\n";
+            <%}%>
+        <%} elsif ($format eq "csv") {
+            for (my $i = 0; $i < $numAttrs; ++$i) {
+               my $attr = $genAttrs[$i];
+               my $attrName = $attr->getName();
+               print "\t" if $i != 0;
+               if (!$quoteStrings && SPL::CodeGen::Type::isString($attr->getSPLType())) {
+                   print "SPL::serializeUnquoted(_f->writeTo(), $inTupleName.get_", $attrName, "())";
+               } else {
+                   print "SPL::serializeWithPrecision(_f->writeTo(), $inTupleName.get_", $attrName, "())";
+               }
+               if ($i != $numAttrs-1) {
+                   print " << $sepExpr;\n";
+               } else {
+                   print " << '\\n';\n";
+               }
+            }
+        } elsif ($format eq "bin") {%>
+            <%if ($writePunctuations) {%>
+                _f->writeTo() << '\0';
+            <%}
+            if (scalar(%suppressedAttrs) == 0) {%>
+                _f->writeTo() << <%=$inTupleName%>;
+            <%} else {
+                for (my $i = 0; $i < $numAttrs; ++$i) {
+                   my $attrName = $genAttrs[$i]->getName();
+                   print "\t    " if $i != 0;
+                   print "_f->writeTo() << $inTupleName.get_", $attrName, "();\n";
+                }
+            }%>
+        <%}%>
+        <%if ($flush) {%>
+        if (--_tuplesUntilFlush == 0) {
+            _tuplesUntilFlush = _flushCount;
+            _f->fs().flush();
+        }
+        <%}%>
+        if (!_f->fs()) {
+            // The write failed for some reason.  Mark this as a failed write
+            _numTupleWriteErrorsMetric.incrementValueNoLock();
+            <%if ($writeFailureAction ne 'ignore') {%>
+                SPLTRACEMSG(L_ERROR, SPL_APPLICATION_RUNTIME_FILESINK_WRITE_FAILURE(_pathName), SPL_OPER_DBG);
+            <%}
+            if ($writeFailureAction eq 'log') {%>
+                _f->fs().clear();
+            <%}%>
+        }
+    } catch (const std::exception& e) {
+        SPLAPPTRC(L_ERROR, SPL_APPLICATION_RUNTIME_EXCEPTION(e.what()), SPL_OPER_DBG);
+    } catch (...) {
+        SPLAPPTRC(L_ERROR, SPL_APPLICATION_RUNTIME_UNKNOWN_EXCEPTION, SPL_OPER_DBG);
+    }
+    <%if ($writeFailureAction eq 'terminate') {%>
+        if (!_f->fs()) {
+            // Throwing this exception must happen outside of the try-catch block, as it's intended to
+            // terminate the operator.
+            SPLTRACEMSGANDTHROW(SPLRuntimeFileSinkOperator, L_ERROR, SPL_APPLICATION_RUNTIME_FILESINK_WRITE_FAILURE(_pattern), SPL_FUNC_DBG);
+        }
+    <%}%>
+
+    <%if ($closeMode eq "count") {%>
+        if (--_tuplesUntilClose == 0) {
+            _tuplesUntilClose = _tupleCount;
+	    closeFile();
+        }
+    <%} elsif ($closeMode eq "size") {%>
+        if (::lseek64(_f->fd(), 0, SEEK_CUR) >= _maxFileSize) {
+	    closeFile();
+        }
+    <%}%>
+}
+
+<% if ($isInConsistentRegion) { %>
+
+void MY_OPERATOR::resetCounters()
+{
+    <%if ($closeMode eq "count") {%>
+        _tuplesUntilClose = _tupleCount;
+    <%}%>
+    <%if ($flush) {%>
+        _tuplesUntilFlush = _flushCount;
+    <%}%>
+}
+
+void MY_OPERATOR::drain()
+{
+    AutoMutex am (_mutex);
+
+    SPLAPPTRC(L_INFO, "#drain(). Sequence Id: " << _ccContext->getSequenceId() , SPL_OPER_DBG);
+    if (_f.get()) {
+        <%if ($writeStateHandlerCallbacks) {%>
+            _f->fs() << "#drain(). Sequence Id: " << _ccContext->getSequenceId() << '\n';
+        <%}%>
+        _f->flush();
+        ::fsync(_f->fd());
+        <%if ($closeMode ne "never") {%>
+            SPLAPPTRC(L_INFO, "Closing file", SPL_OPER_DBG);
+            closeFile();
+        <%}%>
+    }
+}
+
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt)
+{
+    AutoMutex am (_mutex);
+
+    SPLAPPTRC(L_INFO, "#checkpoint(). Sequence Id: " << _ccContext->getSequenceId(), SPL_OPER_DBG);
+    <%if ($writeStateHandlerCallbacks) {%>
+        if (_f.get()) {
+            _f->fs() << "#checkpoint(). Sequence Id: " << _ccContext->getSequenceId() << '\n';
+            _f->flush();
+	}
+    <%}%>
+
+    resetCounters();
+
+    _ckptOffset = 0;
+    <%if ($closeMode eq "never") {%>
+        if (_f.get()) {
+            _ckptOffset = ::lseek64(_f->fd(), 0, SEEK_CUR);
+        }
+    <%}%>
+    SPLAPPTRC(L_TRACE, "Checkpoint: _ckptOffset: " << _ckptOffset, SPL_OPER_DBG);
+    ckpt << _pathName;
+    ckpt << _ckptOffset;
+    ckpt << _pattern;
+    ckpt << _fileGeneration;
+}
+
+void MY_OPERATOR::rollbackFile()
+{
+    <%if ($truncateOnReset) {%>
+        SPLAPPTRC(L_DEBUG, "Rolling back: " << _pathName, SPL_OPER_DBG);
+        if (_f.get()) {
+            // Truncate and rollback file position
+            _f->flush();
+            ::ftruncate(_f->fd(), _ckptOffset);
+            ::lseek64(_f->fd(), _ckptOffset, SEEK_SET);
+            SPLAPPTRC(L_DEBUG, "Restored file '" << _pathName
+                << "' to offset: " << _ckptOffset, SPL_OPER_DBG);
+        }
+    <%}%>
+
+}
+
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    AutoMutex am (_mutex);
+
+    SPLAPPTRC(L_INFO,"#reset(). Sequence Id: " << _ccContext->getSequenceId()
+        << " Reset attempt: " << _ccContext->getResetAttempt(), SPL_OPER_DBG);
+
+    std::string pathName;
+    ckpt >> pathName;
+    ckpt >> _ckptOffset;
+    ckpt >> _pattern;
+    ckpt >> _fileGeneration;
+
+    <%if ($closeMode eq "never") {%>
+        // If the file name is different than the one created by the constructor,
+        // reopen the old file in restoring mode (append)
+        // This ensures that when the close mode is 'never', there is a single file
+        // throughout the operator lifetime
+        if (pathName != _pathName) {
+            if (_f.get()) {
+                delete _f.release();
+            }
+            _pathName = pathName;
+            if (pathName.size() > 0) {
+                openFile(true);
+            }
+        }
+        rollbackFile();
+    <%} else {%>
+        if (_f.get()) {
+            // If there is an open file, close it
+            delete _f.release();
+        }
+    <%}%>
+
+    <%if ($writeStateHandlerCallbacks) {%>
+        if (_f.get()) {
+            _f->fs() << "#reset(). Sequence Id: " << _ccContext->getSequenceId()
+                     << " Reset attempt: " << _ccContext->getResetAttempt() << '\n';
+            _f->flush();
+	}
+    <%}%>
+    _resetting = false;
+    resetCounters();
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    AutoMutex am (_mutex);
+
+    SPLAPPTRC(L_INFO,"#resetToInitialState(). Sequence Id: "
+        << _ccContext->getSequenceId() << " Reset attempt: "
+        << _ccContext->getResetAttempt() , SPL_OPER_DBG);
+
+    _ckptOffset = 0;
+    _fileGeneration = 0;
+    <%if ($closeMode eq "never") {%>
+        rollbackFile();
+    <%} else {%>
+        if (_f.get()) {
+            // If there is an open file, close it
+            delete _f.release();
+        }
+    <%}%>
+
+    <%if ($writeStateHandlerCallbacks) {%>
+        if (_f.get()) {
+            _f->fs() << "#resetToInitialState(). Sequence Id: " << _ccContext->getSequenceId() << '\n';
+            _f->flush();
+	}
+    <%}%>
+    _resetting = false;
+    resetCounters();
+}
+
+void MY_OPERATOR::retireCheckpoint(int64_t id)
+{
+    AutoMutex am (_mutex);
+
+    <%if ($writeStateHandlerCallbacks) {%>
+        if (_f.get()) {
+            _f->fs() << "#retireCheckpoint()\n";
+            _f->flush();
+	} else {
+            SPLAPPTRC(L_INFO, "#retireCheckpoint()", SPL_OPER_DBG);
+	}
+    <%}%>
+}
+
+<% } %>
+
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

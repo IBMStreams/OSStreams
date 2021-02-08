@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/function"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:common="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/function"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/common"
+           schemaLocation="commonModel.xsd"/>
+
+<!-- The function model.  -->
+<xs:element name="functionModel" type="functionModelType"/>
+
+<!-- The function model type.  -->
+<xs:complexType name="functionModelType">
+  <xs:sequence>
+    <!-- A function model consists of one or more function sets -->
+    <xs:element name="functionSet" type="functionSetType" minOccurs="1" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The function set type.  -->
+<xs:complexType name="functionSetType">
+  <xs:sequence>
+    <!-- headerFileName gives the name of the C++ header file that declares the functions in the function set. -->
+    <xs:element name="headerFileName" type="xs:string" minOccurs="0" maxOccurs="1"/>
+    <!-- cppNamespaceName gives the C++ namespace in which the functions are defined. -->
+    <xs:element name="cppNamespaceName" type="xs:string" minOccurs="0" maxOccurs="1"/>
+    <!-- Functions defined within this function set. -->
+    <xs:element name="functions" type="functionsType"/>
+    <!-- C++ include files and libraries needed by this function set. -->
+    <xs:element name="dependencies" type="dependenciesType" minOccurs="0"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The functions type.  -->
+<xs:complexType name="functionsType">
+  <xs:sequence>
+    <!-- One of more functions defined in this function set -->
+    <xs:element name="function" type="functionType" minOccurs="1" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The function type. -->
+<xs:complexType name="functionType">
+  <xs:sequence>
+    <!-- An optional description for this function. -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- The SPL prototype for this function. -->
+    <xs:element name="prototype" type="prototypeType"/>
+    <xs:element name="javaFunctionName" type="xs:string" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The function prototype type. -->
+<xs:complexType name="prototypeType">
+  <xs:simpleContent>
+    <!-- The definition of the function. -->
+    <xs:extension base="xs:token">
+      <!-- An optional override for the C++ function name to be invoked. If not specified, the name of the SPL function will be used. -->
+      <xs:attribute name="cppName" type="xs:token"/>
+      <!-- line is obsolete and will be removed in the future. -->
+      <xs:attribute name="line" type="xs:unsignedLong"/>
+      <!-- column is obsolete and will be removed in the future. -->
+      <xs:attribute name="column" type="xs:unsignedLong"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+
+<!-- The dependencies type. -->
+<xs:complexType name="dependenciesType">
+  <xs:sequence>
+    <!-- One or more sets of includes and libraries that a function set depends on. -->
+    <xs:element name="library" type="common:libraryType" minOccurs="1" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+</xs:schema>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<bundleInfoModel xmlns="http://www.ibm.com/xmlns/prod/streams/spl/bundleInfoModel"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 buildId=""
+                 buildDate=""
+                 outputDirectory=""
+                 applicationDirectory=""
+                 adlFile=""
+                 executionMode="standalone"
+                 bundleVersion="4000">
+
+  <toolkit compileRoot="/homes/hny9/nasgaard/test/bundles/sample7/output/toolkits" name="MyToolkit" version="1.0.0">
+    <file name="toolkit.xml"/>
+    <file name="README"/>
+  </toolkit>
+
+  <toolkit compileRoot="/homes/hny9/nasgaard/test/bundles/sample7/output/toolkits" name="spl" version="1.1.0">
+    <file name="opt/icons/notify32.gif"/>
+    <file name="opt/icons/jcp16.gif"/>
+    <file name="opt/icons/jcp32.gif"/>
+    <file name="opt/icons/notify16.gif"/>
+    <file name="toolkit.xml"/>
+    <file name="impl/bin/JavaOp_vmpath.sh"/>
+    <file name="impl/lib/com.ibm.streams.operator.internal.javaop.jar"/>
+    <file name="impl/lib/libstreams-stdtk-runtime.so.0"/>
+    <file name="impl/lib/libstreams-stdtk-javaop.so.0"/>
+    <file name="impl/lib/com.ibm.streams.control.internal.jar"/>
+    <file name="lib/commons-math-2.2.jar"/>
+    <file name="lib/apache-log4j-extras-1.2.17.jar"/>
+    <file name="lib/log4j-1.2.17.jar"/>
+    <file name="lib/JSON4J.jar"/>
+    <file name="lib/com.ibm.streams.operator.jar"/>
+  </toolkit>
+
+</bundleInfoModel>

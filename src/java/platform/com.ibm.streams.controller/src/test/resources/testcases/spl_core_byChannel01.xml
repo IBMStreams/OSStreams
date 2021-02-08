@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testCase name="spl_core_byChannel01" type="Functional" outputDir="output" dataDir="data" standalone="true" distributed="true" xmlns="http://www.ibm.com/xmlns/prod/streams/spl/td2TestCase">
+    <author>Howard Nasgaard</author>
+    <date>July 05, 2016</date>
+    <description>Verify that the use of byChannel causes a compile error if used outside of a config</description>
+    <steps>
+        <splCompile mainComposite="Main" outputDir="output" dataDir="data" extraArgs=" dataDirHost=`dataDirHost`" returnCode="1" stdout="comp.out" stderr="comp.err"/>
+        <diff resultFile="comp.err" expectedFile="comp.err.exp" inDataDir="false"/>
+    </steps>
+</testCase>

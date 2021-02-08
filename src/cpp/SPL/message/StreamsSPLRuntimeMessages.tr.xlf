@@ -1,0 +1,801 @@
+<?xml version="1.0" encoding="utf-8"?>
+  <xliff version="1.1" xmlns="urn:oasis:names:tc:xliff:document:1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.1 ../../../../etc/xliff/xliff-core-1.1.xsd">
+    <file datatype="plaintext" original="StreamsSPLMessages.txt" source-language="en" xml:space="preserve">
+      <body>
+        <!-- =============================================================== -->
+        <!-- TRNOTE Please refer to the "XML Localization Interchange File   -->
+        <!-- Format (.xlf) files" section in the translation instructions    -->
+        <!-- file for more information on this file.                         -->
+        <!--                                                                 -->
+        <!-- NLS_ENCODING=UTF-8                                              -->
+        <!-- TRNOTE Return this file using the UTF-8 encoding.               -->
+        <!--                                                                 -->
+        <!-- NLS_MESSAGEFORMAT_VAR                                           -->
+        <!-- TRNOTE Because of a behavior with the Java MessageFormat class, -->
+        <!-- any message in the Java Resource Bundle that has a {0} string   -->
+        <!-- in it, must escape all single quotes in that message. To escape -->
+        <!-- the single quote, just insert another single quote before it.   -->
+        <!-- For example, the following message                              -->
+        <!--    "Can't find card with name [{0}]"                            -->
+        <!-- would be changed to                                             -->
+        <!--    "Can''t find card with name [{0}]"                           -->
+        <!--                                                                 -->
+        <!-- TRNOTE Do not translate the text between the curly braces. This -->
+        <!-- text is reserved and should not be translated. For example,     -->
+        <!-- the text in the following curly braces should not be translated:-->
+        <!--    {0,number} {0,number,percent} {0,date} {0,time}              -->
+        <!--                                                                 -->
+        <!-- TRNOTE For the target language setting, please use the          -->
+        <!-- appropriate value for your locale as indicated in parenthesis:  -->
+        <!--   Danish (da), Dutch (nl), Finnish (fi), French (fr),           -->
+        <!--   German (de), Italian (it), Norwegian - Bokmal (no),           -->
+        <!--   Brazilian Portuguese (pt-BR), Portuguese (pt-PT),             -->
+        <!--   Spanish (es), Swedish (sv), Czech (cs), Hungarian (hu),       -->
+        <!--   Polish (pl), Russian (ru), Simplified Chinese (zh),           -->
+        <!--   Traditional Chinese (zh-TW), Japanese (ja), Korean (ko),      -->
+        <!--   Arabic (ar), Hebrew (he), Slovakian (sk), Slovenian (sl),     -->
+        <!--   Thai (th), Turkish (tr)                                       -->
+        <!--                                                                 -->
+        <!-- TRNOTE Please start translating the following entries.          -->
+        <!-- =============================================================== -->
+        <group id="StreamsSPLRuntimeMessages" restype="table" xml:space="preserve">
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5000E" extraData="SPL_CORE_CANT_LOAD_MESSAGE" resname="CDISR5000E" xml:space="preserve">
+            <source xml:lang="en">Could not load message ''{0}''.  Please contact support.</source>
+            <target xml:lang="tr">Turkish: Not yet translated but could not load message: ''{0}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5001E" extraData="SPL_RUNTIME_INVALID_STRING_LITERAL_UTF8_SEQ_INCORRECT_LEADING_BYTE" resname="CDISR5001E" xml:space="preserve">
+            <source xml:lang="en">Invalid string literal (multi-byte utf8 character has incorrect leading byte ''0x{0}'').</source>
+            <target xml:lang="tr">Not yet translated:</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5002E" extraData="SPL_RUNTIME_INVALID_STRING_LITERAL_UTF8_SEQ_INCORRECT_TRAILING_BYTE" resname="CDISR5002E" xml:space="preserve">
+            <source xml:lang="en">Invalid string literal (multi-byte utf8 character has incorrect trailing byte ''0x{0}'').</source>
+            <target xml:lang="tr">Geçersiz dizge sadesi (çoklu sekizli utf8 karakteri geçersiz izleyen sekizliye sahip).</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5003E" extraData="SPL_RUNTIME_INVALID_STRING_LITERAL_UTF8_SEQ_INCORRECT_NUM_OF_BYTES" resname="CDISR5003E" xml:space="preserve">
+            <source xml:lang="en">Invalid string literal (multi-byte utf8 character has incorrect number of bytes ''{0,number,0}'').</source>
+            <target xml:lang="tr">Geçersiz dizge sadesi (çoklu sekizli utf8 karakteri geçersiz sayıda sekizliye sahip).</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5004E" extraData="SPL_RUNTIME_INVALID_STRING_LITERAL_SLASH_U_MISSING_TRAILING_SURROGATE" resname="CDISR5004E" xml:space="preserve">
+            <source xml:lang="en">Invalid string literal (missing trailing surrogate in \\u sequence).</source>
+            <target xml:lang="tr">Geçersiz dizge sadesi (\\u diziminde kayıp izleyen vekil).</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5005E" extraData="SPL_RUNTIME_INVALID_STRING_LITERAL_PARTIAL_SLASH_U" resname="CDISR5005E" xml:space="preserve">
+            <source xml:lang="en">Invalid string literal (ends with partial unicode character \\u sequence).</source>
+            <target xml:lang="tr">Geçersiz dizge sadesi (\\u diziminde tamamlanmamış unicode karakteri).</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5006E" extraData="SPL_RUNTIME_INVALID_STRING_LITERAL_INVALID_CHAR_IN_SLASH_U" resname="CDISR5006E" xml:space="preserve">
+            <source xml:lang="en">Invalid string literal (incorrect character in unicode character \\u sequence).</source>
+            <target xml:lang="tr">Geçersiz dizge sadesi (\\u diziminde geçersiz karakter).</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5007E" extraData="SPL_RUNTIME_INVALID_STRING_LITERAL_SLASH_U_INCORRECT_TRAILING_SURROGATE" resname="CDISR5007E" xml:space="preserve">
+            <source xml:lang="en">Invalid string literal (incorrect trailing surrogate in \\u sequence).</source>
+            <target xml:lang="tr">Geçersiz dizge sadesi (\\u diziminde geçersiz izleyen vekil).</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5008E" extraData="SPL_RUNTIME_INVALID_STRING_LITERAL_SLASH_U_INCORRECT_CODE_UNIT_NOT_BMP" resname="CDISR5008E" xml:space="preserve">
+            <source xml:lang="en">Invalid string literal (incorrect code unit, was expecting BMP in \\u sequence).</source>
+            <target xml:lang="tr">Geçersiz dizge sadesi (\\u diziminde geçersiz kod ünitesi, BMP bekleniyordu).</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5009E" extraData="SPL_RUNTIME_INVALID_STRING_LITERAL_NOT_ENCLOSED_IN_MATCHING_QUOTES" resname="CDISR5009E" xml:space="preserve">
+            <source xml:lang="en">Invalid string literal (not enclosed in single ('') or double quotes (''&quot;'')).</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5010E" extraData="SPL_RUNTIME_INVALID_STRING_LITERAL_ENDS_WITH_ESCAPE_CHARACTER" resname="CDISR5010E" xml:space="preserve">
+            <source xml:lang="en">Invalid string literal (ends with escape character (''\\'')).</source>
+            <target xml:lang="tr">Geçersiz dizge sadesi (önceleme (''\\'') karakteri ile bitiyor).</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5011E" extraData="SPL_RUNTIME_SLICE_LOWER_BOUND_LARGER_THAN_STRING_SIZE" resname="CDISR5011E" xml:space="preserve">
+            <source xml:lang="en">Slice lower bound ''{0,number,integer}'' is larger than string size ''{1,number,integer}''.</source>
+            <target xml:lang="tr">Dilim alt sınırı ''{0,number,integer}'' dizge boyutu ''{1,number,integer}'' üzerinde.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5012E" extraData="SPL_APPLICATION_RUNTIME_UNEXPECTED_PUNCTUATION_IN_WINDOW" resname="CDISR5012E" xml:space="preserve">
+            <source xml:lang="en">Unexpected punctuation in window.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5013E" extraData="SPL_APPLICATION_RUNTIME_INVALID_SLIDING_WINDOW_WITH_PUNCT_EVICTION" resname="CDISR5013E" xml:space="preserve">
+            <source xml:lang="en">Invalid window configuration - sliding window cannot have punctuation-based eviction policy.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5014E" extraData="SPL_APPLICATION_RUNTIME_INVALID_SLIDING_WINDOW_WITH_PUNCT_TRIGGER" resname="CDISR5014E" xml:space="preserve">
+            <source xml:lang="en">Invalid window configuration - sliding window cannot have punctuation-based trigger policy.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5015E" extraData="SPL_RUNTIME_OUTPUT_PORT_INDEX_OUT_OF_RANGE" resname="CDISR5015E" xml:space="preserve">
+            <source xml:lang="en">Output port index ''{0,number,integer}'' out of valid range [0..{1,number,integer}).</source>
+            <target xml:lang="tr">Çıkış noktası indisi ''{0,number,integer}'' geçerli sınır [0..{1,number,integer}). dışında.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5016E" extraData="SPL_RUNTIME_TUPLE_TYPE_DOES_NOT_MATCH_PORT_TYPE" resname="CDISR5016E" xml:space="preserve">
+            <source xml:lang="en">Tuple type ''{0}'' does not match port type ''{1}'' at port index ''{2,number,integer}''.</source>
+            <target xml:lang="tr">Kayıt türü ''{0}'' indis ''{3,number,integer}'' üzerindeki bağlantı noktası türü ''{1}'' ile uyuşmuyor. </target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5017E" extraData="SPL_RUNTIME_CONSTANT_TUPLE_SENT_TO_MUTATING_PORT" resname="CDISR5017E" xml:space="preserve">
+            <source xml:lang="en">Constant tuple cannot be sent to mutating port at index ''{0,number,integer}''.</source>
+            <target xml:lang="tr">Sabit kayıt indis ''{0,number,integer}'' üzerindeki değiştiren bağlantı noktasından gönderilemiyor.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5018E" extraData="SPL_APPLICATION_RUNTIME_STREAM_PROPERTY_TYPE_MISMATCH" resname="CDISR5018E" xml:space="preserve">
+            <source xml:lang="en">Stream property of type ''{0}'' is passed a value of type ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5019E" extraData="SPL_RUNTIME_ADL_OPEN_FAILED" resname="CDISR5019E" xml:space="preserve">
+            <source xml:lang="en">Unable to open ADL file ''{0}'': reason: ''{1}''.</source>
+            <target xml:lang="tr">ADL dosyası ''{0}'' açılamıyor: sebep: ''{1}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5020E" extraData="SPL_RUNTIME_ADL_LOAD_FAILED" resname="CDISR5020E" xml:space="preserve">
+            <source xml:lang="en">Unable to load ADL file ''{0}'': reason: ''{1}''.</source>
+            <target xml:lang="tr">ADL dosyası ''{0}'' yüklenemiyor: sebep: ''{1}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5021E" extraData="SPL_RUNTIME_MISSING_PROGRAM_ARGUMENT" resname="CDISR5021E" xml:space="preserve">
+            <source xml:lang="en">Missing submission time value ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5022I" extraData="SPL_RUNTIME_STANDALONE_APPLICATION_ARGUMENT_HELP" resname="CDISR5022I" xml:space="preserve">
+            <source xml:lang="en">Additional command line arguments are specified through &lt;name&gt;=&lt;string-literal&gt;.</source>
+            <target xml:lang="tr">İlave yönetim satırı değişkenleri &lt;name&gt;=&lt;string-literal&gt; şeklinde sağlanır.\nGerekli değişkenler: </target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5023E" extraData="SPL_APPLICATION_RUNTIME_FAILED_OPEN_OUTPUT_FILE" resname="CDISR5023E" xml:space="preserve">
+            <source xml:lang="en">Failed to open output file ''{0}'', reason: {1}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5024E" extraData="SPL_RUNTIME_FAILED_WRITE_DELAY" resname="CDISR5024E" xml:space="preserve">
+            <source xml:lang="en">Failed writing delay time.</source>
+            <target xml:lang="tr">Bekleme zamanını yazmada hata yaşandı.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5025E" extraData="SPL_RUNTIME_FAILED_WRITE_TUPLE" resname="CDISR5025E" xml:space="preserve">
+            <source xml:lang="en">Write of ''{0}'' failed.</source>
+            <target xml:lang="tr">''{0}'' yazılırken hata oluştu.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5026E" extraData="SPL_APPLICATION_RUNTIME_FAILED_OPEN_INPUT_FILE" resname="CDISR5026E" xml:space="preserve">
+            <source xml:lang="en">Failed to open input file ''{0}'', reason: {1}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5027E" extraData="SPL_APPLICATION_RUNTIME_FAILED_READ_DELAY" resname="CDISR5027E" xml:space="preserve">
+            <source xml:lang="en">Failed reading delay time for tuple number {0,number,0}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5028E" extraData="SPL_APPLICATION_RUNTIME_FAILED_READ_TUPLE" resname="CDISR5028E" xml:space="preserve">
+            <source xml:lang="en">Read of ''{0}'' failed for tuple number {1,number,0}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5029E" extraData="SPL_APPLICATION_RUNTIME_FAILED_READ_CHAR" resname="CDISR5029E" xml:space="preserve">
+            <source xml:lang="en">Expected ''{0}'', found ''{1}'' while reading tuple number {2,number,0}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5030E" extraData="SPL_RUNTIME_EXCEPTION_IN_SPL_OPER_PROCESS" resname="CDISR5030E" xml:space="preserve">
+            <source xml:lang="en">Received exception during execution of operator ''{0}'': ''{1}''.</source>
+            <target xml:lang="tr">FIX ME ''{0}'' ''{1}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5031E" extraData="SPL_RUNTIME_UNABLE_TO_BIND" resname="CDISR5031E" xml:space="preserve">
+            <source xml:lang="en">Unable to bind to port ''{0}'': {1}.</source>
+            <target xml:lang="tr">FIX ME ''{0}'' {1}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5032E" extraData="SPL_RUNTIME_UNABLE_TO_REGISTER" resname="CDISR5032E" xml:space="preserve">
+            <source xml:lang="en">Failed to register name ''{0}'' : {1}.</source>
+            <target xml:lang="tr">FIX ME ''{0}'' ''{1}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5033E" extraData="SPL_RUNTIME_UNABLE_RESOLVE_SERVICE" resname="CDISR5033E" xml:space="preserve">
+            <source xml:lang="en">Unable to resolve service ''{0}''.</source>
+            <target xml:lang="tr">FIX ME ''{0}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5034E" extraData="SPL_RUNTIME_UNABLE_RESOLVE_HOST" resname="CDISR5034E" xml:space="preserve">
+            <source xml:lang="en">Unable to resolve hostname ''{0}''.</source>
+            <target xml:lang="tr">FIX ME ''{0}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5035E" extraData="SPL_RUNTIME_UNABLE_RESOLVE_NAME" resname="CDISR5035E" xml:space="preserve">
+            <source xml:lang="en">Unable to resolve name ''{0}''.</source>
+            <target xml:lang="tr">FIX ME ''{0}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5036E" extraData="SPL_RUNTIME_UNKNOWN_PAYLOAD" resname="CDISR5036E" xml:space="preserve">
+            <source xml:lang="en">Unknown payload name ''{0}''.</source>
+            <target xml:lang="tr">FIX ME ''{0}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5037E" extraData="SPL_RUNTIME_INVALID_SHUTDOWN_DURATION" resname="CDISR5037E" xml:space="preserve">
+            <source xml:lang="en">Provided shutdown duration ''{0}'' is invalid, was expecting a positive floating point number.</source>
+            <target xml:lang="tr">FIX ME ''{0}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5038E" extraData="SPL_RUNTIME_NO_PE_INPUT_PORT_FOR_OPER_PORT" resname="CDISR5038E" xml:space="preserve">
+            <source xml:lang="en">Input port at index ''{0,number,integer}'' for operator ''{1}'' has no corresponding PE input port.</source>
+            <target xml:lang="tr">FIX ME ''{0}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5039E" extraData="SPL_RUNTIME_NO_PE_OUTPUT_PORT_FOR_OPER_PORT" resname="CDISR5039E" xml:space="preserve">
+            <source xml:lang="en">Output port at index ''{0,number,integer}'' for operator ''{1}'' has no corresponding PE output port.</source>
+            <target xml:lang="tr">FIX ME ''{0}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5040E" extraData="SPL_RUNTIME_UKNOWN_OPERATOR" resname="CDISR5040E" xml:space="preserve">
+            <source xml:lang="en">Unable to find operator with name: ''{0}''.</source>
+            <target xml:lang="tr">FIX ME ''{0}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5041T" extraData="SPL_RUNTIME_OPTION_LOG_LEVEL" resname="CDISR5041T" xml:space="preserve">
+            <source xml:lang="en">(Deprecated) Log/Trace level: 0 - ERROR, 1 - INFO.</source>
+            <target xml:lang="tr">FIX ME.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5042T" extraData="SPL_RUNTIME_OPTION_CONSOLE" resname="CDISR5042T" xml:space="preserve">
+            <source xml:lang="en">Output trace messages to standard error (default is standard output).</source>
+            <target xml:lang="tr">FIX ME.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5043T" extraData="SPL_RUNTIME_OPTION_KILL_AFTER" resname="CDISR5043T" xml:space="preserve">
+            <source xml:lang="en">Shutdown application after N seconds, where N is a positive floating point number.</source>
+            <target xml:lang="tr">FIX ME.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5044E" extraData="SPL_RUNTIME_AMBIGUOUS_PROGRAM_ARGUMENT" resname="CDISR5044E" xml:space="preserve">
+            <source xml:lang="en">Submission time value for name ''{0}'' ambiguous: ''{1}'' and ''{2}''.</source>
+            <target xml:lang="tr">FIX ME.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5045W" extraData="SPL_RUNTIME_EXTRA_PROGRAM_ARGUMENT" resname="CDISR5045W" xml:space="preserve">
+            <source xml:lang="en">Warning: Unreferenced submission time name ''{0}''.</source>
+            <target xml:lang="tr">FIX ME.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5046E" extraData="SPL_APPLICATION_RUNTIME_UNABLE_OPEN_ENCODING" resname="CDISR5046E" xml:space="preserve">
+            <source xml:lang="en">Unknown character set encoding ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5047E" extraData="SPL_RUNTIME_OUTPUT_PORT_CTOR" resname="CDISR5047E" xml:space="preserve">
+            <source xml:lang="en">Invalid submission to port index ''{0,number,integer}'' from constructor.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5048E" extraData="SPL_RUNTIME_CANNOT_LOAD_ADL_MAKE_SURE_THERE_IS_A_MAIN" resname="CDISR5048E" xml:space="preserve">
+            <source xml:lang="en">Cannot load the ADL file. Make sure your standalone application has a main composite (use a ''-M'' flag to the compiler).</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5049W" extraData="SPL_APPLICATION_RUNTIME_INVALID_COUNT_BASED_TRIGGER_SIZE" resname="CDISR5049W" xml:space="preserve">
+            <source xml:lang="en">Invalid count-based trigger size of ''{0,number,0}'' is specified, where only valid size is ''1''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5050E" extraData="SPL_APPLICATION_RUNTIME_SPLIT_NO_DEFAULT" resname="CDISR5050E" xml:space="preserve">
+            <source xml:lang="en">Unable to find key ''{0}'' in mapping file ''{1}'', and no default specified.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5051E" extraData="SPL_RUNTIME_FAILED_PARSE_INDICIES" resname="CDISR5051E" xml:space="preserve">
+            <source xml:lang="en">{0}: unable to parse indicies in map line ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5052E" extraData="SPL_APPLICATION_RUNTIME_FAILED_PARSE_KEY" resname="CDISR5052E" xml:space="preserve">
+            <source xml:lang="en">{0}: unable to extract key in map line ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5053E" extraData="SPL_RUNTIME_OPERATOR_FAILURE" resname="CDISR5053E" xml:space="preserve">
+            <source xml:lang="en">Runtime failure in operators: ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5054E" extraData="SPL_APPLICATION_RUNTIME_DUPLICATE_PARSE_KEY" resname="CDISR5054E" xml:space="preserve">
+            <source xml:lang="en">{0}: Duplicate key in map line ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5055E" extraData="SPL_RUNTIME_COMPILER_LOAD_FAILED" resname="CDISR5055E" xml:space="preserve">
+            <source xml:lang="en">Unable to load ''{0}'' failed; reason: ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5056E" extraData="SPL_RUNTIME_COMPILER_DLSYM_FAILED" resname="CDISR5056E" xml:space="preserve">
+            <source xml:lang="en">Unable to locate entry point ''{0}'' ; reason: ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5057E" extraData="SPL_RUNTIME_NOT_MULTICAST_ADDR" resname="CDISR5057E" xml:space="preserve">
+            <source xml:lang="en">UDPSource: ''{0}'' is not a multicast address.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5058E" extraData="SPL_RUNTIME_UNABLE_RESOLVE_HOST_ERROR" resname="CDISR5058E" xml:space="preserve">
+            <source xml:lang="en">Unable to resolve hostname ''{0}'', port ''{1}'', error : {2}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5059E" extraData="SPL_RUNTIME_UNABLE_TO_LOCATE_INTERFACE" resname="CDISR5059E" xml:space="preserve">
+            <source xml:lang="en">Unable to resolve interface ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5060E" extraData="SPL_RUNTIME_XML_CREATION_FAILED" resname="CDISR5060E" xml:space="preserve">
+            <source xml:lang="en">Unable to create XML file ''{0}'': error ''{1}''.</source>
+            <target xml:lang="tr">XML dosyası ''{0}'' oluşturulamıyor: hata ''{1}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5061E" extraData="SPL_RUNTIME_UNKNOWN_EXCEPTION" resname="CDISR5061E" xml:space="preserve">
+            <source xml:lang="en">Unknown Exception</source>
+            <target xml:lang="tr">Bilinmeyen özel durum</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5062E" extraData="SPL_APPLICATION_RUNTIME_SIZE_MISMATCH_SELECTFROM" resname="CDISR5062E" xml:space="preserve">
+            <source xml:lang="en">Selector size ({0,number,0}) does not match input size ({1,number,0}) in ''selectFromList''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5063E" extraData="SPL_APPLICATION_RUNTIME_SIZE_SLICE_NEGATIVE_ARG" resname="CDISR5063E" xml:space="preserve">
+            <source xml:lang="en">''{0}'' argument to ''slice()'' is negative.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5064E" extraData="SPL_APPLICATION_RUNTIME_SIZE_KTHELEM_INDEX_INVALID" resname="CDISR5064E" xml:space="preserve">
+            <source xml:lang="en">kthelem index ''{0,number,0}'' out of bounds [0..{1,number,0}].</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5065E" extraData="SPL_APPLICATION_RUNTIME_CONVERSION_TO_STRING_FAILED" resname="CDISR5065E" xml:space="preserve">
+            <source xml:lang="en">Conversion from ''{0}'' to rstring failed.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5066E" extraData="SPL_APPLICATION_RUNTIME_CONVERSION_FROM_STRING_FAILED" resname="CDISR5066E" xml:space="preserve">
+            <source xml:lang="en">Conversion from string ''{0}'' to ''{1}'' failed.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5067E" extraData="SPL_RUNTIME_GETHOSTNAME_FAILED" resname="CDISR5067E" xml:space="preserve">
+            <source xml:lang="en">Could not determine local host name, reason: {0}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5068E" extraData="SPL_RUNTIME_SUBSCRIPTION_KIND_INVALID" resname="CDISR5068E" xml:space="preserve">
+            <source xml:lang="en">Literal: getKind() != ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5069E" extraData="SPL_RUNTIME_SUBSCRIPTION_IN_INVALID" resname="CDISR5069E" xml:space="preserve">
+            <source xml:lang="en">Subscript not valid with ''in''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5070E" extraData="SPL_RUNTIME_SUBSCRIPTION_NEED_AND_OR" resname="CDISR5070E" xml:space="preserve">
+            <source xml:lang="en">Clause ''{0}'' is not an ''And'' or ''Or'' clause.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5071E" extraData="SPL_RUNTIME_SUBSCRIPTION_NEED_PREDICATE" resname="CDISR5071E" xml:space="preserve">
+            <source xml:lang="en">Clause ''{0}'' is an ''And'' or ''Or'' clause.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5072E" extraData="SPL_RUNTIME_SUBSCRIPTION_REMOVE_LAST" resname="CDISR5072E" xml:space="preserve">
+            <source xml:lang="en">Invalid to remove last sub clause in  ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5073E" extraData="SPL_RUNTIME_SUBSCRIPTION_INVALID_REMOVE" resname="CDISR5073E" xml:space="preserve">
+            <source xml:lang="en">Invalid removal index ''{0,number,0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5074E" extraData="SPL_RUNTIME_SUBSCRIPTION_INVALID_SUBSCRIPT" resname="CDISR5074E" xml:space="preserve">
+            <source xml:lang="en">Clause ''{0}'' does not have a subscript.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5075E" extraData="SPL_RUNTIME_SUBSCRIPTION_INVALID_GETSUBCLAUSE" resname="CDISR5075E" xml:space="preserve">
+            <source xml:lang="en">Invalid getSubclause index ''{0,number,0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5076E" extraData="SPL_RUNTIME_EXCEPTION_CHECKPOINTING" resname="CDISR5076E" xml:space="preserve">
+            <source xml:lang="en">Exception received while checkpointing, details: ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5077E" extraData="SPL_RUNTIME_EXCEPTION_RESOURCE_CLEANUP" resname="CDISR5077E" xml:space="preserve">
+            <source xml:lang="en">Exception received during resource cleanup, details: ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5078E" extraData="SPL_RUNTIME_UNKNOWN_EXCEPTION_RESOURCE_CLEANUP" resname="CDISR5078E" xml:space="preserve">
+            <source xml:lang="en"><![CDATA[Unknown exception received during resource clean-up... Ignoring!]]></source>
+            <target xml:lang="tr"><![CDATA[Not yet translated.]]></target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5079E" extraData="SPL_RUNTIME_EXCEPTION_PE_PROCESSING" resname="CDISR5079E" xml:space="preserve">
+            <source xml:lang="en">Exception received during PE processing, details: ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5080E" extraData="SPL_RUNTIME_EXCEPTION_RESTORE_CHECKPOINT" resname="CDISR5080E" xml:space="preserve">
+            <source xml:lang="en">Exception received while restoring checkpoint, details: ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5081E" extraData="SPL_RUNTIME_EXCEPTION_PE_SEND" resname="CDISR5081E" xml:space="preserve">
+            <source xml:lang="en">Exception ''{0}'' received while trying to write data to transport client! This usually indicates that the PE at the other end of the stream cannot be reached at this time..</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5082E" extraData="SPL_RUNTIME_PE_OUTPUT_PORT_NOT_ACTIVE_DROPPING_TUPLE_OR_PUNCT" resname="CDISR5082E" xml:space="preserve">
+            <source xml:lang="en">PE output port ''{0,number,integer}'' is not active... Dropping tuple or punctuation...</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5083E" extraData="SPL_APPLICATION_RUNTIME_REGEXP_FAILED_COMPILE" resname="CDISR5083E" xml:space="preserve">
+            <source xml:lang="en">Regular expression ''{0}'' could not be compiled.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5084E" extraData="SPL_RUNTIME_REGEXP_SUB_FAILED_COMPILE" resname="CDISR5084E" xml:space="preserve">
+            <source xml:lang="en">Regular expression ''{0}'' used for substitution could not be compiled.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5085E" extraData="SPL_RUNTIME_UNKNOWN_METRIC" resname="CDISR5085E" xml:space="preserve">
+            <source xml:lang="en">Metric ''{0}'' was not found.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5086E" extraData="SPL_RUNTIME_UNKNOWN_ENCODING" resname="CDISR5086E" xml:space="preserve">
+            <source xml:lang="en">Unknown encoding ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5087E" extraData="SPL_RUNTIME_WRITE_FAILED" resname="CDISR5087E" xml:space="preserve">
+            <source xml:lang="en">Write failed.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5088E" extraData="SPL_RUNTIME_READ_FAILED" resname="CDISR5088E" xml:space="preserve">
+            <source xml:lang="en">Read failed.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5089E" extraData="SPL_APPLICATION_RUNTIME_NBB_POINTER" resname="CDISR5089E" xml:space="preserve">
+            <source xml:lang="en">NativeByteBuffer cannot convert pointer to {0,number,0}-bit pointer (you probably do not want that anyway).</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5090E" extraData="SPL_APPLICATION_RUNTIME_VALUEHANDLE_FAILURE" resname="CDISR5090E" xml:space="preserve">
+            <source xml:lang="en">Cannot create {0} from non-SPL type T=''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5091E" extraData="SPL_RUNTIME_VALUEHANDLE_INVALID_CONVERSION" resname="CDISR5091E" xml:space="preserve">
+            <source xml:lang="en">Invalid conversion to type {0} from a value handle containing a value of type {1}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5092E" extraData="SPL_RUNTIME_INVALID_TUPLE_ASSIGN" resname="CDISR5092E" xml:space="preserve">
+            <source xml:lang="en">Cannot assign tuple of type ''{0}'' from tuple of type ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5093E" extraData="SPL_RUNTIME_INVALID_TUPLE_SWAP" resname="CDISR5093E" xml:space="preserve">
+            <source xml:lang="en">Cannot swap tuple of type ''{0}'' with tuple of type ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5094E" extraData="SPL_APPLICATION_RUNTIME_INVALID_SET_COLLECTION" resname="CDISR5094E" xml:space="preserve">
+            <source xml:lang="en">Cannot create templated set&lt;{0}&gt; from collection.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5095E" extraData="SPL_RUNTIME_META_INVALID_SIZE" resname="CDISR5095E" xml:space="preserve">
+            <source xml:lang="en">''getFixedSize()'' called on a type that is not a fixed size type.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5096E" extraData="SPL_RUNTIME_META_INVALID_ALIGN" resname="CDISR5096E" xml:space="preserve">
+            <source xml:lang="en">''getAlignment()'' called on a type that is not a scalar type.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5097E" extraData="SPL_APPLICATION_RUNTIME_INVALID_MAP_COLLECTION" resname="CDISR5097E" xml:space="preserve">
+            <source xml:lang="en">Cannot create templated map&lt;{0},{1}&gt; from collection.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5098E" extraData="SPL_APPLICATION_RUNTIME_MAP_INVALID_INDEX" resname="CDISR5098E" xml:space="preserve">
+            <source xml:lang="en">Map index ''{0}'' not found.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5099E" extraData="SPL_APPLICATION_RUNTIME_INVALID_LIST_COLLECTION" resname="CDISR5099E" xml:space="preserve">
+            <source xml:lang="en">Cannot create templated list&lt;{0}&gt; from collection.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5100E" extraData="SPL_APPLICATION_RUNTIME_INVALID_LIST_SLICE" resname="CDISR5100E" xml:space="preserve">
+            <source xml:lang="en">Slice lower bound {0,number,0} is greater than list size {1,number,0}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5101E" extraData="SPL_APPLICATION_RUNTIME_INVALID_ENUM_VALUE" resname="CDISR5101E" xml:space="preserve">
+            <source xml:lang="en">Incorrect constant ''{0}'' assigned to an enum.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5102E" extraData="SPL_APPLICATION_RUNTIME_INVALID_ENUM_ASSIGN" resname="CDISR5102E" xml:space="preserve">
+            <source xml:lang="en">Cannot assign enum of type ''{0}'' from enum of type ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5103E" extraData="SPL_APPLICATION_RUNTIME_INVALID_ENUM_SWAP" resname="CDISR5103E" xml:space="preserve">
+            <source xml:lang="en">Cannot swap enum of type ''{0}'' with enum of type ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5104E" extraData="SPL_APPLICATION_RUNTIME_INVALID_INDEX" resname="CDISR5104E" xml:space="preserve">
+            <source xml:lang="en">Invalid index ''{0,number,0}'', valid range is ''[0..{1,number,0}]''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5105E" extraData="SPL_RUNTIME_INVALID_BLOB_SLICE" resname="CDISR5105E" xml:space="preserve">
+            <source xml:lang="en">Slice lower bound ''{0,number,0}'' is greater than blob size ''{1,number,0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5106E" extraData="SPL_APPLICATION_RUNTIME_INVALID_BMAP_COLLECTION" resname="CDISR5106E" xml:space="preserve">
+            <source xml:lang="en">Cannot create templated bmap&lt;{0},{1},{2,number,0}&gt; from collection.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5107E" extraData="SPL_APPLICATION_RUNTIME_INVALID_BLIST_COLLECTION" resname="CDISR5107E" xml:space="preserve">
+            <source xml:lang="en">Cannot create templated blist&lt;{0},{1,number,0}&gt; from collection.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5108E" extraData="SPL_APPLICATION_RUNTIME_INVALID_LIST_FRONT" resname="CDISR5108E" xml:space="preserve">
+            <source xml:lang="en">Cannot call ''front()'' on an empty list (no element at index 0).</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5109E" extraData="SPL_APPLICATION_RUNTIME_INVALID_LIST_BACK" resname="CDISR5109E" xml:space="preserve">
+            <source xml:lang="en">Cannot call ''back()'' on an empty list (no element at index -1).</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5110E" extraData="SPL_APPLICATION_RUNTIME_INVALID_BSTRING_COLLECTION" resname="CDISR5110E" xml:space="preserve">
+            <source xml:lang="en">Cannot create templated bstring&lt;{0,number,0}&gt; from collection.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5111E" extraData="SPL_APPLICATION_RUNTIME_RESIZE_FIXED_BUFFER" resname="CDISR5111E" xml:space="preserve">
+            <source xml:lang="en">Attempt to resize external buffer -- current size {0,number,0}. There is a need for {1,number,0} bytes</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5112E" extraData="SPL_APPLICATION_RUNTIME_RESIZE_BUFFER_TOO_BIG" resname="CDISR5112E" xml:space="preserve">
+            <source xml:lang="en">Attempt to resize external buffer will lead to a size greater than the maximum allowed size -- current size {0,number,0}. There is a need for {1,number,0} bytes,  but the maximum allowed growth is {2,number,0}</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5113E" extraData="SPL_APPLICATION_RUNTIME_NETBB_POINTER" resname="CDISR5113E" xml:space="preserve">
+            <source xml:lang="en">NetworkByteBuffer cannot convert pointer to {0,number,0}-bit pointer (you probably do not want that anyway).</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5114E" extraData="SPL_APPLICATION_RUNTIME_DIR_NOT_EXIST" resname="CDISR5114E" xml:space="preserve">
+            <source xml:lang="en">Directory ''{0}'' does not exist.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5115E" extraData="SPL_APPLICATION_RUNTIME_NOT_DIR" resname="CDISR5115E" xml:space="preserve">
+            <source xml:lang="en">''{0}'' is not a directory.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5116E" extraData="SPL_RUNTIME_NO_PE_INPUT_PORT" resname="CDISR5116E" xml:space="preserve">
+            <source xml:lang="en">Input port ''{0,number,integer}'' does not belong to this PE.</source>
+            <target xml:lang="tr">FIX ME ''{0,number,integer}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5117E" extraData="SPL_RUNTIME_NO_PE_OUTPUT_PORT" resname="CDISR5117E" xml:space="preserve">
+            <source xml:lang="en">Output port ''{0,number,integer}'' does not belong to this PE.</source>
+            <target xml:lang="tr">FIX ME ''{0,number,integer}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5118E" extraData="SPL_RUNTIME_NO_PE_INPUT_PORT_INDEX" resname="CDISR5118E" xml:space="preserve">
+            <source xml:lang="en">Input port index ''{0,number,integer}'' does not belong to this PE.</source>
+            <target xml:lang="tr">FIX ME ''{0,number,integer}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5119E" extraData="SPL_RUNTIME_NO_PE_OUTPUT_PORT_INDEX" resname="CDISR5119E" xml:space="preserve">
+            <source xml:lang="en">Output port index ''{0,number,integer}'' does not belong to this PE.</source>
+            <target xml:lang="tr">FIX ME ''{0,number,integer}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5120I" extraData="SPL_RUNTIME_INVALID_OPERATOR_INDEX" resname="CDISR5120I" xml:space="preserve">
+            <source xml:lang="en">Invalid operator index ''{0,number,integer}''.</source>
+            <target xml:lang="tr">FIX ME ''{0,number,integer}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5121E" extraData="SPL_APPLICATION_RUNTIME_INVALID_MULTIBYTE_SEQUENCE_DURING_FROM_UTF8" resname="CDISR5121E" xml:space="preserve">
+            <source xml:lang="en">Invalid multibyte sequence encountered during encoding from UTF8.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5122E" extraData="SPL_APPLICATION_RUNTIME_INVALID_MULTIBYTE_SEQUENCE_DURING_TO_UTF8" resname="CDISR5122E" xml:space="preserve">
+            <source xml:lang="en">Invalid multibyte sequence encountered during encoding to UTF8.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5123E" extraData="SPL_RUNTIME_EXCEPTION_IN_SPL_OPER_GET_CKPT" resname="CDISR5123E" xml:space="preserve">
+            <source xml:lang="en">Received exception during execution of getCheckpoint for operator ''{0}'': ''{1}''.</source>
+            <target xml:lang="tr">FIX ME ''{0}'' ''{1}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5124E" extraData="SPL_RUNTIME_EXCEPTION_IN_SPL_OPER_RESTORE_CKPT" resname="CDISR5124E" xml:space="preserve">
+            <source xml:lang="en">Received exception during execution of restoreCheckpoint for operator ''{0}'': ''{1}''.</source>
+            <target xml:lang="tr">FIX ME ''{0}'' ''{1}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5125E" extraData="SPL_RUNTIME_EXISTING_METRIC" resname="CDISR5125E" xml:space="preserve">
+            <source xml:lang="en">Metric ''{0}'' already exists.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5126E" extraData="SPL_APPLICATION_RUNTIME_JAVAOP_EXCEPTION" resname="CDISR5126E" xml:space="preserve">
+            <source xml:lang="en">JavaOp invocation threw a Java exception at ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5127E" extraData="SPL_RUNTIME_DUPLICATE_PROGRAM_ARGUMENT" resname="CDISR5127E" xml:space="preserve">
+            <source xml:lang="en">Duplicate submission time values: ''{0}'' and ''{1}''.</source>
+            <target xml:lang="tr">FIX ME ''{0}'' ''{1}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5128E" extraData="SPL_RUNTIME_INVALID_LIST_CAST_TO_BLOB" resname="CDISR5128E" xml:space="preserve">
+            <source xml:lang="en">Only list&lt;uint8&gt; may be cast to blob.</source>
+            <target xml:lang="tr">FIX ME.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5129E" extraData="SPL_RUNTIME_CANNOT_LOAD_PE" resname="CDISR5129E" xml:space="preserve">
+            <source xml:lang="en">Error while loading DSO for PE ''{0}'' from file ''{1}'', reason: ''{2}''</source>
+            <target xml:lang="tr">FIX ME.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5130E" extraData="SPL_RUNTIME_INVALID_LIST_CAST_TO_COMPLEX" resname="CDISR5130E" xml:space="preserve">
+            <source xml:lang="en">Invalid cast to complex from list ''{0}''.</source>
+            <target xml:lang="tr">FIX ME.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5131E" extraData="SPL_RUNTIME_IMPORT_NOT_BY_SUBSCRIPTION" resname="CDISR5131E" xml:space="preserve">
+            <source xml:lang="en">Input port at index ''{0,number,integer}'' for operator ''{1}'' is not imported by subscription.</source>
+            <target xml:lang="tr">FIX ME ''{0}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5132E" extraData="SPL_RUNTIME_EXPORT_NOT_BY_PROPERTY" resname="CDISR5132E" xml:space="preserve">
+            <source xml:lang="en">Input port at index ''{0,number,integer}'' for operator ''{1}'' is not exported by properties.</source>
+            <target xml:lang="tr">FIX ME ''{0}''.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5133E" extraData="SPL_RUNTIME_TUPLE_INVALID_INDEX" resname="CDISR5133E" xml:space="preserve">
+            <source xml:lang="en">Tuple index out of bounds ''{0,number,0}'', valid range is ''[0..{1,number,0}]''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5134E" extraData="SPL_RUNTIME_TUPLE_INVALID_ATTR" resname="CDISR5134E" xml:space="preserve">
+            <source xml:lang="en">Attribute ''{0}'' is not in tuple.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5135E" extraData="SPL_RUNTIME_INPUT_PORT_INDEX_OUT_OF_RANGE" resname="CDISR5135E" xml:space="preserve">
+            <source xml:lang="en">Input port index ''{0,number,integer}'' out of valid range [0..{1,number,integer}).</source>
+            <target xml:lang="tr">Giriş noktası indisi ''{0,number,integer}'' geçerli sınır [0..{1,number,integer}). dışında.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5136E" extraData="SPL_RUNTIME_XML_PARSING_ERROR" resname="CDISR5136E" xml:space="preserve">
+            <source xml:lang="en">Unable to parse XML ''{0}'': error ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5137E" extraData="SPL_RUNTIME_STREAM_PROPERTY_NOT_FOUND" resname="CDISR5137E" xml:space="preserve">
+            <source xml:lang="en">Property ''{0}'' not found.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5138E" extraData="SPL_APPLICATION_RUNTIME_INVALID_NESTED_LIST_AS_MATRIX" resname="CDISR5138E" xml:space="preserve">
+            <source xml:lang="en">Invalid nested list in conversion to ublas matrix.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5139E" extraData="SPL_APPLICATION_RUNTIME_STRING_TOO_BIG" resname="CDISR5139E" xml:space="preserve">
+            <source xml:lang="en">String length ''{0,number,0}'' is too large to encode on V1 TCP connection.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5140E" extraData="SPL_APPLICATION_RUNTIME_PIPE_FAILED" resname="CDISR5140E" xml:space="preserve">
+            <source xml:lang="en">''pipe'' system call failed with error: ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5141E" extraData="SPL_APPLICATION_RUNTIME_FORK_FAILED" resname="CDISR5141E" xml:space="preserve">
+            <source xml:lang="en">''fork'' system call failed with error: ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5142E" extraData="SPL_APPLICATION_RUNTIME_RENAME_COPY_FAILED" resname="CDISR5142E" xml:space="preserve">
+            <source xml:lang="en">Copy of ''{0}'' to ''{1}'' failed: {2}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5143E" extraData="SPL_RUNTIME_REUSEADDR_FAILED" resname="CDISR5143E" xml:space="preserve">
+            <source xml:lang="en">Cannot set SO_REUSEADDR on socket, reason: {0}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5144E" extraData="SPL_APPLICATION_RUNTIME_FILESINK_MISSING_PATTERN" resname="CDISR5144E" xml:space="preserve">
+            <source xml:lang="en">Filesink ''file'' parameter ''{0}'' does not contain at least one of the strings '''{id}''', '''{localtime:...}''', '''{gmtime:...}'''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+            <!-- <MSGDOC>
+                  <REPLACEMENT arg="{0}" value="value"/>
+                  <IGNORE-QUOTED-ARGS/>
+             </MSGDOC> -->
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5145E" extraData="SPL_APPLICATION_RUNTIME_JAVAOP_JVM_ERROR" resname="CDISR5145E" xml:space="preserve">
+            <source xml:lang="en">JavaOp failed to start Java Virtual Machine, JNI error codes: ''{0,number,integer}'', ''{1,number,integer}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5146I" extraData="SPL_RUNTIME_OPERATOR_METRIC_FINAL_VALUE" resname="CDISR5146I" xml:space="preserve">
+            <source xml:lang="en">Operator ''{0}'' metric ''{1}'' has value ''{2,number,0}'' at exit.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5147I" extraData="SPL_RUNTIME_PE_METRIC_FINAL_VALUE" resname="CDISR5147I" xml:space="preserve">
+            <source xml:lang="en">PE metric ''{0}'' has value ''{1,number,0}'' at exit.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5148I" extraData="SPL_RUNTIME_STANDALONE_APPLICATION_REQUIRED_ARGUMENT_HELP" resname="CDISR5148I" xml:space="preserve">
+            <source xml:lang="en">Required arguments are: {0}</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5149I" extraData="SPL_RUNTIME_STANDALONE_APPLICATION_OPTIONAL_ARGUMENT_HELP" resname="CDISR5149I" xml:space="preserve">
+            <source xml:lang="en">Optional arguments are: {0}</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5150I" extraData="SPL_RUNTIME_STANDALONE_APPLICATION_SIGNAL_TRAPPED_SHUTDOWN" resname="CDISR5150I" xml:space="preserve">
+            <source xml:lang="en">Signal {0} trapped, shutting down...</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5151I" extraData="SPL_RUNTIME_STANDALONE_APPLICATION_SIGNAL_TRAPPED_ABORT" resname="CDISR5151I" xml:space="preserve">
+            <source xml:lang="en">Signal {0} trapped for the second time, aborting...</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5152I" extraData="SPL_RUNTIME_OPTION_HELP" resname="CDISR5152I" xml:space="preserve">
+            <source xml:lang="en">Display this help and exit.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5153W" extraData="SPL_RUNTIME_CANT_LOAD_BUNDLE" resname="CDISR5153W" xml:space="preserve">
+            <source xml:lang="en">WARNING: Unable to load the messages for locale ''{0}''.  Continuing with English messages.</source>
+            <target xml:lang="tr">Turkish: WARNING: Unable to load the messages for locale ''{0}''.  Continuing with default messages..</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5154E" extraData="SPL_APPLICATION_RUNTIME_FILE_SOURCE_SINK_FILENAME" resname="CDISR5154E" xml:space="preserve">
+            <source xml:lang="en">Error while processing file ''{0}'': {1}</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5155E" extraData="SPL_APPLICATION_RUNTIME_FILE_SOURCE_SINK_FILENAME_TUPLE" resname="CDISR5155E" xml:space="preserve">
+            <source xml:lang="en">Error while processing tuple ''{0,number,0}'' in file ''{1}'': {2}</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5156E" extraData="SPL_RUNTIME_XML_PARSING_UNKNOWN_ERROR" resname="CDISR5156E" xml:space="preserve">
+            <source xml:lang="en">Unable to parse XML ''{0}'': Unknown Error.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5157E" extraData="SPL_APPLICATION_RUNTIME_EXCEPTION" resname="CDISR5157E" xml:space="preserve">
+            <source xml:lang="en">Received exception: {0}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5158E" extraData="SPL_APPLICATION_RUNTIME_UNKNOWN_EXCEPTION" resname="CDISR5158E" xml:space="preserve">
+            <source xml:lang="en">Received unknown exception.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5159E" extraData="SPL_APPLICATION_RUNTIME_TCPSINK_LOST_CONNECTION" resname="CDISR5159E" xml:space="preserve">
+            <source xml:lang="en">TCPSink lost connection.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5160E" extraData="SPL_APPLICATION_RUNTIME_RENAME_FAILED" resname="CDISR5160E" xml:space="preserve">
+            <source xml:lang="en">Rename from ''{0}'' to ''{1}'' failed: {2}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5161E" extraData="SPL_RUNTIME_PARAMETER_NAME_NOT_FOUND" resname="CDISR5161E" xml:space="preserve">
+            <source xml:lang="en">Parameter name ''{0}'' not found.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5162E" extraData="SPL_RUNTIME_PARAMETER_NOT_VALUE" resname="CDISR5162E" xml:space="preserve">
+            <source xml:lang="en">Parameter Value is not a runtime ConstValueHandle value.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5163E" extraData="SPL_RUNTIME_XML2TUPLE_INCORRECT_ATTR_XML" resname="CDISR5163E" xml:space="preserve">
+            <source xml:lang="en">Serialized XML for attribute ''{0}'' is not ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5164E" extraData="SPL_RUNTIME_XML2TUPLE_MESSAGE" resname="CDISR5164E" xml:space="preserve">
+            <source xml:lang="en">Unable to parse serialized tuple XML: {0}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5165E" extraData="SPL_RUNTIME_XML2TUPLE_SCALAR" resname="CDISR5165E" xml:space="preserve">
+            <source xml:lang="en">Error converting ''{0}'' to ''{1}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5166E" extraData="SPL_RUNTIME_XML2TUPLE_MISSING_ATTR_XML" resname="CDISR5166E" xml:space="preserve">
+            <source xml:lang="en">Serialized XML for attribute ''{0}'' is missing.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5167E" extraData="SPL_RUNTIME_XML2TUPLE_MISSING_VALUE_XML" resname="CDISR5167E" xml:space="preserve">
+            <source xml:lang="en">Serialized XML for ''{0}'' type is missing.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5168E" extraData="SPL_RUNTIME_XML2TUPLE_UNKNOWN_ERROR" resname="CDISR5168E" xml:space="preserve">
+            <source xml:lang="en">Unable to parse serialized tuple XML: Unknown exception.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5169E" extraData="SPL_RUNTIME_XML_VALIDATION_ERROR" resname="CDISR5169E" xml:space="preserve">
+            <source xml:lang="en">{0}:{1,number,0}:{2,number,0}: {3}</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5170E" extraData="SPL_RUNTIME_XML_VALIDATION_EXCEPTION" resname="CDISR5170E" xml:space="preserve">
+            <source xml:lang="en">XML is invalid: {0}</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5171E" extraData="SPL_RUNTIME_XML_VALIDATION_UNABLE_LOAD_SCHEMA" resname="CDISR5171E" xml:space="preserve">
+            <source xml:lang="en">Unable to load XML schema: ''{0}''</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5172E" extraData="SPL_RUNTIME_SUBSCRIPTION_MODULUS_DIVISOR_ZERO" resname="CDISR5172E" xml:space="preserve">
+            <source xml:lang="en">Modulus divisor is zero.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5173E" extraData="SPL_RUNTIME_SUBSCRIPTION_INVALID_MODULO_DIVISOR" resname="CDISR5173E" xml:space="preserve">
+            <source xml:lang="en">Clause ''{0}'' does not have a modulo divisor.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5174E" extraData="SPL_APPLICATION_RUNTIME_FILESINK_BAD_PATTERN" resname="CDISR5174E" xml:space="preserve">
+            <source xml:lang="en">Filesink ''file'' parameter ''{0}'' has malformed '''{localtime:...}''' or '''{gmtime:...}''' pattern.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+            <!-- <MSGDOC>
+                  <REPLACEMENT arg="{0}" value="value"/>
+                  <IGNORE-QUOTED-ARGS/>
+             </MSGDOC> -->
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5175E" extraData="SPL_APPLICATION_RUNTIME_FILESINK_EMPTY_FILENAME" resname="CDISR5175E" xml:space="preserve">
+            <source xml:lang="en">Filesink ''file'' parameter generated empty string.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5176E" extraData="SPL_RUNTIME_UNINITIALIZED_XML" resname="CDISR5176E" xml:space="preserve">
+            <source xml:lang="en">An attempt was made to read an uninitialized xml value.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5177T" extraData="SPL_RUNTIME_OPTION_NEW_LOG_LEVEL" resname="CDISR5177T" xml:space="preserve">
+            <source xml:lang="en">Log level: 0 - ERROR, 1 - WARN, 2 - INFO.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5178T" extraData="SPL_RUNTIME_OPTION_TRACE_LEVEL" resname="CDISR5178T" xml:space="preserve">
+            <source xml:lang="en">Trace level: 0 - OFF, 1 - ERROR, 2 - WARN, 3 - INFO, 4 - DEBUG, 5 - TRACE.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5179E" extraData="SPL_APPLICATION_RUNTIME_FILESINK_FILE_MOVE_ERROR" resname="CDISR5179E" xml:space="preserve">
+            <source xml:lang="en">Error moving file :  ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5180E" extraData="SPL_APPLICATION_RUNTIME_FILESINK_WRITE_FAILURE" resname="CDISR5180E" xml:space="preserve">
+            <source xml:lang="en">Write failed to file ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5181E" extraData="SPL_APPLICATION_RUNTIME_SOURCE_UKNOWN_BINARY_TYPE" resname="CDISR5181E" xml:space="preserve">
+            <source xml:lang="en">Unrecognized binary format type character ''{0}''.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5182E" extraData="SPL_APPLICATION_RUNTIME_RANGE_STEP_ZERO" resname="CDISR5182E" xml:space="preserve">
+            <source xml:lang="en">''step'' argument to ''range'' is zero.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5183E" extraData="SPL_APPLICATION_RUNTIME_INVALID_XQUERY" resname="CDISR5183E" xml:space="preserve">
+            <source xml:lang="en">Error in xquery expression ''{0}'': {1}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5184E" extraData="SPL_APPLICATION_RUNTIME_INVALID_XQUERY_EXECUTION" resname="CDISR5184E" xml:space="preserve">
+            <source xml:lang="en">Error while executing xquery ''{0}'': {1}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5185E" extraData="SPL_APPLICATION_RUNTIME_INVALID_XQUERY_UNKNOWN_EXCEPTION" resname="CDISR5185E" xml:space="preserve">
+            <source xml:lang="en">Unknown exception received during xquery processing.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5186E" extraData="SPL_EXAMPLE_TEST_MESSAGE" resname="CDISR5186E" xml:space="preserve">
+            <source xml:lang="en">This is a test message - String: {0} - Integer: {1,number,0} - Formatted Integer: {2,number} - Real: {3,number,0.##########} - Formatted Real: {4,number} - Date: {5,date} - Time: {6,time} - DateTime: {7,date} {7,time}.</source>
+            <target xml:lang="tr">Not yet translated.</target>
+          </trans-unit>
+        </group>
+      </body>
+  </file>
+</xliff>

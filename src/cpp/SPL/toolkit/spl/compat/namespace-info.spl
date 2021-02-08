@@ -1,0 +1,80 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+* # SPADE operators
+*
+* The Stream Processing Application Declarative Engine (SPADE) language was introduced with the original release of IBM InfoSphere Streams.
+* InfoSphere Streams V2.0 introduced a new Streams Programming Language (SPL) and new implementation of operators.
+* Users of InfoSphere Streams V1.2 systems might want to do new development in SPL on a V2 Streams system,
+* while leaving legacy code on a V1.2 Streams system.
+* In some cases, users want to pass tuples from V1.2 to V2 or V2 to V1.2.
+* This can be done for a subset of SPADE datatypes that are supported by SPL by connecting the two systems using TCP/IP connection.
+* This uses two SPL operators `V1TCPSink` and `V1TCPSource` that know how to access V1.2 SPADE tuples.
+* The SPL operators are connected to SPADE TCP Source or Sink operators, in order to pass the tuples between the systems.
+*
+* Not all SPADE types are supported by SPL, and therefore cannot be passed between SPL and SPADE.
+*
+* # Supported Types
+*
+* The following table contains SPADE types and the equivalent in SPL types for `V1TCPSink` and `V1TCPSource`:
+*
+* --- SPADE SPL types mapping
+* ----------------------------------------------------------------
+* | SPADE type                  | SPL type                        |
+* |=============================|=================================|
+* | Byte                        | int8                            |
+* |---------------------------------------------------------------|
+* | Short                       | int16                           |
+* |---------------------------------------------------------------|
+* | Integer                     | int32                           |
+* |---------------------------------------------------------------|
+* | Long                        | int64                           |
+* |---------------------------------------------------------------|
+* | Float                       | float32                         |
+* |---------------------------------------------------------------|
+* | Double                      | float64                         |
+* |---------------------------------------------------------------|
+* | Boolean                     | boolean                         |
+* |---------------------------------------------------------------|
+* | String                      | rstring                         |
+* |---------------------------------------------------------------|
+* | ByteList                    | list<int8>                      |
+* |---------------------------------------------------------------|
+* | ShortList                   | list<int16>                     |
+* |---------------------------------------------------------------|
+* | IntegerList                 | list<int32>                     |
+* |---------------------------------------------------------------|
+* | LongList                    | list<int64>                     |
+* |---------------------------------------------------------------|
+* | FloatList                   | list<float32>                   |
+* |---------------------------------------------------------------|
+* | DoubleList                  | list<float64>                   |
+* |---------------------------------------------------------------|
+* | BooleanList                 | list<boolean>                   |
+* |---------------------------------------------------------------|
+* | StringList                  | list<rstring>                   |
+* |---------------------------------------------------------------|
+* | ShortMatrix, IntegerMatrix, | Not supported by SPL.           |
+* | LongMatrix, FloatMatrix,    | Not supported by `V1TCPSource`  |
+* | DoubleMatrix, BooleanMatrix | or `V1TCPSink`.                 |
+* ----------------------------------------------------------------
+*
+* SPADE Tuples containing these supported types can be exported from a V1.2 instance and read by a `V1TCPSource` operator.
+* SPL Tuples containing only types that map to SPADE types can be exported by using a `V1TCPSink` operator and read by a V1.2 instance.
+*/
+
+namespace spl.compat;

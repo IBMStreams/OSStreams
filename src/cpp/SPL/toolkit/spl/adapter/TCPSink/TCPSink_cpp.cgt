@@ -1,0 +1,688 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    unshift @INC, dirname($model->getContext()->getOperatorDirectory()) . "/Common";
+    require AdapterHelper;
+    use TCPSinkCommon;
+    TCPSinkCommon::verify($model);
+    AdapterHelper::verifySecureModel($model);
+    my $format = $model->getParameterByName("format");
+    my $hasDelayField = $model->getParameterByName("hasDelayField");
+    my $eolMarker = $model->getParameterByName("eolMarker");
+    my $compression = $model->getParameterByName("compression");
+    my $separator = $model->getParameterByName("separator");
+    my $inputPort = $model->getInputPortAt(0);
+    my $inputTupleName = $inputPort->getCppTupleName();
+    my $address = $model->getParameterByName("address");
+    my $port = $model->getParameterByName("port");
+    my $name = $model->getParameterByName("name");
+    my $interface = $model->getParameterByName("interface");
+    my $encoding = $model->getParameterByName("encoding");
+    my $writePunctuations = $model->getParameterByName("writePunctuations");
+    my $role = $model->getParameterByName("role");
+    my $flush = $model->getParameterByName("flush");
+    my $flushOnPunctuation = $model->getParameterByName("flushOnPunctuation");
+    my $detectDisconnectsBeforeSends = $model->getParameterByName("detectDisconnectsBeforeSends");
+    my $reconnectionBound = $model->getParameterByName("reconnectionBound");
+    my $reconnectionPolicy = $model->getParameterByName("reconnectionPolicy");
+    my $retryFailedSends = $model->getParameterByName("retryFailedSends");
+    my $sendBufferSize = $model->getParameterByName("sendBufferSize");
+    my $quoteStrings = $model->getParameterByName("quoteStrings");
+    my $confirmWireFormat = $model->getParameterByName("confirmWireFormat");
+    my $closeMode = $model->getParameterByName("closeMode");
+    my $suppress = $model->getParameterByName("suppress");
+
+    my $portCppType = $port ? $port->getValueAt(0)->getCppType() : undef;
+    my $portSPLType = $port ? $port->getValueAt(0)->getSPLType() : undef;
+
+    my $sslConfigName = $model->getParameterByName("sslConfigName");
+    my $sslProtocol = $model->getParameterByName("sslProtocol");
+    my $sslCertificateFile = $model->getParameterByName("sslCertificateFile");
+    my $password = $model->getParameterByName("password");
+    my $sslCAFile = $model->getParameterByName("sslCertificateAuthorityFile");
+    my $sslAuthenticateClient = $model->getParameterByName("sslAuthenticateClient");
+    my $sslCipherSuites = $model->getParameterByName("sslCipherSuites");
+
+    # Apply defaults
+    $format = $format ? $format->getValueAt(0)->getSPLExpression() : "csv";
+    $eolMarker = $eolMarker ? $eolMarker->getValueAt(0)->getSPLExpression() : '"\n"';
+    $hasDelayField = $hasDelayField ? $hasDelayField->getValueAt(0)->getCppExpression() eq "true" : 0;
+    $writePunctuations = $writePunctuations ?
+            $writePunctuations->getValueAt(0)->getCppExpression() eq "true" : 0;
+    $quoteStrings = $quoteStrings ? $quoteStrings->getValueAt(0)->getSPLExpression() eq "true" : 1;
+    $confirmWireFormat = $confirmWireFormat ? $confirmWireFormat->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    $closeMode = $closeMode ? $closeMode->getValueAt(0)->getSPLExpression() : "never";
+
+    my $sslEnabled = defined $sslConfigName || defined $sslProtocol;
+    my $sslProtocol = $sslProtocol ? $sslProtocol->getValueAt(0)->getCppExpression() : '"none"';
+    my $sslConfigName = $sslConfigName ? $sslConfigName->getValueAt(0)->getCppExpression() : '""';
+    my $sslCertificateFile = $sslCertificateFile ? $sslCertificateFile->getValueAt(0)->getCppExpression() : '""';
+    my $password = $password ? $password->getValueAt(0)->getCppExpression() : '""';
+    my $sslCAFile = $sslCAFile ? $sslCAFile->getValueAt(0)->getCppExpression() : '""';
+    my $sslAuthenticateClient = $sslAuthenticateClient ? '"' . $sslAuthenticateClient->getValueAt(0)->getSPLExpression() . '"' : '"request"';
+    my $sslCipherSuites = $sslCipherSuites ? $sslCipherSuites->getValueAt(0)->getCppExpression() : '"HIGH:!aNULL:!PSK:!SRP:!MD5:!RC4:!3DES"';
+
+    # other corrections
+    $flush = $flush->getValueAt(0)->getCppExpression() if $flush;
+    $flushOnPunctuation = $flushOnPunctuation ? $flushOnPunctuation->getValueAt(0)->getSPLExpression() : "true";
+    $detectDisconnectsBeforeSends = $detectDisconnectsBeforeSends ? $detectDisconnectsBeforeSends->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    $compression = $compression->getValueAt(0)->getSPLExpression() if $compression;
+    $encoding = $encoding->getValueAt(0)->getCppExpression() if $encoding;
+    $sendBufferSize = $sendBufferSize->getValueAt(0)->getCppExpression() if $sendBufferSize;
+    $name = $name->getValueAt(0)->getCppExpression() if $name;
+    $interface = $interface->getValueAt(0)->getCppExpression() if $interface;
+    $address = $address->getValueAt(0)->getCppExpression() if $address;
+    $port = $port ? $port->getValueAt(0)->getCppExpression() : "0";
+    $role = $role->getValueAt(0)->getSPLExpression();
+    $reconnectionBound = $reconnectionBound->getValueAt(0)->getCppExpression() if $reconnectionBound;
+    $reconnectionPolicy = $reconnectionPolicy ? $reconnectionPolicy->getValueAt(0)->getSPLExpression() : "InfiniteRetry";
+    $retryFailedSends = $retryFailedSends ? $retryFailedSends->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    my $binary = $format eq "bin" || $format eq "block";
+    my $writeTo = $binary ? "(*_sbfs)" : "(*_fs)";
+
+    my $sepExpr = "','";
+    if ($separator) {
+        my $sepValue = $separator->getValueAt(0);
+        my $sepType = $sepValue->getSPLType();
+        if ($sepType eq 'rstring') {
+            $sepExpr = $sepValue->getCppExpression();
+            $sepExpr =~ /SPL::rstring\(\"(.*)\".*\)/;
+            $sepExpr = "'$1'";
+        } else {
+           $sepExpr = "(unsigned char)" . $sepValue->getSPLExpression();
+        }
+    }
+
+    my $needsExtendedConnector = $confirmWireFormat;
+    my $roleClass;
+    if ($role eq "client") {
+        $roleClass = "Client";
+    } else {
+        $roleClass = "Server";
+    }
+    my $connectorType;
+    my $connectorBaseType;
+    if ($sslEnabled) {
+        $connectorType = "SecureTCP" . $roleClass;
+        $connectorBaseType = "SPL::TCP" . $roleClass;
+        $connectorBaseType .= "Extended" if $needsExtendedConnector;
+    } else {
+        $connectorType = "SPL::TCP" . $roleClass;
+        $connectorType .= "Extended" if $needsExtendedConnector;
+    }
+
+    # Handle suppressed attributes
+    my %suppressedAttrs;
+    if ($suppress) {
+        my $numValues = $suppress->getNumberOfValues();
+        for (my $i = 0; $i < $numValues; $i++) {
+            my $e = $suppress->getValueAt($i);
+            my $a = $e->getSPLExpression();
+            # remove the stream name
+            $a =~ s/^.*\.//;
+            $suppressedAttrs{$a} = 1;
+        }
+    }
+    my @genAttrs;
+    my $numAttrs = $inputPort->getNumberOfAttributes();
+    for (my $i = 0; $i < $numAttrs; ++$i) {
+       my $attr = $inputPort->getAttributeAt($i);
+       push @genAttrs, $attr if !$suppressedAttrs{$attr->getName()};
+    }
+    $numAttrs = scalar (@genAttrs);
+
+    # first attribute name - first non-suppressed attribute
+    my $firstAttrName = $genAttrs[0]->getName();
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Runtime/Utility/LogTraceMessage.h>
+#include <SPL/Runtime/Operator/OperatorMetrics.h>
+#include <SPL/Toolkit/Utility.h>
+#include <signal.h>
+
+using namespace std;
+using namespace boost::iostreams;
+
+<%if ($sslEnabled) {%>
+    @include "../Common/SecureConnectionImpl.cgt"
+<%}%>
+
+<%if ($closeMode ne 'dynamic') {%>
+void MY_OPERATOR::allPortsReady()
+{
+        createThreads (1);
+}
+<%}%>
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    AutoMutex am (_mutex);
+    if (_fd_sink.get())
+        _filt_str.reset();
+    _connected = false;
+    _numConnections.setValueNoLock(0);
+    <%if ($closeMode ne 'dynamic') {%>
+        _cv.broadcast();
+    <%}%>
+    if (_connector.get())
+        _connector->terminate();
+}
+
+// we have the mutex, already
+void MY_OPERATOR::cleanup()
+{
+    <%print "_sbfs.reset(NULL);" if $binary;%>
+    _fs.reset(NULL);
+    _filt_str.reset(NULL);
+    _fd_sink.reset(NULL);
+    <%if ($sslEnabled) {%>
+        _connector->reset();
+    <%}%>
+    _connected = false;
+    _numConnections.setValueNoLock(0);
+    <%if ($closeMode ne 'dynamic') {%>
+        _cv.broadcast();
+    <%}%>
+}
+
+void MY_OPERATOR::setup (int32_t fd)
+{
+    AutoMutex am (_mutex);
+    setupLocked(fd);
+}
+
+void MY_OPERATOR::setupLocked (int32_t fd)
+{
+    if (!_connector.get() || !_connector->connected())
+        return;
+    <%if ($sslEnabled) {%>
+        // Do not shutdown read side, SSL may need it
+        // TODO: Could call shutdown on the non-SSL implementation
+        _fd_sink.reset (new SecureSink(*_connector.get()));
+    <%} else {%>
+        if (0 != shutdown (fd, SHUT_RD)) {
+            SPLAPPTRC(L_DEBUG, "TCPClient: shutdown socket reads failed: " << RuntimeUtility::getErrorNoStr(), SPL_OPER_DBG);
+        }
+        _fd_sink.reset (new file_descriptor_sink(fd, never_close_handle));
+    <%}%>
+    _filt_str.reset (new filtering_streambuf<output>);
+    <%if ($encoding) {%>
+        _filt_str->push (_fromUTF8);
+    <%}
+    if ($compression) {%>
+        _filt_str->push (<%=$compression%>_compressor());
+    <%}%>
+    _filt_str->push (*_fd_sink);
+    _fs.reset(new <%($binary) ? print "iostream" : print "ostream";%>(_filt_str.get()));
+    _fs->imbue(locale::classic());
+    <%print "_sbfs.reset (new SPL::StreamByteBuffer(*_fs));" if $binary;%>
+    _connected = true;
+    _numConnections.setValueNoLock(1);
+    <%if ($closeMode ne 'dynamic') {%>
+        _cv.broadcast();
+    <%}%>
+    SPLAPPTRC(L_DEBUG, "TCPSink: file descriptor: " << fd, SPL_OPER_DBG);
+}
+
+<%if ($closeMode eq 'dynamic') {%>
+void MY_OPERATOR::dynamicConnect()
+{
+    SPLAPPTRC(L_DEBUG, "TCPSink Dynamic connect starting", SPL_OPER_DBG);
+    if (_connector.get()) {
+        cleanup();
+        _connector->terminate();
+    }
+    <%if ($sslEnabled) {%>
+        _connector.reset(<%=$connectorType%>::createSecureConnection(getPE(),
+                <%=$sslConfigName%>, <%=$sslProtocol%>,
+                <%=$sslCertificateFile%>, <%=$password%>,
+                <%=$sslCAFile%>, <%=$sslAuthenticateClient%>,
+                <%=$sslCipherSuites%>));
+    <%} else {%>
+        _connector.reset(new <%=$connectorType%>(getPE()));
+    <%}%>
+    <%if ($sendBufferSize) {%>
+        _connector->setSendBufferSize(<%=$sendBufferSize%>);
+    <%}%>
+    <%if ($confirmWireFormat) {%>
+        _connector->setWireFormat(_wireFormat, _numWireFormatHandshakesFailed);
+    <%}%>
+    _connector->setup(_lastAddress, _lastPort);
+    setupLocked (_connector->fileDescriptor());
+    SPLAPPTRC(L_DEBUG, "TCPSink Dynamic connected", SPL_OPER_DBG);
+}
+<%} else {%>
+void MY_OPERATOR::process(uint32_t)
+{
+    SPLAPPTRC(L_DEBUG, "TCPSink Connector startup...", SPL_OPER_DBG);
+    <%if ($sslEnabled) {%>
+        _connector.reset(
+                <%=$connectorType%>::createSecureConnection(getPE(),
+                        <%=$sslConfigName%>, <%=$sslProtocol%>,
+                        <%=$sslCertificateFile%>, <%=$password%>,
+                        <%=$sslCAFile%>, <%=$sslAuthenticateClient%>,
+                        <%=$sslCipherSuites%>));
+    <%} else {%>
+        _connector.reset(new <%=$connectorType%>(getPE()));
+    <%}%>
+    <%if ($sendBufferSize) {%>
+        _connector->setSendBufferSize(<%=$sendBufferSize%>);
+    <%}%>
+    <%if ($confirmWireFormat) {%>
+        _connector->setWireFormat(_wireFormat, _numWireFormatHandshakesFailed);
+    <%}%>
+    <%if ($role eq "client") {%>
+        <%if ($name) {%>
+            _connector->setup(<%=$name%>);
+        <%} else {%>
+            _connector->setup(<%="$address,$port"%>);
+        <%}%>
+    <%} else {%>
+        <%if ($interface) {%>
+            _connector->setInterface (<%=$interface%>);
+        <%}%>
+        <%if ($name) {%>
+            _connector->setup(<%="$name,$port"%>);
+        <%} else {%>
+            _connector->setup(<%=$port%>);
+        <%}%>
+    <%}%>
+    if (_connector->connected()) {
+        setup (_connector->fileDescriptor());
+        SPLAPPTRC(L_DEBUG, "TCPSink connected...", SPL_OPER_DBG);
+    }
+
+    <%if ($reconnectionPolicy ne "NoRetry") {%>
+        while (!_connectionClosed &&
+                !getPE().getShutdownRequested() <%print "&& _reconnectsLeft" if $reconnectionPolicy eq "BoundedRetry";%>) {
+            if (!_connected) {
+                {
+                    // Check to see if we are already finished working (Final seen)
+                    AutoMutex am(_mutex);
+                    if (_connectionClosed)
+                        break; // We are all done here.
+                }
+                int fd = _connector->reconnect();
+                _numReconnects.incrementValueNoLock();
+                <%print "_reconnectsLeft--;" if $reconnectionPolicy eq "BoundedRetry";%>
+                if (_connector->connected()) {
+                    SPLAPPTRC(L_DEBUG, "TCPSink reconnected...", SPL_OPER_DBG);
+                    setup (fd);
+                }
+            } else {
+                timespec ts = { 1, 0 };
+                AutoMutex am(_mutex);
+                if(_connected)
+                    _cv.waitFor(_mutex, ts);
+            }
+        }
+    <%}%>
+
+    SPLAPPTRC(L_DEBUG, "TCPSink Connector exiting...", SPL_OPER_DBG);
+}
+<%}%>
+
+MY_OPERATOR::MY_OPERATOR()
+: <%print "_reconnectsLeft ($reconnectionBound)," if $reconnectionBound;%>
+    _connected(false), _connectionClosed(false),
+    <%print "_fromUTF8 ($encoding)," if $encoding;%>
+    _numReconnects(getContext().getMetrics().getCustomMetricByName("nReconnections")),
+    _numConnections(getContext().getMetrics().getCustomMetricByName("nConnections")),
+    _numWireFormatHandshakesFailed(getContext().getMetrics().getCustomMetricByName("nConfirmWireFormatFailures"))
+
+{
+    SPLAPPTRC(L_DEBUG, "TCPSink startup...", SPL_OPER_DBG);
+    <%print "_lastTimeStamp = SPL::Functions::Time::getTimestampInSecs();" if $hasDelayField;%>
+    <%print "_tuplesUntilFlush = $flush;" if $flush;%>
+    signal (SIGPIPE, SIG_IGN);
+    _numReconnects.setValueNoLock(0);
+    _numConnections.setValueNoLock(0);
+    _numWireFormatHandshakesFailed.setValueNoLock(0);
+    <%if ($confirmWireFormat) {
+        my $comp = $compression ? " compression=\\\"$compression\\\"" : "";
+        my $encoding = $encoding ? " encoding=\\\"\" + _fromUTF8.encoding() + \"\\\"" : "";
+        my $includesPunctuations = $format eq 'bin' && $writePunctuations ? " includesPunctuations=\\\"true\\\"" : "";
+        my $hasDelay = $hasDelayField ? " hasDelay=\\\"true\\\"" : "";
+        my $tupleSchema = $inputPort->getSchema("schema");
+        $tupleSchema =~ s/"/\\"/g;
+        $tupleSchema =~ s/\n/\\n\\\n/g;
+        my $wireFormat =
+"<?xml version=\\\"1.0\\\"?>\\n\\
+<wireformat\\
+ xmlns=\\\"http://www.ibm.com/xmlns/prod/streams/spl/wireFormatType\\\"\\
+ xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\"\\
+ xmlns:tt=\\\"http://www.ibm.com/xmlns/prod/streams/spl/tupleType\\\"\\
+ xsi:schemaLocation=\\\"http://www.ibm.com/xmlns/prod/streams/spl/wireFormatType\\
+  http://www.ibm.com/xmlns/prod/streams/endpoint/wireFormatModel.xsd\\\"\\
+ format=\\\"streams_$format\\\"$comp$encoding$includesPunctuations$hasDelay>\\n\\
+ $tupleSchema</wireformat>\\n";%>
+    _wireFormat = "<%=$wireFormat%>";
+  <%}%>
+    <%if ($closeMode eq 'dynamic') {%>
+        _lastAddress = "";
+        <%if (SPL::CodeGen::Type::isIntegral($portSPLType)) {%>
+            _lastPort = 0;
+        <%}%>
+    <%}%>
+}
+
+void MY_OPERATOR::closeConnection()
+{
+    _connectionClosed = true;
+    cleanup();
+    if (_connector.get())
+        _connector->terminate();
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port) {
+    AutoMutex am(_mutex);
+    <%if ($retryFailedSends and $writePunctuations) {%>
+        <%if ($closeMode eq 'dynamic') {%>
+            if (!_connected) {
+                // We have nowhere to send this punct
+                SPLAPPTRC (L_DEBUG, "Punctuation dropped because address/port not seen",
+                           SPL_OPER_DBG);
+                if (punct == Punctuation::FinalMarker)
+                    closeConnection();
+                return;
+            }
+        <%}%>
+        bool sent = false;
+        while (!getPE().getShutdownRequested() && !sent) {
+            if(_connected && isDisconnected()) {
+                SPLTRACEMSG(L_WARN, SPL_APPLICATION_RUNTIME_TCPSINK_LOST_CONNECTION, SPL_OPER_DBG);
+                cleanup();
+            }
+            if(!_connected || !(sent=processInternal(punct, port))) {
+                <%if ($closeMode eq 'dynamic') {%>
+                    int fd = _connector->reconnect();
+                    _numReconnects.incrementValueNoLock();
+                    if (_connector->connected()) {
+                        SPLAPPTRC(L_DEBUG, "TCPSink reconnected...", SPL_OPER_DBG);
+                        setupLocked (fd);
+                    }
+                <%} else {%>
+                    _cv.wait(_mutex);
+                <%}%>
+            }
+        }
+    <%} else {%>
+        if(_connected)
+            processInternal(punct, port);
+    <%}%>
+    // Ensure that we close the connection when we see the Final punctuation
+    if (punct == Punctuation::FinalMarker)
+        closeConnection();
+}
+
+bool MY_OPERATOR::processInternal(Punctuation const & punct, uint32_t port) {
+    try {
+        <%if ($detectDisconnectsBeforeSends) {%>
+            // Check before we start to see if connection is gone
+            if (isDisconnected())
+                return false;
+        <%}%>
+        <%if ($writePunctuations) {%>
+            <%if ($hasDelayField) {%>
+                SPL::float64 currentTimeStamp = SPL::Functions::Time::getTimestampInSecs();
+                <%if ($binary) {%>
+                    <%=$writeTo%> << currentTimeStamp - _lastTimeStamp;
+                <%} else { %>
+                    SPL::serializeWithPrecision((*_fs), static_cast<SPL::float64>(currentTimeStamp - _lastTimeStamp)) << ',';
+                <%}%>
+                _lastTimeStamp = currentTimeStamp;
+            <%}%>
+            <%if ($binary) {%>
+                <%=$writeTo%> << (punct == Punctuation::WindowMarker ? '\1' : '\2');
+            <%} else {%>
+            (*_fs) << "Punctuation received: " << punct << '\n';
+            <%}%>
+            if (_fs->fail()) {
+                SPLTRACEMSG(L_WARN, SPL_APPLICATION_RUNTIME_TCPSINK_LOST_CONNECTION, SPL_OPER_DBG);
+                cleanup();
+                return false;
+            }
+        <%}%>
+        <%if ($flushOnPunctuation eq "true") {%>
+            if (punct != Punctuation::WatermarkMarker) {
+                if (_fs.get()) {
+                    if (!_fs->flush()) {
+                        SPLTRACEMSG(L_WARN, SPL_APPLICATION_RUNTIME_TCPSINK_LOST_CONNECTION, SPL_OPER_DBG);
+                        cleanup();
+                        return false;
+                    }
+                }
+                <%print "_tuplesUntilFlush = $flush;" if $flush;%>
+            }
+        <%}%>
+        if (punct == Punctuation::FinalMarker) {
+            SPLAPPTRC(L_DEBUG, "TCPSink received FinalMarker...", SPL_OPER_DBG);
+            <%if ($flushOnPunctuation ne "true") {%>
+                if (_fs.get()) {
+                    if (!_fs->flush()) {
+                        SPLTRACEMSG(L_WARN, SPL_APPLICATION_RUNTIME_TCPSINK_LOST_CONNECTION, SPL_OPER_DBG);
+                        cleanup();
+                        return false;
+                    }
+                }
+            <%}%>
+            cleanup();
+        }
+    } catch (const std::exception& e) {
+        SPLAPPTRC(L_ERROR, SPL_APPLICATION_RUNTIME_EXCEPTION(e.what()), SPL_OPER_DBG);
+        cleanup();
+        return false;
+    } catch (...) {
+        SPLAPPTRC(L_ERROR, SPL_APPLICATION_RUNTIME_UNKNOWN_EXCEPTION, SPL_OPER_DBG);
+        cleanup();
+        return false;
+    }
+    return true;
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+    AutoMutex am(_mutex);
+    <%if ($retryFailedSends) {%>
+        <%if ($closeMode eq 'dynamic') {%>
+            const IPort0Type& <%=$inputTupleName%> = static_cast<const IPort0Type&>(tuple);
+            string newAddress = <%=$address%>;
+            <%=$portCppType%> newPort = <%=$port%>;
+            if (!_connected || newAddress != _lastAddress || newPort != _lastPort) {
+                _lastAddress = newAddress;
+                _lastPort = newPort;
+                dynamicConnect();
+            }
+        <%}%>
+        bool sent = false;
+        while (!getPE().getShutdownRequested() && !sent) {
+            if(_connected && isDisconnected()) {
+                SPLAPPTRC(L_WARN, SPL_APPLICATION_RUNTIME_TCPSINK_LOST_CONNECTION, SPL_OPER_DBG);
+                cleanup();
+            }
+            if(!_connected || !(sent=processInternal(tuple, port))) {
+                // Do not try to reconnect if we are shutting down
+                if (getPE().getShutdownRequested()) break;
+
+                <%if ($closeMode eq 'dynamic') {%>
+                    int fd = _connector->reconnect();
+                    _numReconnects.incrementValueNoLock();
+                    if (_connector->connected()) {
+                        SPLAPPTRC(L_DEBUG, "TCPSink reconnected...", SPL_OPER_DBG);
+                        setupLocked (fd);
+                    }
+                <%} else {%>
+                    _cv.wait(_mutex);
+                <%}%>
+            }
+        }
+    <%} else {%>
+        if(_connected)
+            processInternal(tuple, port);
+    <%}%>
+}
+
+bool MY_OPERATOR::processInternal(Tuple const & tuple$, uint32_t port)
+{
+    // Write to output
+    const IPort0Type& tuple = static_cast<const IPort0Type&>(tuple$);
+    try {
+        <%if ($detectDisconnectsBeforeSends) {%>
+            // Check before we start to see if connection is gone
+            if (isDisconnected())
+                return false;
+        <%}%>
+        <%if ($hasDelayField) {%>
+            double currentTimeStamp = SPL::Functions::Time::getTimestampInSecs();
+            <%if ($binary) {%>
+                <%=$writeTo%> << currentTimeStamp - _lastTimeStamp;
+            <%} else { %>
+                SPL::serializeWithPrecision(<%=$writeTo%>, static_cast<SPL::float64>(currentTimeStamp - _lastTimeStamp)) << ',';
+            <%}%>
+            _lastTimeStamp = currentTimeStamp;
+        <%}%>
+        <%if ($format eq "line") {%>
+            const string& l = tuple.get_<%=$firstAttrName%>();
+            (*_fs) << l << <%=$eolMarker%>;
+        <%} elsif ($format eq "block") {%>
+            const SPL::blob& b = tuple.get_<%=$firstAttrName%>();
+            uint64_t size;
+            const unsigned char *data = b.getData (size);
+            <%=$writeTo%>.addCharSequence(reinterpret_cast<const char*>(data), size);
+        <%} elsif ($format eq "txt") { %>
+            <%if (scalar(%suppressedAttrs) == 0) {%>
+                SPL::serializeWithPrecision((*_fs), tuple) << '\n';
+            <%} else {%>
+                (*_fs) << '{';
+                <%for (my $i = 0; $i < $numAttrs; ++$i) {
+                   my $attrName = $genAttrs[$i]->getName();
+                   print "\t\t" if $i != 0;
+                   print "(*_fs) << \"$attrName=\";";
+                   print "SPL::serializeWithPrecision((*_fs), tuple.get_", $attrName, "())";
+                   print " << ','" if $i != $numAttrs-1;
+                   print ";\n";
+                }%>
+                (*_fs) << "}\n";
+            <%}%>
+        <%} elsif ($format eq "csv") {
+            for (my $i = 0; $i < $numAttrs; ++$i) {
+               my $attr = $genAttrs[$i];
+               my $attrName = $attr->getName();
+               if (!$quoteStrings && SPL::CodeGen::Type::isString($attr->getSPLType())) {
+                   print "\t    SPL::serializeUnquoted((*_fs), tuple.get_", $attrName, "())";
+               } else {
+                   print "\t    SPL::serializeWithPrecision((*_fs), tuple.get_", $attrName, "())";
+               }
+               if ($i != $numAttrs-1) {
+                   print " << $sepExpr;\n";
+               } else {
+                   print " << '\\n';\n";
+               }
+            }
+        } elsif ($format eq "bin") {%>
+            <%if ($writePunctuations) {%>
+                <%=$writeTo%> << '\0';
+            <%}%>
+            <%if (scalar(%suppressedAttrs) == 0) {%>
+                <%=$writeTo%> << tuple;
+            <%} else {
+                for (my $i = 0; $i < $numAttrs; ++$i) {
+                   my $attrName = $genAttrs[$i]->getName();
+                   print "\t    " if $i != 0;
+                   print "$writeTo << tuple.get_", $attrName, "();\n";
+                }
+            }%>
+        <%}%>
+        if (_fs->fail()) {
+            SPLAPPTRC(L_WARN, SPL_APPLICATION_RUNTIME_TCPSINK_LOST_CONNECTION, SPL_OPER_DBG);
+            cleanup();
+            return false;
+        }
+        <%if (defined $flush) {%>
+        if (--_tuplesUntilFlush == 0) {
+            _tuplesUntilFlush = <%=$flush%>;
+            if (!_fs->flush()) {
+                SPLTRACEMSG(L_WARN, SPL_APPLICATION_RUNTIME_TCPSINK_LOST_CONNECTION, SPL_OPER_DBG);
+                cleanup();
+                return false;
+            }
+        }
+        <%}%>
+    } catch (const std::exception& e) {
+        SPLAPPTRC(L_ERROR, SPL_APPLICATION_RUNTIME_EXCEPTION(e.what()), SPL_OPER_DBG);
+        cleanup();
+        return false;
+    } catch (...) {
+        SPLAPPTRC(L_ERROR, SPL_APPLICATION_RUNTIME_UNKNOWN_EXCEPTION, SPL_OPER_DBG);
+        cleanup();
+        return false;
+    }
+    return true;
+}
+
+<%if ($detectDisconnectsBeforeSends || $retryFailedSends) {%>
+bool MY_OPERATOR::isDisconnected()
+{
+    bool anotherConnectionAvailable;
+    bool disconnected = _connector->isDisconnected (anotherConnectionAvailable);
+    if (disconnected) {
+        SPLTRACEMSG(L_WARN, SPL_APPLICATION_RUNTIME_TCPSINK_LOST_CONNECTION, SPL_OPER_DBG);
+        if (anotherConnectionAvailable && canReconnect()) {
+            reconnectToNewConnection();
+            return false;
+        } else
+            cleanup();
+        return true;
+    }
+    return false;
+}
+
+bool MY_OPERATOR::canReconnect()
+{
+    if (getPE().getShutdownRequested()) return false;
+    <%if ($reconnectionPolicy eq "BoundedRetry") {%>
+        return _reconnectsLeft > 0;
+    <%} elsif ($reconnectionPolicy eq "NoRetry") {%>
+        return false;
+    <%} else {%>
+        return true;
+    <%}%>
+
+}
+
+void MY_OPERATOR::reconnectToNewConnection()
+{
+    SPLAPPTRC(L_DEBUG, "TCPSink reconnecting to pending connection", SPL_OPER_DBG);
+    <%print "_sbfs.reset(NULL);" if $binary;%>
+    _fs.reset(NULL);
+    _filt_str.reset(NULL);
+    _fd_sink.reset(NULL);
+
+    int fd = _connector->reconnect();
+    _numReconnects.incrementValueNoLock();
+    <%print "_reconnectsLeft--;" if $reconnectionPolicy eq "BoundedRetry";%>
+    if (_connector->connected()) {
+        SPLAPPTRC(L_DEBUG, "TCPSink reconnected...", SPL_OPER_DBG);
+        setupLocked (fd);
+    }
+}
+<%}%>
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

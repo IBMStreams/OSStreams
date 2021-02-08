@@ -1,0 +1,305 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+   use BeaconCommon;
+   BeaconCommon::verify($model);
+   my $outputPort = $model->getOutputPortAt(0);
+   my $tupleType = $outputPort->getCppTupleType();
+   my $period = $model->getParameterByName("period");
+   $period = $period->getValueAt(0)->getCppExpression() if $period;
+   my $iterations = $model->getParameterByName("iterations");
+   $iterations = $iterations->getValueAt(0)->getCppExpression() if $iterations;
+   my $initDelay = $model->getParameterByName("initDelay");
+   $initDelay = $initDelay->getValueAt(0)->getCppExpression() if $initDelay;
+   my $usesIterationCount = 0;
+   my $ctorAssignments = getOutputTupleCppAssignmentsWithSideEffects ("_tuple", $outputPort, 0);
+   my $loopAssignments = getOutputTupleCppAssignmentsWithSideEffects ("_tuple", $outputPort, 1);
+   my $hasLoopAssignments = $loopAssignments ne "";
+   SPL::CodeGen::implementationPrologue($model);
+   my $loopNeedsMutex = $hasLoopAssignments || $iterations;
+
+   my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+   my $isTriggerOperator = $model->getContext()->getOptionalContext("ConsistentRegion")->isTriggerOperator()
+       if $isInConsistentRegion;
+   my $triggerCount = $model->getParameterByName("triggerCount");
+   $triggerCount = $triggerCount->getValueAt(0)->getCppExpression() if $triggerCount;
+
+   my $batchSize = $model->getParameterByName("permitBatchSize");
+   if ($batchSize) {
+       $batchSize = $batchSize->getValueAt(0)->getCppExpression();
+   } else {
+       $batchSize = 1;
+   }
+
+%>
+
+// batchSize <%=$batchSize%>
+
+MY_OPERATOR::MY_OPERATOR()
+: _iterationCount(0)
+  <%if ($isInConsistentRegion) { %>
+     <%if ($triggerCount) {%>
+      , _triggerCount(0)
+     <%}%>
+      , _sentWatermark(false)
+  <%}%>
+{
+    _tuple.clear();
+    <%if ($iterations) {%>
+        _iters = <%=$iterations%>;
+    <%}%>
+    <%=$ctorAssignments%>
+    <%if ($isInConsistentRegion) {%>
+        _crContext = static_cast<ConsistentRegionContext *>
+            (getContext().getOptionalContext(CONSISTENT_REGION));
+    <%}%>
+}
+
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads (1);
+}
+
+void MY_OPERATOR::process(uint32_t)
+{
+    SPLAPPTRC(L_DEBUG, "Beacon startup...", SPL_OPER_DBG);
+    ProcessingElement& pe = getPE();
+    <%if ($period) {%>
+        const double period = <%=$period%>;
+    <%}%>
+    <%if ($initDelay) {%>
+        pe.blockUntilShutdownRequest(<%=$initDelay%>);
+    <%}%>
+    uint32_t batchSize = <%=$batchSize%>;
+    while(!pe.getShutdownRequested()) {
+        <%if ($isInConsistentRegion) {%>
+            bool doMakeConsistent = false;
+            {
+                ConsistentRegionPermit crp(_crContext);
+                // For perf reasons
+                //for (uint32_t i = 0; !pe.getShutdownRequested() && i < batchSize; i++) {
+        <%}%>
+                <%if ($loopNeedsMutex) {%>
+                {
+                    AutoMutex am (_mutex);
+                <%}%>
+                <%if ($iterations) {%>
+                    if (_iters != 0) {
+                        _iters--;
+                <%}%>
+                <%print $loopAssignments if $hasLoopAssignments;%>
+                submit (_tuple, 0);
+                <%if ($usesIterationCount) {%>
+                    _iterationCount++;
+                <%}%>
+                <%if ($isInConsistentRegion && $triggerCount) {%>
+                    _triggerCount++;
+                    if (_triggerCount == <%=$triggerCount%>)
+                        doMakeConsistent = true;
+                <%}%>
+                <%if ($iterations) {%>
+                    }
+                    if (_iters == 0) {
+                        <% if ($isInConsistentRegion) {%>
+                          if (_sentWatermark) {
+                            goto exit;
+                          } else {
+                            _sentWatermark = true;
+                        <%}%>
+
+                        SPLAPPTRC(L_DEBUG, "Submit window marker", SPL_OPER_DBG);
+                        submit(Punctuation::WindowMarker, 0);
+                        <%if ($isInConsistentRegion) {%>
+                            doMakeConsistent = true;
+                        <%} else {%>
+                            submit(Punctuation::FinalMarker, 0);
+                            goto exit;
+                        <%}%>
+                        <% if ($isInConsistentRegion) {%>
+                        }
+                        <%}%>
+                    }
+                <%}%>
+                <%if ($loopNeedsMutex) {%>
+                }
+                <%}%>
+	<%if ($isInConsistentRegion) {%>
+                    if (doMakeConsistent) {
+                        _crContext->makeConsistent();
+                        AutoMutex am (_mutex);
+                        <%if ($iterations) {%>
+                            if (_iters == 0) {
+                                goto exit;
+                            }
+                        <%}%>
+                        <%if ($triggerCount) {%>
+                            _triggerCount = 0;
+                        <%}%>
+                    }
+                //}  // for loop for batching tuples
+            } // permit
+        <%}%>
+        <%if ($period) {%>
+            pe.blockUntilShutdownRequest(period);
+        <%}%>
+    }
+exit:
+    SPLAPPTRC(L_DEBUG, "Beacon exiting...", SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::getCheckpoint(NetworkByteBuffer & opstate)
+{
+    AutoMutex am (_mutex);
+    <%if ($model->getContext()->getNumberOfStateVariables() > 0) {%>
+        checkpointStateVariables(opstate);
+    <%}%>
+    <%if ($iterations) {%>
+        opstate.addUInt32(_iters);
+    <%}%>
+    <%if ($usesIterationCount) {%>
+        opstate.addUInt64(_iterationCount);
+    <%}%>
+    <%if ($hasLoopAssignments) {%>
+        opstate << _tuple;
+    <%}%>
+    <%if ($isInConsistentRegion) { %>
+      opstate << _sentWatermark;
+    <%}%>
+}
+
+void MY_OPERATOR::restoreCheckpoint(NetworkByteBuffer & opstate)
+{
+    AutoMutex am (_mutex);
+    <%if ($model->getContext()->getNumberOfStateVariables() > 0) {%>
+        restoreStateVariables(opstate);
+    <%}%>
+    <%if ($iterations) {%>
+        _iters = opstate.getUInt32();
+    <%}%>
+    <%if ($usesIterationCount) {%>
+        _iterationCount = opstate.getUInt64();
+    <%}%>
+    <%if ($hasLoopAssignments) {%>
+        opstate >> _tuple;
+    <%}%>
+    <%if ($isInConsistentRegion) { %>
+      opstate >> _sentWatermark;
+    <%}%>
+}
+
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    SPLAPPTRC(L_DEBUG, "Executing checkpoint()", SPL_OPER_DBG);
+
+    <%if ($iterations) {%>
+        ckpt << _iters;
+    <%}%>
+    <%if ($usesIterationCount) {%>
+        ckpt << _iterationCount;
+        SPLAPPTRC(L_DEBUG, "iterationCount: " << _iterationCount, SPL_OPER_DBG);
+    <%}%>
+    <%if ($hasLoopAssignments) {%>
+        ckpt << _tuple;
+    <%}%>
+    <%if ($isInConsistentRegion) { %>
+      ckpt << _sentWatermark;
+    <%}%>
+}
+
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    <%if ($iterations) {%>
+        ckpt >> _iters;
+    <%}%>
+    <%if ($usesIterationCount) {%>
+        ckpt >> _iterationCount;
+        SPLAPPTRC(L_DEBUG, "iterationCount: " << _iterationCount, SPL_OPER_DBG);
+    <%}%>
+    <%if ($hasLoopAssignments) {%>
+        ckpt >> _tuple;
+    <%}%>
+
+    <%if ($triggerCount) {%>
+        _triggerCount = 0;
+    <%}%>
+    <%if ($isInConsistentRegion) { %>
+      ckpt >> _sentWatermark;
+    <%}%>
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    AutoMutex am(_mutex);
+
+    _iterationCount = 0;
+    _tuple.clear();
+    <%if ($iterations) {%>
+        _iters = <%=$iterations%>;
+    <%}%>
+
+    <%=$ctorAssignments%>
+    <%if ($triggerCount) {%>
+        _triggerCount = 0;
+    <%}%>
+    <%if ($isInConsistentRegion) { %>
+      _sentWatermark = false;
+    <%}%>
+    return;
+}
+
+
+<%SPL::CodeGen::implementationEpilogue($model);
+
+sub getOutputTupleCppAssignmentsWithSideEffects($$$)
+{
+    my ($tupleName, $outputPort, $sideEffects) = @_;
+    my $numAttrs = $outputPort->getNumberOfAttributes();
+    my $assignments = "";
+    for (my $i = 0; $i < $numAttrs; ++$i) {
+      my $attr = $outputPort->getAttributeAt($i);
+      if($attr->hasAssignmentWithOutputFunction()) {
+        my $of = $attr->getAssignmentOutputFunctionName();
+        if ($of eq 'IterationCount') {
+          next if !$sideEffects;
+          $assignments .= "$tupleName.set_" . $attr->getName() . "(IterationCount()); ";
+          $usesIterationCount = 1;
+        } else {
+          # Must be AsIs
+          my $exp = $attr->getAssignmentOutputFunctionParameterValueAt(0);
+          my $cppExpn = $exp->getCppExpression();
+          my $hasIterationCount = 0;
+          if ($cppExpn =~ m/::Beacon::/) {
+            $cppExpn =~ s/::Beacon:://g;
+            $hasIterationCount = 1;
+            $usesIterationCount = 1;
+          }
+          if ($hasIterationCount || $exp->hasStreamAttributes() || $exp->hasSideEffects() || $exp->readsState()) {
+             $assignments .= "$tupleName.set_" . $attr->getName() . "($cppExpn); " if $sideEffects;
+          }
+          elsif (!$sideEffects) {
+             $assignments .= "$tupleName.set_" . $attr->getName() . "($cppExpn); ";
+          }
+        }
+      }
+    }
+    return $assignments;
+}
+%>

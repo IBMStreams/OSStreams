@@ -1,0 +1,262 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use FormatCommon;
+    FormatCommon::verify($model);
+    my $format = $model->getParameterByName("format");
+    my $hasDelayField = $model->getParameterByName("hasDelayField");
+    my $eolMarker = $model->getParameterByName("eolMarker");
+    my $separator = $model->getParameterByName("separator");
+    my $inputPort = $model->getInputPortAt(0);
+    my $inTupleName = $inputPort->getCppTupleName();
+    my $quoteStrings = $model->getParameterByName("quoteStrings");
+    my $suppress = $model->getParameterByName("suppress");
+    my $writePunctuations = $model->getParameterByName("writePunctuations");
+
+    my $outputPort = $model->getOutputPortAt(0);
+
+    # Apply defaults
+    $format = $format ? $format->getValueAt(0)->getSPLExpression() : "csv";
+    $eolMarker = $eolMarker ? $eolMarker->getValueAt(0)->getSPLExpression() : '"\n"';
+    $quoteStrings = $quoteStrings ? $quoteStrings->getValueAt(0)->getSPLExpression() eq "true" : 1;
+    $writePunctuations = $writePunctuations ?
+         $writePunctuations->getValueAt(0)->getCppExpression() eq "true" : 0;
+
+    # other corrections
+    my $sepExpr = "','";
+    if ($separator) {
+        my $sepValue = $separator->getValueAt(0);
+        my $sepType = $sepValue->getSPLType();
+        if ($sepType eq 'rstring') {
+            $sepExpr = $sepValue->getCppExpression();
+            $sepExpr =~ /SPL::rstring\(\"(.*)\".*\)/;
+            $sepExpr = "'$1'";
+        } else {
+           $sepExpr = "(unsigned char)" . $sepValue->getSPLExpression();
+        }
+    }
+
+    $hasDelayField = $hasDelayField ? $hasDelayField->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    my $binary = $format eq "bin" || $format eq "block";
+    my $writeTo = $binary ? "sbfs" : "fs";
+
+    # Handle suppressed attributes
+    my %suppressedAttrs;
+    if ($suppress) {
+        my $numValues = $suppress->getNumberOfValues();
+        for (my $i = 0; $i < $numValues; $i++) {
+            my $e = $suppress->getValueAt($i);
+            my $a = $e->getSPLExpression();
+            # remove the stream name
+            $a =~ s/^.*\.//;
+            $suppressedAttrs{$a} = 1;
+        }
+    }
+    my @genAttrs;
+    my $numAttrs = $inputPort->getNumberOfAttributes();
+    for (my $i = 0; $i < $numAttrs; ++$i) {
+       my $attr = $inputPort->getAttributeAt($i);
+       push @genAttrs, $attr if !$suppressedAttrs{$attr->getName()};
+    }
+    $numAttrs = scalar (@genAttrs);
+
+    # first attribute name - first non-suppressed attribute
+    my $firstAttrName = $genAttrs[0]->getName();
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Toolkit/RuntimeException.h>
+#include <signal.h>
+
+using namespace std;
+using namespace boost::iostreams;
+
+MY_OPERATOR::MY_OPERATOR()
+{
+    SPLAPPTRC(L_DEBUG, "Format startup...", SPL_OPER_DBG);
+    <%print "_lastTimeStamp = SPL::Functions::Time::getTimestampInSecs();" if $hasDelayField;%>
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port) {
+    <%if ($writePunctuations) {%>
+        // Assume small
+        char msgBuffer[256];
+        boost::iostreams::stream<SPL::BufferStream> sink (msgBuffer, sizeof msgBuffer);
+        {
+            filtering_streambuf<output> filt_str;
+            filt_str.push (sink);
+            iostream fs(&filt_str);
+            fs.imbue(locale::classic());
+
+            <%if ($binary) {%>
+                SPL::StreamByteBuffer sbfs (fs);
+            <%}%>
+
+            <%if ($hasDelayField) {%>
+                SPL::float64 currentTimeStamp = SPL::Functions::Time::getTimestampInSecs();
+                <%if ($binary) {%>
+                    <%=$writeTo%> << currentTimeStamp - _lastTimeStamp;
+                <%} else {%>
+                    SPL::serializeWithPrecision(<%=$writeTo%>,
+                        static_cast<SPL::float64>(currentTimeStamp - _lastTimeStamp)) << ',';
+                <%}%>
+                _lastTimeStamp = currentTimeStamp;
+            <%}%>
+            <%if ($binary) {%>
+                <%=$writeTo%> << (punct == Punctuation::WindowMarker ? '\1' : '\2');
+            <%} else {%>
+                <%=$writeTo%> << "Punctuation received: " << punct << '\n';
+            <%}%>
+        }
+        doWrite(*sink);
+    <%} else {%>
+        forwardWindowPunctuation(punct);
+    <%}%>
+}
+
+<%if ($writePunctuations) {%>
+void MY_OPERATOR::doWrite (const SPL::BufferStream& bs)
+{
+    OPort0Type otuple;
+    <%genOutput(0);%>
+    submit (otuple, 0);
+}
+<%}%>
+
+void MY_OPERATOR::doWrite (const SPL::OutputBufferStream& bs, const IPort0Type& <%=$inTupleName%>)
+{
+    OPort0Type otuple;
+    <%genOutput(1);%>
+    submit (otuple, 0);
+}
+
+void MY_OPERATOR::process(const Tuple & tuple$, uint32_t port)
+{
+    const IPort0Type <%=$inTupleName%> = static_cast<const IPort0Type&>(tuple$);
+
+    // Write to output
+    boost::iostreams::stream<SPL::OutputBufferStream> sink(false);
+    {
+        filtering_streambuf<output> filt_str;
+        filt_str.push (sink);
+        <%($binary) ? print "iostream" : print "ostream";%> fs(&filt_str);
+        fs.imbue(locale::classic());
+        <%if ($binary) {%>
+            SPL::StreamByteBuffer sbfs (fs);
+        <%}%>
+        <%if ($hasDelayField) {%>
+            SPL::float64 currentTimeStamp = SPL::Functions::Time::getTimestampInSecs();
+            <%if ($binary) {%>
+                <%=$writeTo%> << currentTimeStamp - _lastTimeStamp;
+            <%} else { %>
+                SPL::serializeWithPrecision(<%=$writeTo%>, static_cast<SPL::float64>(currentTimeStamp - _lastTimeStamp)) << ',';
+            <%}%>
+            _lastTimeStamp = currentTimeStamp;
+        <%}%>
+        <%if ($format eq "line") {%>
+            const string& l = <%=$inTupleName%>.get_<%=$firstAttrName%>();
+            <%=$writeTo%> << l << <%=$eolMarker%>;
+        <%} elsif ($format eq "block") {%>
+            const SPL::blob& b = <%=$inTupleName%>.get_<%=$firstAttrName%>();
+            uint64_t size;
+            const unsigned char *data = b.getData (size);
+            <%=$writeTo%>.addCharSequence(reinterpret_cast<const char*>(data), size);
+        <%} elsif ($format eq "txt") {
+            if (scalar(%suppressedAttrs) == 0) {%>
+                SPL::serializeWithPrecision(<%=$writeTo%>, <%=$inTupleName%>) << '\n';
+            <%} else {%>
+                _f->fs() << '{';
+                <%for (my $i = 0; $i < $numAttrs; ++$i) {
+                   my $attrName = $genAttrs[$i]->getName();
+                   print "\t\t" if $i != 0;
+                   print "$writeTo << \"$attrName=\";";
+                   print "SPL::serializeWithPrecision($writeTo, $inTupleName.get_", $attrName, "())";
+                   print " << ','" if $i != $numAttrs-1;
+                   print ";\n";
+                }%>
+                _f->fs() << "}\n";
+            <%}%>
+        <%} elsif ($format eq "csv") {
+            for (my $i = 0; $i < $numAttrs; ++$i) {
+               my $attr = $genAttrs[$i];
+               my $attrName = $attr->getName();
+               print "\t" if $i != 0;
+               if (!$quoteStrings && SPL::CodeGen::Type::isString($attr->getSPLType())) {
+                   print "SPL::serializeUnquoted($writeTo, $inTupleName.get_", $attrName, "())";
+               } else {
+                   print "SPL::serializeWithPrecision($writeTo, $inTupleName.get_", $attrName, "())";
+               }
+               if ($i != $numAttrs-1) {
+                   print " << $sepExpr;\n";
+               } else {
+                   print " << '\\n';\n";
+               }
+            }
+        } elsif ($format eq "bin") {%>
+            <%if ($writePunctuations) {%>
+                <%=$writeTo%> << '\0';
+            <%}
+            if (scalar(%suppressedAttrs) == 0) {%>
+                <%=$writeTo%> << <%=$inTupleName%>;
+            <%} else {
+                for (my $i = 0; $i < $numAttrs; ++$i) {
+                   my $attrName = $genAttrs[$i]->getName();
+                   print "\t    " if $i != 0;
+                   print "$writeTo << $inTupleName.get_", $attrName, "();\n";
+                }
+            }%>
+        <%}%>
+    }
+    doWrite (*sink, <%=$inTupleName%>);
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);
+
+sub genOutput($)
+{
+    my ($isTuple) = @_;
+    my $numAttrs = $outputPort->getNumberOfAttributes();
+    for (my $i = 0; $i < $numAttrs; $i++) {
+        my $attr = $outputPort->getAttributeAt($i);
+        my $aName = $attr->getName();
+        if ($attr->hasAssignment()) {
+            if ($attr->hasAssignmentWithOutputFunction()) {
+                my $of = $attr->getAssignmentOutputFunctionName();
+                if ($of eq "AsIs") {
+                   my $expn = SPL::CodeGenHelper::ensureValue ($attr->getSPLType(),
+                                                             $attr->getAssignmentOutputFunctionParameterValueAt(0)->getCppExpression());
+                    print "    otuple.set_$aName($expn);\n";
+                } elsif ($of eq "Output") {
+                    my $attrType = $attr->getSPLType();
+                    if ($attrType ne 'blob') {
+                        SPL::CodeGen::exitln (SPL::Msg::STDTK_ATTRIBUTE_TYPE_MISMATCH_WITH_OUTPUT_FUNCTION ($attr->getName(), $attrType,
+                            $of, 'blob'), $outputPort->getSourceLocation());
+                    }
+
+                    print $isTuple ? "    bs.setBlob(otuple.get_$aName());\n"
+                                   : "    otuple.get_$aName().append ((unsigned char *) bs.getDataStart(), bs.getSizeWritten());\n";
+                }
+            } else {
+                my $expn = $attr->getAssignmentOutputFunctionParameterValues()->[0]->getCppExpression();
+                print "    otuple.set_$aName($expn);\n";
+            }
+        }
+    }
+}
+%>

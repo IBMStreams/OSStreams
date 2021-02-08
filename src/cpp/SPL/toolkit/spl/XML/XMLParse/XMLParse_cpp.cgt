@@ -1,0 +1,1399 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use XMLParseCommon;
+    use Data::Dumper;
+    XMLParseCommon::verify($model);
+    my $trigger = $model->getParameterByName("trigger");
+    my $xmlInput = $model->getParameterByName("xmlInput");
+    my $parsing = $model->getParameterByName("parsing");
+    my $nullifyMissingAttributes = $model->getParameterByName("nullify");
+    my $ignorecase = $model->getParameterByName("ignorecase");
+    my $ignoreNamespaces = $model->getParameterByName("ignoreNamespaces");
+    my $flatten = $model->getParameterByName("flatten");
+    my $attrsName = $model->getParameterByName("attributesName");
+    my $textName = $model->getParameterByName("textName");
+    my $ignorePrefix = $model->getParameterByName("ignorePrefix");
+    my $xmlParseHuge = $model->getParameterByName("xmlParseHuge");
+
+    my $numOutputs = $model->getNumberOfOutputPorts();
+    my $inputPort = $model->getInputPortAt(0);
+    my $inTupleName = $inputPort->getCppTupleName();
+    my $inTupleType = $inputPort->getCppTupleType();
+
+    my ($xml, $xmlType);
+    if ($xmlInput) {
+        $xml = $xmlInput->getValueAt(0)->getCppExpression();
+        $xmlType = $xmlInput->getValueAt(0)->getSPLType();
+    } else {
+        $xml = "$inTupleName.get_" . $inputPort->getAttributeAt(0)->getName() . "()";
+        $xmlType =  $inputPort->getAttributeAt(0)->getSPLType();
+    }
+
+    $parsing = $parsing ? $parsing->getValueAt(0)->getSPLExpression() : "strict";
+    $nullifyMissingAttributes =
+        $nullifyMissingAttributes ? $nullifyMissingAttributes->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    $ignorecase = $ignorecase ? $ignorecase->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    $ignoreNamespaces = $ignoreNamespaces ? $ignoreNamespaces->getValueAt(0)->getSPLExpression() : "false";
+    $flatten = $flatten ? $flatten->getValueAt(0)->getSPLExpression() : "none";
+    $attrsName = $attrsName ? SPL::CodeGen::extractPerlValue($attrsName->getValueAt(0)->getCppExpression(), "rstring") : "_attrs";
+    $textName = $textName ? SPL::CodeGen::extractPerlValue($textName->getValueAt(0)->getCppExpression(), "rstring") : "_text";
+    $ignorePrefix = SPL::CodeGen::extractPerlValue($ignorePrefix->getValueAt(0)->getCppExpression(), "rstring") if $ignorePrefix;
+    $xmlParseHuge = $xmlParseHuge ? $xmlParseHuge->getValueAt(0)->getCppExpression() : "false";
+
+    my $cmpFcn = $ignorecase ? "strcasecmp" : "strcmp";
+
+    # variables for generating state table
+    my @stateTree;
+    my $numStates = 0;
+    my %streamInfo;
+    my %cppTypes;
+    my %splTypes;
+    my %nestedListType;
+    computeStateTree();
+
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+
+    SPL::CodeGen::implementationPrologue($model);
+%>
+
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Runtime/Utility/LogTraceMessage.h>
+
+
+MY_OPERATOR::MY_OPERATOR()
+: XMLParse (<%=SPL::CodeGen::Type::isUString($xmlType) ? "true" : "false"%>, <%=$ignoreNamespaces%>, <%=$xmlParseHuge%>),
+ _currentTuple(NULL), _numInvalidTuples(getContext().getMetrics().getCustomMetricByName("nInvalidTuples"))
+ , _unusedData(0), _submitTuples(true), resetting_(false)
+{
+    memset (_bad, 0, sizeof (_bad));
+    _numInvalidTuples.setValueNoLock(0);
+}
+
+MY_OPERATOR::~MY_OPERATOR()
+{
+}
+
+void MY_OPERATOR::process(Punctuation const& punct, uint32_t port)
+{
+    AutoMutex am (_mutex);
+    resetParser();
+    memset (_bad, 0, sizeof (_bad));
+}
+
+static const char* getAttributeValue(const char* key, const char** attrs)
+{
+    if (!attrs)
+        return NULL;
+    int i = 0;
+    while (attrs[i]) {
+        if (!<%=$cmpFcn%>(key, attrs[i]))
+            return attrs[i+1];
+        i+=2;
+    }
+    return NULL;
+}
+
+static void setAllAttributes(SPL::map<SPL::rstring, SPL::rstring>& map, const char** attrs)
+{
+    if (!attrs)
+        return;
+    int i = 0;
+    while (attrs[i]) {
+        if (strcmp(attrs[i], "xmlns") && strncmp (attrs[i], "xmlns:", 6)) // ignore namespaces
+            map.insert (std::make_pair(SPL::rstring(attrs[i]), SPL::rstring(attrs[i+1])));
+        i+=2;
+    }
+}
+
+void MY_OPERATOR::badTuple (int index)
+{
+    _bad[index] = false;
+    SPLTRACEMSG(L_ERROR, SPL_APPLICATION_RUNTIME_XMLPARSE_TUPLE_DISCARDED(index), SPL_OPER_DBG);
+    _numInvalidTuples.incrementValueNoLock();
+}
+
+void MY_OPERATOR::badConversion(const std::string& from, const std::string toType, int index)
+{
+    _bad[index] = true;
+    SPLTRACEMSG(L_ERROR, SPL_APPLICATION_RUNTIME_CONVERSION_FROM_STRING_FAILED(from, toType), SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::warning(const char *msg)
+{
+    if (!resetting_) {
+        SPLAPPTRC(L_INFO, msg, SPL_OPER_DBG);
+    }
+}
+
+void MY_OPERATOR::error(const char *msg)
+{
+    if (!resetting_) {
+       // remove newlines
+       std::string str = std::string(msg, strlen(msg)-1);
+       size_t pos = str.find('\n');
+       while (pos != std::string::npos) {
+           str.erase (pos, 1);
+           pos = str.find('\n', pos);
+       }
+
+       SPLTRACEMSG(L_ERROR, SPL_APPLICATION_RUNTIME_XMLPARSE_ERROR(str), SPL_OPER_DBG);
+        <%if ($parsing eq "strict") {%>
+            THROW_STRING (SPLRuntimeOperator, SPL_APPLICATION_RUNTIME_XMLPARSE_ERROR(str));
+        <%}%>
+        // Set all outputs to 'bad'
+        memset (_bad, 1, sizeof (_bad));
+    }
+}
+
+void MY_OPERATOR::doStartElement(const char *name, const char** attrs)
+{
+    if (_state.size() == 0) {
+        _state.push_back(0);
+        _depth.clear();
+        memset (_bad, 0, sizeof (_bad));
+    }
+    try {
+        switch(_state.back()) {
+<%generateStartElementCode(\@stateTree);%>
+        }
+    } catch (...) {
+    }
+}
+
+void MY_OPERATOR::doCharacters(const char *data, int len)
+{
+    try {
+        switch(_state.back()) {
+<% generateTextElementCode(\@stateTree); %>
+        }
+    } catch (...) {
+    }
+}
+
+void MY_OPERATOR::doEndElement(const char *name)
+{
+        const std::string& charbuf = _charbuf.back();
+        switch(_state.back()) {
+<% generateEndElementCode(\@stateTree); %>
+        case -1:
+            if (--(_depth.back()) <= 0) {
+                _depth.pop_back();
+                _state.pop_back();
+            }
+            return;
+        }
+        _state.pop_back();
+        _charbuf.pop_back();
+}
+
+void MY_OPERATOR::finishedParse()
+{
+  <%if ($isInConsistentRegion) {%>
+      _unusedData = unusedDataLeft();
+      if (_unusedData > 0) {
+          // remove all but the last tuple.
+          while (_preservedTuples.size() > 1) {
+              _preservedTuples.pop_front();
+          }
+      } else {
+          _preservedTuples.clear();
+      }
+  <%}%>
+
+  // Send it to all ports
+  forwardWindowPunctuation (Punctuation::WindowMarker);
+}
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    AutoMutex am (_mutex);
+    XMLParse::shutdown();
+}
+
+void MY_OPERATOR::process(const Tuple& tuple, uint32_t port)
+{
+    AutoMutex am (_mutex);
+    const <%=$inTupleType%>& <%=$inTupleName%> = static_cast<const <%=$inTupleType%>&>(tuple);
+    _currentTuple = &<%=$inTupleName%>;
+    // For @consistent
+
+    <%if ($isInConsistentRegion) {%>
+        _preservedTuples.push_back(*_currentTuple);
+    <%}%>
+
+
+    <%if (SPL::CodeGen::Type::isRString($xmlType)) {%>
+        const SPL::rstring& s = <%=$xml%>;
+        parse (s.c_str(), s.size());
+    <%} elsif (SPL::CodeGen::Type::isXml($xmlType)) {%>
+        const std::string& s = <%=$xml%>.getValue();
+        parse ((const char *) s.c_str(), s.length());
+    <%} elsif (SPL::CodeGen::Type::isUString($xmlType)) {%>
+        const SPL::ustring& s = <%=$xml%>;
+        parse ((const char *) s.getBuffer(), s.length() * 2);
+    <%} elsif (SPL::CodeGen::Type::isBlob($xmlType)) {%>
+        const SPL::blob& b = <%=$xml%>;
+        uint64_t size;
+        const char * ptr = (const char *) b.getData(size);
+        parse (ptr, size);
+    <%}%>
+
+}
+
+<%if ($isInConsistentRegion) {%>
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt)
+{
+    SPLAPPTRC(L_DEBUG, "checkpoint", SPL_OPER_DBG);
+    AutoMutex am (_mutex);
+
+    for (uint32_t i = 0; i < <%=$numOutputs%>; i++) {
+        ckpt << _bad[i];
+    }
+    ckpt << _unusedData;
+    uint32_t presTuplesSize = _preservedTuples.size();
+    ckpt << presTuplesSize;
+    for (uint32_t i = 0; i < _preservedTuples.size(); i++) {
+        ckpt << _preservedTuples[i];
+    }
+    ckpt << _numInvalidTuples.getValue();
+}
+
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    SPLAPPTRC(L_DEBUG, "reset", SPL_OPER_DBG);
+    AutoMutex am (_mutex);
+
+    // Ignore parse errors while resetting parser
+    resetting_ = true;
+
+    // Stop tuple submission while reconstructing parser state
+    _submitTuples = false;
+    //SPLAPPTRC(L_DEBUG, "resetParser", SPL_OPER_DBG);
+    resetParser();
+
+    // Accept errors while restoring checkpoint
+    resetting_ = false;
+
+    for (uint32_t i = 0; i < <%=$numOutputs%>; i++) {
+        ckpt >> _bad[i];
+    }
+    ckpt >> _unusedData;
+    uint32_t presTuplesSize;
+    ckpt >> presTuplesSize;
+    _preservedTuples.clear();
+    <%=$inTupleType%> tup;
+    for (uint32_t i = 0; i < presTuplesSize; i++) {
+        ckpt >> tup;
+        _preservedTuples.push_back(tup);
+    }
+    int64_t metricVal;
+    ckpt >> metricVal;
+
+    _numInvalidTuples.setValue(metricVal);
+
+    <%
+    my $getMethod;
+    if ($xmlInput) {
+        $getMethod = $xmlInput->getValueAt(0)->getCppExpression();
+        # C++ expression portName$portNumer.get_attr();
+        my @fields= split(/\./, $getMethod);
+        $getMethod = $fields[1];
+    } else {
+        $getMethod = "get_" . $inputPort->getAttributeAt(0)->getName() . "()";
+    }%>
+
+    for (uint32_t i = 0; i < presTuplesSize; i++) {
+        <%=$inTupleType%> & replayedTuple = _preservedTuples[i];
+        uint64_t offset = 0;
+        <%if (SPL::CodeGen::Type::isRString($xmlType)) {%>
+            const SPL::rstring& s = replayedTuple.<%=$getMethod%>;
+            uint64_t dataLength = s.size();
+            // On the first tuple, position the buffer to the end of the
+            // last document
+            if (i == 0 && _unusedData > 0) {
+                offset = dataLength - _unusedData;
+                dataLength = _unusedData;
+            }
+            parse (s.c_str() + offset, dataLength);
+        <%} elsif (SPL::CodeGen::Type::isXml($xmlType)) {%>
+            const std::string& s = replayedTuple.<%=$getMethod%>.getValue();
+            uint64_t dataLength = s.length();
+            if (i == 0 && _unusedData > 0) {
+                offset = dataLength - _unusedData;
+                dataLength = _unusedData;
+            }
+            parse ((const char *) s.c_str() + offset, dataLength);
+        <%} elsif (SPL::CodeGen::Type::isUString($xmlType)) {%>
+            const SPL::ustring& s = replayedTuple.<%=$getMethod%>;
+            uint64_t dataLength = s.length() * 2;
+            if (i == 0 && _unusedData > 0) {
+                offset = dataLength - _unusedData;
+                dataLength = _unusedData;
+            }
+            parse ((const char *) s.getBuffer() + offset, dataLength);
+        <%} elsif (SPL::CodeGen::Type::isBlob($xmlType)) {%>
+            const SPL::blob& b = replayedTuple.<%=$getMethod%>;
+            uint64_t size;
+            const char * ptr = (const char *) b.getData(size);
+            uint64_t dataLength = size;
+            if (i == 0 && _unusedData > 0) {
+                offset = dataLength - _unusedData;
+                dataLength = _unusedData;
+            }
+            parse (ptr + offset, dataLength);
+        <%}%>
+
+
+    }
+    _submitTuples = true;
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    SPLAPPTRC(L_DEBUG, "resetToInitialState", SPL_OPER_DBG);
+    AutoMutex am (_mutex);
+
+    resetParser();
+    memset (_bad, 0, sizeof (_bad));
+    _numInvalidTuples.setValueNoLock(0);
+    _unusedData = 0;
+    _preservedTuples.clear();
+}
+<% } %>
+
+<%SPL::CodeGen::implementationEpilogue($model);
+# subroutines for generating state machine
+
+# Build State tree, implemented by compileXPath, which itself calls splitXPath.
+#
+# Inputs:
+# 1) The number of the stream to which the XPATH applies, or that contains the attribute to
+#    which the XPATH applies.
+# 2) The attribute name in the stream, or undef if this is the XPATH of the stream
+# 3) The xpath expression.
+# 4) The trigger expression.
+# 5) 1 if the xpath was implicitly generated
+#
+# Algorithm:
+# 1) Convert xpath to absolute path if relative (i.e. for attributes it is relative to the parent)
+# 2) Split xpaths into elements
+# 3) Create a node in tree for each element
+#    Nodes are an array, where
+#    [0] -> list of children for the node
+#    [1] -> element of stream tuple's boundaries
+#    [2] -> element for tuple attributes copied from XML text.
+#    [3] -> element for tuple attributes copied from XML attributes.
+#
+#    The list of child nodes (entry [0]) is a hash map, where the key of the map is the condition to
+#    reach the child node. It is normally a string representing the tag element name of the child.
+##
+
+sub splitXPath($$$$$$)
+{
+    my ($stream, $aName, $xpathExp, $trigger, $implicit, $loc) = @_;
+# print STDERR "splitXPath: stream = $stream, aName = $aName, xPathExp = $xpathExp, trigger = $trigger, implicit = $implicit\n";
+    my $origExp = $xpathExp;
+    $xpathExp = removeNamespacesIfNeeded ($xpathExp);
+    if (defined $aName) {
+        # output clause
+        # The child must be relative to the parent
+        if ($origExp =~ m{^/}) {
+            SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_XPATH_MUST_BE_RELATIVE($origExp, $stream), $loc)
+                if !$implicit;
+        } else {
+            $xpathExp = $trigger . '/' . $xpathExp;
+        }
+    } else {
+        # trigger
+        SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_XPATH_MUST_BE_ABSOLUTE ($origExp, $stream), $loc)
+            unless $origExp =~ m{^/};
+        SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_TRIGGER_SLASH ($origExp, $stream), $loc)
+            if $origExp =~ m{/$};
+    }
+
+    # clean up the paths.  descendant-or-self isn't handled yet.
+    SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_XPATH_SLASH_SLASH($origExp, $stream), $loc)
+        if $origExp =~ m{//};
+
+    checkXPath ($xpathExp, $stream, $loc);
+
+    # $xpathExp =~ s{//}{/descendant-or-self::*/}g;
+    # $xpathExp =~ s{/descendant::\s*$}{/descendant::*};
+    # $xpathExp =~ s{/\*/}{/child::*/}g;
+    # $xpathExp =~ s{/child::\s*$}{/child::*};
+
+    $xpathExp =~ s{child::}{}g;
+    $xpathExp =~ s{/\./}{/}g;
+    $xpathExp =~ s{@(\S+)\s*$}{attribute::$1};
+    $xpathExp =~ s{@\s*$}{attribute::*};
+    $xpathExp =~ s{^/}{};
+    $xpathExp =~ s{/?$}{};
+
+    # save this if this is for the stream
+    if (!defined $aName) {
+        if (defined $streamInfo{$stream}->[1]) {
+            $streamInfo{$stream}->[1] .= "|$xpathExp";
+        } else {
+            $streamInfo{$stream}->[1] = $xpathExp;
+        }
+    }
+
+    my $nodeType = -1;
+    if (!defined $aName) {
+        $nodeType = 0 ; # ELEMENT BLOCK
+    } else {
+        if ($xpathExp =~ m/text\(\)$/) {
+            $nodeType = 1 ; # TEXT
+        } elsif ($xpathExp =~ m/attribute::(?:\*|\w+[\w-]*(:\w+[\w-]*)*)$/) {
+            $nodeType = 2 ; # ATTRIBUTE
+        } else {
+            SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_INVALID_XPATH($aName,$origExp), $loc);
+        }
+    }
+
+    my @tokens = split '/', $xpathExp;
+
+    $aName =~ s/:/_0x3a_/g;
+    print "/// #@@#: $stream.$aName => $xpathExp\n";
+    return \@tokens;
+}
+
+sub compileXPath($$$$$$)
+{
+    my ($stream, $aName, $aType, $xpathExps, $implicit, $loc) = @_;
+# print STDERR "compileXPath: $stream: aName = $aName, aType = $aType, xpathExps = $xpathExps, implicit = $implicit\n";
+
+    $xpathExps =~ s/"(.*)"/$1/;
+    my @xpathExps = split '\|', $xpathExps;
+    $splTypes{$stream,$aName} = $aType;
+
+    my @triggers;
+    if (defined $streamInfo{$stream}->[1]) {
+        @triggers = split '\|', $streamInfo{$stream}->[1];
+    } else {
+        @triggers = (undef);
+    }
+
+    foreach my $trigger (@triggers) {
+        foreach my $xpathExp (@xpathExps) {
+            my @tokens = @{splitXPath($stream,$aName,$xpathExp,$trigger, $implicit, $loc)};
+            my $k = \@stateTree;
+            @{$k} or $k->[1] = $numStates++;
+
+            for (my $inode = 0; $inode <= $#tokens; $inode++) {
+                my $token = $tokens[$inode];
+                if ($token =~ m{text\(\)}) {
+                    push @{$k->[2]}, [$stream, $aName];
+                } elsif ($token =~ m{attribute::(.*)}) {
+                    push @{$k->[3]->{$1}}, [ $stream, $aName ];
+                } else {
+                    $k = \@{$k->[0]->{$token}};
+                    @{$k} or $k->[1] = $numStates++;
+                    if ($inode == $#tokens && !defined $aName) {
+                        push @{$k->[4]}, $stream;
+                    }
+                }
+            }
+        }
+    }
+}
+
+sub compileNestedXPath($$$$)
+{
+    my ($stream, $xpathExps, $aName, $aType) = @_;
+
+    $xpathExps =~ s/"(.*)"/$1/;
+    my @xpathExps = split '\|', $xpathExps;
+
+    my @triggers = split '\|', $streamInfo{$stream}->[1];
+    foreach $trigger (@triggers) {
+        foreach my $xpathExp (@xpathExps) {
+            $xpathExp = $trigger . '/' . $xpathExp if !($xpathExp =~ /^\//);
+            my @tokens = split '/', $xpathExp;
+            my $k = \@stateTree;
+            @{$k} or $k->[1] = $numStates++;
+
+            for (my $inode = 0; $inode <= $#tokens; $inode++) {
+                my $token = $tokens[$inode];
+                $k = \@{$k->[0]->{$token}};
+                @{$k} or $k->[1] = $numStates++;
+                if ($inode == $#tokens) {
+                    push @{$k->[5]}, [ $stream, $aName, $aType];
+                }
+            }
+        }
+    }
+}
+
+sub computeStateTree()
+{
+    my $numStreams = $model->getNumberOfOutputPorts();
+    for (my $i = 0; $i < $numStreams; $i++) {
+        my $stream = $model->getOutputPortAt($i);
+        my $streamTrigger = $trigger->getValueAt($i)->getSPLExpression();
+        my $streamName = $stream->getCppTupleName();
+
+        $streamInfo{$i}->[0] = $stream;
+        my $loc = $stream->getSourceLocation();
+        compileXPath ($i, undef, undef, $streamTrigger, 0, $loc);
+
+        # Walk through all the output attributes for this output stream
+        my $numAttrs = $stream->getNumberOfAttributes();
+        for (my $j = 0; $j < $numAttrs; $j++) {
+            my $attr = $stream->getAttributeAt($j);
+            my $aName = $attr->getName();
+            $aName =~ s/_0x3a_/:/; # Handle namespace names
+            my $noPrefixAName = unprefix ($aName);
+            my $aType = $attr->getSPLType();
+            if ($attr->hasAssignment()) {
+                # is this a use of XPath?
+                walkXPathExpn ($i, $attr) if isXPathExpn ($attr);
+            } else {
+                # Need to generate a default name
+                my $eType = (SPL::CodeGen::Type::isList($aType) || SPL::CodeGen::Type::isBList($aType)) ?
+                                SPL::CodeGen::Type::getElementType($aType) : undef;
+                if (SPL::CodeGen::Type::isTuple ($aType) ||
+                        ($eType && SPL::CodeGen::Type::isTuple ($eType))) {
+                    compileTupleXPath ($i, $aName, $aType, $loc);
+                } else {
+                    if ($flatten ne "attributes") {
+                        if ($noPrefixAName eq $attrsName) {
+                            compileXPath ($i, $aName, $aType, "$streamTrigger/@*", 1, $loc);
+                        } elsif ($flatten eq "elements") {
+                            checkTypeForDefaultAssignment ($stream, $aName, $aType, $eType, $loc) if $eType;
+                            if ($noPrefixAName eq $textName) {
+                                compileXPath ($i, $aName, $aType, "$streamTrigger/text()", 1, $loc);
+                            } else {
+                                compileXPath ($i, $aName, $aType, "$noPrefixAName/text()", 0, $loc)
+                            }
+                        } elsif ($noPrefixAName eq $textName) {
+                            compileXPath ($i, $aName, $aType, "$streamTrigger/text()", 1, $loc);
+                        }
+                    } else {
+                        checkTypeForDefaultAssignment ($stream, $aName, $aType, $eType, $loc) if $eType;
+                        if ($flatten ne "elements") {
+                            if ($noPrefixAName eq $textName) {
+                                compileXPath ($i, $aName, $aType, "$streamTrigger/text()", 1, $loc);
+                            } else {
+                                compileXPath ($i, $aName, $aType, "$streamTrigger/\@$noPrefixAName", 1, $loc);
+                            }
+                        } else {
+                            compileXPath ($i, $aName, $aType, "$noPrefixAName/text()", 0, $loc);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return \@stateTree;
+}
+
+sub checkTypeForDefaultAssignment($$$$$) {
+    my ($stream, $aName, $aType, $eType, $loc) = @_;
+    return if SPL::CodeGen::Type::isRString($eType) ||
+              SPL::CodeGen::Type::isUString($eType) ||
+              SPL::CodeGen::Type::isIntegral($eType) ||
+              SPL::CodeGen::Type::isFloatingpoint($eType);
+    SPL::CodeGen::exitln (SPL::Msg::_XMLPARSE_UNSUPPORTED_CONVERSION($aType, $aName), $loc);
+}
+
+sub compileTupleXPath ($$$$)
+{
+    my ($streamNum, $aName, $type, $loc) = @_;
+# print STDERR "compileTupleXPath: $streamNum: aName = $aName, type = $type\n";
+    compileNestedXPath($streamNum, unprefix($aName), $aName, $type);
+    $type = SPL::CodeGen::Type::getElementType($type)
+        if SPL::CodeGen::Type::isList($type) || SPL::CodeGen::Type::isBList($type);
+    my @names = SPL::CodeGen::Type::getAttributeNames($type);
+    my @types = SPL::CodeGen::Type::getAttributeTypes($type);
+    my $noPrefixAName = unprefix ($aName) ;
+    for (my $i = 0; $i < scalar(@names); $i++) {
+        my $n =  $names[$i];
+        $n =~ s/_0x3a_/:/; # Handle namespace names
+        my $noPrefixN = unprefix ($n);
+
+        my $t = $types[$i];
+        my $nName =  "$aName/" . $n;
+        my $noPrefixnName =  "$noPrefixAName/" . $noPrefixN;
+        my $eType = (SPL::CodeGen::Type::isList($t) || SPL::CodeGen::Type::isBList($t)) ?
+                        SPL::CodeGen::Type::getElementType($t) : undef;
+        if (SPL::CodeGen::Type::isTuple ($t) ||
+                ($eType && SPL::CodeGen::Type::isTuple ($eType))) {
+            compileTupleXPath ($streamNum, $nName, $t, $loc);
+        } else {
+            if ($flatten ne "attributes") {
+                if ($noPrefixN eq $attrsName) {
+                    compileXPath ($streamNum, $nName, $t, "$noPrefixAName/@*", 1, $loc);
+                } elsif ($noPrefixN eq $textName) {
+                    compileXPath ($streamNum, $nName, $t, "$noPrefixAName/text()", 1, $loc);
+                } elsif ($flatten eq "elements") {
+                    checkTypeForDefaultAssignment ($streamInfo{$streamNum}, $n, $t, $eType, $loc) if $eType;
+                    compileXPath ($streamNum, $nName, $t, "$noPrefixnName/text()", 1, $loc)
+                }
+            } else {
+                checkTypeForDefaultAssignment ($streamInfo{$streamNum}, $n, $t, $eType, $loc) if $eType;
+                if ($flatten ne "elements") {
+                    if ($noPrefixN eq $textName) {
+                        compileXPath ($streamNum, $nName, $t, "$noPrefixAName/text()", 1, $loc);
+                    } else {
+                        compileXPath ($streamNum, $nName, $t, "$noPrefixAName/\@$noPrefixN", 1, $loc);
+                    }
+                } else {
+                    compileXPath ($streamNum, $nName, $t, "$noPrefixnName/text()", 1, $loc);
+                }
+            }
+        }
+}
+}
+
+sub compileExplicitTupleXPath ($$$$$$)
+{
+    my ($streamNum, $aName, $type, $xpathExpn, $tupleLiteral, $loc) = @_;
+# print STDERR "CXTX: aName = '$aName', type = '$type, xpathExpn='$xpathExpn'\n";
+    compileNestedXPath($streamNum, $xpathExpn, $aName, $type);
+    $type = SPL::CodeGen::Type::getElementType($type)
+        if SPL::CodeGen::Type::isList($type) || SPL::CodeGen::Type::isBList($type);
+    my @names = SPL::CodeGen::Type::getAttributeNames($type);
+    my @types = SPL::CodeGen::Type::getAttributeTypes($type);
+    for (my $i = 0; $i < scalar(@names); $i++) {
+        my $n = $names[$i];
+        my $t = $types[$i];
+        my $eType = (SPL::CodeGen::Type::isList($t) || SPL::CodeGen::Type::isBList($t)) ?
+                        SPL::CodeGen::Type::getElementType($t) : undef;
+        my $litVal = $tupleLiteral->getLiteralAt($i);
+        $litVal = $litVal->getExpression() if $litVal->isLiteral() && $litVal->isExpressionLiteral();
+        $litVal = $litVal->getExpression() if $litVal->isCast();
+        badXPathTuple($litVal->toString(), $loc) unless $litVal->isCall();
+        my $fcn = $litVal->getFunctionName();
+        badXPathTuple($litVal->toString(), $loc) unless isXPath ($fcn);
+
+        my $arg0 = $litVal->getArgumentAt(0);
+        my $arg1 = $litVal->getNumberOfArguments() > 1 ? $litVal->getArgumentAt(1) : undef;
+        checkRstringXPathArgument ($arg0, $streamNum, $fcn, $loc);
+        my $xp = fixXPathString($n, $loc, $arg0->getValue());
+        checkXPathArgument ($streamNum, $xp, $n, $t, $arg1, $loc, $fcn);
+        my $lit;
+        my $nName =  "$aName/$n";
+        if (SPL::CodeGen::Type::isTuple ($t) ||
+                ($eType && SPL::CodeGen::Type::isTuple ($eType))) {
+            compileExplicitTupleXPath ($streamNum, $nName, $t, combinePath($xpathExpn, $xp), $arg1, $loc);
+        } else {
+            compileXPath ($streamNum, $nName, $t, combinePath ($xpathExpn, $xp), 0, $loc);
+        }
+    }
+}
+
+sub generateResetStreamCode($)
+{
+    my $streamObj = $streamInfo{$_[0]};
+    defined $streamObj or return;
+    my $tName = $streamObj->[0]->getCppTupleName();
+    print "\t\t$tName.clear();\n";
+}
+
+sub generateNestedAssignment($)
+{
+    my ($x) = @_;
+    my $streamNum = $x->[0];
+    my $name = $x->[1];
+    my $type = $x->[2];
+    my $streamObj = $streamInfo{$streamNum};
+    defined $streamObj or return;
+    my $stream = $streamObj->[0];
+    my $streamIndex = $streamObj->[0]->getIndex();
+    my $tName = $stream->getCppTupleName();
+    my $origName = $name;
+
+    # Handle lists
+    if ($nestedListType{$streamNum,$name}) {
+        if ($name =~ /(.*)\/(.*)$/) {
+            my $x = $1;
+            $name = $2;
+            $x =~ s/\//\$/g;
+            $tName .= '$' . $x;
+            print "\t    $tName.push_back($tName\$$name);\n";
+        } else {
+            print "\t    $tName.get_$name().push_back($tName\$$name);\n";
+        }
+    } else  {
+        # Handle nested tuples
+        if ($name =~ /(.*)\/(.*)$/) {
+            my $x = $1;
+            $name = $2;
+            $x =~ s/\//\$/g;
+            $tName .= '$' . $x;
+        }
+        if (SPL::CodeGen::Type::isList($type) || SPL::CodeGen::Type::isBList($type) ) {
+            print "\t    $tName.get_$name().push_back($tName\$$name\$type());\n";
+            print "\t    $tName.get_$name().back().swap($tName\$$name);\n";
+        } else {
+            print "\t    $tName.get_$name().swap($tName\$$name);\n";
+        }
+    }
+    print "\t    $tName\$$name.clear();\n";
+}
+
+sub generateSubmitStreamCode($)
+{
+    my $streamObj = $streamInfo{$_[0]};
+    defined $streamObj or return;
+    my $stream = $streamObj->[0];
+    my $tName = $stream->getCppTupleName();
+    my $numAttrs = $stream->getNumberOfAttributes();
+    my $needInput = 1;
+    print "\t    {\n";
+    for (my $j = 0; $j < $numAttrs; $j++) {
+        my $attr = $stream->getAttributeAt($j);
+        my $aName = $attr->getName();
+        next if isXPathExpn ($attr) || !$attr->hasAssignment();
+        # Handle namespaces
+        $aName =~ s/:/_0x3a_/g;
+
+        if ($attr->hasAssignmentWithOutputFunction()) {
+            # Check the output assignent fcn
+            my $fcn = $attr->getAssignmentOutputFunctionName();
+            next if $fcn ne "AsIs";
+            if ($needInput) {
+                # set up current input tuple
+                $needInput = 0;
+                print "\t\tconst $inTupleType& $inTupleName = *_currentTuple;\n";
+            }
+            my $expn = $attr->getAssignmentOutputFunctionParameterValueAt(0)->getCppExpression();
+            print "\t\t$tName.set_$aName($expn);\n";
+        }
+    }
+    my $streamIndex = $streamObj->[0]->getIndex();
+    print "\t\tif (_bad[$streamIndex]) {\n";
+    print "\t\t    badTuple ($streamIndex);\n";
+    print "\t\t} else {\n";
+    if ($isInConsistentRegion) {
+        print "\t\t\t if (_submitTuples) {\n";
+    }
+    print "\t\t    submit($tName, $streamIndex);\n";
+    if ($isInConsistentRegion) {
+        print "\t\t\t }\n";
+    }
+    print "\t\t}\n";
+    print "\t    }\n";
+
+}
+
+sub computeCppType ($)
+{
+    my ($type) = @_;
+
+    if (SPL::CodeGen::Type::isList($type)) {
+        return "SPL::list<" . computeCppType(SPL::CodeGen::Type::getElementType($type)) . " >";
+    } elsif (SPL::CodeGen::Type::isBList($type)) {
+        return "SPL::blist<" . computeCppType(SPL::CodeGen::Type::getElementType($type)) . ", 1>";
+    }
+
+    return "SPL::int8" if SPL::CodeGen::Type::isInt8($type);
+    return "SPL::int16" if SPL::CodeGen::Type::isInt16($type);
+    return "SPL::int32" if SPL::CodeGen::Type::isInt32($type);
+    return "SPL::int64" if SPL::CodeGen::Type::isInt64($type);
+    return "SPL::uint8" if SPL::CodeGen::Type::isUint8($type);
+    return "SPL::uint16" if SPL::CodeGen::Type::isUint16($type);
+    return "SPL::uint32" if SPL::CodeGen::Type::isUint32($type);
+    return "SPL::uint64" if SPL::CodeGen::Type::isUint64($type);
+    return "SPL::float32" if SPL::CodeGen::Type::isFloat32($type);
+    return "SPL::float64" if SPL::CodeGen::Type::isFloat64($type);
+    return "SPL::decimal32" if SPL::CodeGen::Type::isDecimal32($type);
+    return "SPL::decimal64" if SPL::CodeGen::Type::isDecimal64($type);
+    return "SPL::decimal128" if SPL::CodeGen::Type::isDecimal128($type);
+    return "SPL::rstring" if SPL::CodeGen::Type::isRString($type);
+    return "SPL::ustring" if SPL::CodeGen::Type::isUString($type);
+    return undef;
+}
+
+sub generateSetAllAttributes($$)
+{
+    my ($s, $aName) = @_;
+    my $streamObj = $streamInfo{$s}->[0];
+    return if !defined $streamObj;
+    my $attribObj = $streamObj->getAttributeByName($aName);
+    my $type = $splTypes{$s,$aName};
+    my $tName = $streamObj->getCppTupleName();
+    # handle nested tuples
+    if ($aName =~ /(.*)\/(.*)$/) {
+        my $x = $1;
+        $aName = $2;
+        $x =~ s/\//\$/g;
+        $tName .= '$' . $x;
+    }
+    SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_BAD_ATTRIBUTE_STAR($aName, $s),
+            $streamInfo{$s}->[0]->getSourceLocation())
+        unless XMLParseCommon::isMapRStringRString($type);
+    print "\t\tsetAllAttributes($tName.get_$aName(), attrs);\n";
+}
+
+sub generateSetAttributeCode($$$$$)
+{
+    my ($xmlAttribute, $s, $aName, $value, $indent) = @_;
+    my $streamObj = $streamInfo{$s}->[0];
+    return if !defined $streamObj;
+    my $attribObj = $streamObj->getAttributeByName($aName);
+    my $type = $splTypes{$s,$aName};
+    my $cppType = computeCppType ($type);
+    my $isList = (SPL::CodeGen::Type::isList($type) || SPL::CodeGen::Type::isBList($type)) &&
+                    !SPL::CodeGen::Type::isTuple(SPL::CodeGen::Type::getElementType($type));
+    my $isMap = (SPL::CodeGen::Type::isMap($type) || SPL::CodeGen::Type::isBMap($type));
+    my $origName = $aName;
+
+    # Handle namespaces
+    $aName =~ s/:/_0x3a_/g;
+
+    if ($isList) {
+        if (SPL::CodeGen::Type::isList($type)) {
+            $cppType =~ s/^SPL::list<(.*)>$/$1/;
+        } elsif (SPL::CodeGen::Type::isBList($type)) {
+            $cppType =~ s/^SPL::blist<(.*), [0-9]*>$/$1/;
+        }
+        $type = SPL::CodeGen::Type::getElementType($type);
+    }
+    my $tName = $streamObj->getCppTupleName();
+    my $needsCatch = 0;
+    my $origValue = $value;
+    if (!$isMap &&
+            !(SPL::CodeGen::Type::isRString($type) || SPL::CodeGen::Type::isTuple($type))) {
+        # need to convert to the right type
+        $value = "SPL::spl_cast<$cppType,SPL::rstring>::cast($value)";
+        $needsCatch = $parsing ne "strict";
+    }
+    my $moreIndent = $needsCatch ? "        " : "";
+    print "$indent\t\ttry {\n" if $needsCatch;
+
+    # Handle nested tuples
+    if ($aName =~ /(.*)\/(.*)$/) {
+        my $x = $1;
+        $aName = $2;
+        $x =~ s/\//\$/g;
+        $tName .= '$' . $x;
+    }
+
+    # check validity
+    SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_NEED_XPATHMAP($aName),
+                          $streamObj->getSourceLocation())
+        if $isMap && !$xmlAttribute;
+
+    if ($isMap) {
+        print "$indent\t        $tName.get_$aName().insert(std::make_pair(SPL::rstring(\"$xmlAttribute\"), SPL::rstring($value)));\n";
+    } elsif ($nestedListType{$s,$origName}) {
+        print "$indent\t    $moreIndent$tName.push_back($value);\n";
+    } elsif ($isList) {
+        print "$indent\t    $moreIndent$tName.get_$aName().push_back($value);\n";
+    } else {
+        print "$indent\t    $moreIndent$tName.set_$aName($value);\n";
+    }
+    if ($needsCatch) {
+        my $index = $streamObj->getIndex();
+        print "$indent\t\t} catch (const SPL::SPLRuntimeException& e) {\n";
+        print "$indent\t\t    badConversion ($origValue, \"$type\", $index);\n";
+        print "$indent\t\t}\n";
+    }
+}
+
+sub generateResetAttributeCode($$$)
+{
+    my ($s, $aName, $value) = @_;
+    my $streamObj = $streamInfo{$s};
+    return if !defined $streamObj;
+    my $attribObj = $streamObj->[0]->getAttributeByName($aName);
+    my $type = $attribObj->getSPLType();
+
+    # don't do anything for list<X>[1]
+    return if SPL::CodeGen::Type::isBList($type);
+
+    # Handle namespaces
+    $aName =~ s/:/_0x3a_/g;
+
+    my $isList = SPL::CodeGen::Type::isList($type) || SPL::CodeGen::Type::isBList($type);
+    $type = SPL::CodeGen::Type::getElementType($type) if $isList;
+    my $tName = $streamObj->[0]->getCppTupleName();
+    if (SPL::CodeGen::Type::isRString ($type) || SPL::CodeGen::Type::isUString ($type)) {
+        if ($isList) {
+            print "\t\t\t$tName.get_$aName().push_back(\"\");\n";
+        } else {
+            print "\t\t\t$tName.set_$aName(\"\");\n";
+        }
+    } else {
+        if ($isList)
+        {
+            print "\t\t\t$tName.get_$aName().push_back(0);\n";
+        } else {
+            print "\t\t\t$tName.set_$aName(0);\n";
+        }
+    }
+}
+
+sub generateStartElementCode($)
+{
+    my @k;
+    push @k, $_[0];
+    while(@k)
+    {
+        my $k = pop @k;
+        if (defined $k->[0]) {
+            print "\tcase ", $k->[1], ":\n";
+            my $num = 0;
+            foreach my $nk (keys %{$k->[0]}) {
+                my $nv = $k->[0]->{$nk};
+                print "\t    else\n" if $num;
+                print "\t    if (!$cmpFcn(\"$nk\", name)) {\n";
+                print "\t\t_charbuf.push_back(\"\");\n";
+                print "\t\t_state.push_back(", $nv->[1], ");\n";
+                if (defined $nv->[4]) {
+                    foreach my $stream (@{$nv->[4]}) {
+                        generateResetStreamCode($stream);
+                    }
+                }
+                if (defined $nv->[3]) {
+                    foreach my $attr (keys %{$nv->[3]}) {
+                        if ($attr eq '*') {
+                            my @setOpList = @{$nv->[3]->{$attr}};
+                            foreach my $setOp (@setOpList) {
+                                generateSetAllAttributes($setOp->[0],$setOp->[1]);
+                            }
+                        } else {
+                            my @setOpList = @{$nv->[3]->{$attr}};
+                            print "\t\t{\n";
+                            print "\t\t    const char* value = getAttributeValue(\"$attr\",attrs);\n";
+                            print "\t\t    if (value) {\n";
+                            foreach my $setOp (@setOpList) {
+                                generateSetAttributeCode($attr, $setOp->[0],$setOp->[1],'value', "\t    ");
+                            }
+                            if ($nullifyMissingAttributes) {
+                                print "\t\t    } else {\n";
+                                foreach my $setOp (@setOpList) {
+                                    generateResetAttributeCode($setOp->[0],$setOp->[1],'');
+                                }
+                            }
+                            print "\t\t    }\n";
+                            print "\t\t}\n";
+                        }
+                    }
+                }
+                print "\t    }\n";
+                $num++;
+                push @k, $nv;
+            }
+            print "\t    else\n" if $num;
+            print "\t    {\n";
+            print "\t\t_state.push_back(-1);\n";
+            print "\t\t_depth.push_back(1);\n";
+            print "\t    }\n";
+            print "\t    break;\n";
+        }
+    }
+
+    print "\tcase -1:\n";
+    print "\t    _depth.back()++;\n";
+    print "\t    break;\n";
+    print "\tdefault:\n";
+    print "\t    _state.push_back(-1);\n";
+    print "\t    _depth.push_back(1);\n";
+    print "\t    break;\n";
+}
+
+sub generateEndElementCode($)
+{
+    my @k;
+    push @k, $_[0];
+    while(@k)
+    {
+        my $k = pop @k;
+        if (defined $k->[0])
+        {
+            foreach my $nv (values %{$k->[0]})
+            {
+                push @k, $nv;
+            }
+        }
+        if (defined $k->[2]||defined $k->[4]||defined $k->[5])
+        {
+            print "\tcase ", $k->[1], ":\n";
+            if (defined $k->[2]) {
+                foreach my $setOp (@{$k->[2]}) {
+                    generateSetAttributeCode(undef, $setOp->[0],$setOp->[1],'charbuf', "");
+                }
+            }
+            if (defined $k->[5]) {
+                foreach my $stream (@{$k->[5]}) {
+                    generateNestedAssignment($stream);
+                }
+            }
+            if (defined $k->[4]) {
+                foreach my $stream (@{$k->[4]}) {
+                    generateSubmitStreamCode($stream);
+                }
+            }
+            print "\t    break;\n";
+        }
+    }
+}
+
+sub generateTextElementCode($)
+{
+    my @k;
+    push @k, $_[0];
+    my $num = 0;
+    while(@k) {
+        my $k = pop @k;
+        if (defined $k->[0]) {
+            foreach my $nv (values %{$k->[0]}) {
+                push @k, $nv;
+            }
+        }
+        if (defined $k->[2]) {
+            print "\tcase ", $k->[1], ":\n";
+            $num++;
+        }
+    }
+    if ($num) {
+        print "\t    _charbuf.back() += std::string(data, len);\n";
+        print "\t    break;\n";
+    }
+}
+
+sub walkXPathExpn ($$)
+{
+    my ($i, $attr) = @_;
+    my $aName = $attr->getName();
+    my $aType = $attr->getSPLType();
+    walkOneXPathExpn($i, $aName, $aType, $attr, "");
+}
+
+sub combinePath ($$)
+{
+    my ($pre, $path) = @_;
+    return $path if $pre eq "";
+    if ($pre =~/\|/) {
+        # we have several paths in $pre
+        my @paths = split '\|', $pre;
+        my $result = "";
+        foreach my $i (@paths) {
+            $result .= '|' if $result ne "";
+            $result .= "$i/$path";
+        }
+        return $result;
+    }
+    return "$pre/$path";
+}
+
+sub walkOneXPathExpn($$$$$)
+{
+    my ($i, $aName, $aType, $attr, $prePath) = @_;
+    my $fcn = $attr->getAssignmentOutputFunctionName();
+    my $loc = $attr->getAssignmentSourceLocation();
+# print STDERR "WOXE: aName = $aName, aType = $aType, prepath = $prePath, fcn = $fcn\n";
+    if ($fcn eq 'AsIs') {
+        # we know there is something with XPath here. Let's look a bit deeper.
+        my $a = $attr->getAssignmentOutputFunctionParameterValueAt(0)->getSPLExpressionTree();
+        if ($a->isCast()) {
+            $a = $a->getExpression();
+            if ($a->isCall()) {
+                my $fcn = $a->getFunctionName();
+                if (isXPath($fcn)) {
+                    my $arg0 = $a->getArgumentAt(0);
+                    my $arg1 = $a->getNumberOfArguments() > 1 ? $a->getArgumentAt(1) : undef;
+                    walkOneXPathTree ($i, $aName, $aType, $fcn, $arg0, $arg1, $prePath, $loc);
+                    return;
+                }
+            }
+        }
+        # bad input!
+        my $orig = $attr->getAssignmentOutputFunctionParameterValueAt(0)->getSPLExpressionTree();
+        SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_BAD_XPATH_EXPN($orig->toString(), $i), $loc);
+    }
+    my $args = $attr->getAssignmentOutputFunctionParameterValues();
+    my $arg0 = $attr->getAssignmentOutputFunctionParameterValueAt(0)->getSPLExpressionTree();
+    my $arg1 = scalar(@{$args}) > 1 ?
+                $attr->getAssignmentOutputFunctionParameterValueAt(1)->getSPLExpressionTree() : undef;
+    walkOneXPathTree ($i, $aName, $aType, $fcn, $arg0, $arg1, $prePath, $loc);
+}
+
+sub walkOneXPathTree($$$$$$$$)
+{
+    my ($i, $aName, $aType, $fcn, $arg0, $arg1, $prePath, $loc) = @_;
+# print STDERR "WOXT: aName = $aName, aType = $aType, fcn = $fcn, prepath = $prePath, \n";
+# print STDERR "\targ 0: ", $arg0->toString(), ", arg 1: ", $arg1 ? $arg1->toString() : "", "\n";
+    my $eType = (SPL::CodeGen::Type::isList($aType) || SPL::CodeGen::Type::isBList($aType))?
+                    SPL::CodeGen::Type::getElementType($aType) : undef;
+    my $listOfTuples = $eType && SPL::CodeGen::Type::isTuple($eType);
+
+    checkRstringXPathArgument ($arg0, $i, $fcn, $loc);
+    my $xpath = fixXPathString($aName, $loc, $arg0->getValue());
+
+    checkXPathArgument ($i, $xpath, $aName, $aType, $arg1, $loc, $fcn);
+
+    if (SPL::CodeGen::Type::isTuple ($aType) ||
+            ($arg1 && $arg1->isLiteral() && $arg1->isTupleLiteral())) {
+
+        $nestedListType{$i,$aName} = 1 if $eType;
+
+        SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_NEED_SECOND_ARG ($fcn,$i), $loc)
+            unless $arg1;
+        SPL::CodeGen::exitln (
+                SPL::Msg::STDTK_XMLPARSE_SECOND_ARG_NOT_TUPLE ($fcn,
+                $arg1->toString(), $i), $loc)
+            unless $arg1->isLiteral() && $arg1->isTupleLiteral();
+        compileExplicitTupleXPath ($i, $aName, $aType, combinePath ($prePath, $xpath), $arg1, $loc);
+        return;
+    }
+
+    # we have a non-tuple scalar or list
+    if ($arg1) {
+        # must be <any T> public list<T> XPathList(rstring xpathExpn, T elements)
+        my $origArg1 = $arg1;
+
+        my $newXPath = combinePath ($prePath, $xpath);
+        compileNestedXPath($i, $newXPath, $aName, $aType) if !$listOfTuples;
+        my @names = split '/', $aName;
+        my $lastName = $listOfTuples ? "" : '/'. $names[scalar(@names)-1];
+        $nestedListType{$i,$aName . $lastName} = 1;
+        $arg1 = $arg1->getExpression() if $arg1->isCast();
+        if ($arg1->isCall()) {
+            my $fcn = $arg1->getFunctionName();
+            if (isXPath($fcn)) {
+                my $arg0 = $arg1->getArgumentAt(0);
+                my $arg1 = $arg1->getNumberOfArguments() > 1 ? $arg1->getArgumentAt(1) : undef;
+                walkOneXPathTree ($i, "$aName$lastName", $eType, $fcn, $arg0, $arg1, $newXPath, $loc);
+                return;
+            }
+        }
+        # bad input
+        SPL::CodeGen::exitln (
+            SPL::Msg::STDTK_XMLPARSE_BAD_XPATH_EXPN ($origArg1->toString(), $i), $loc);
+    } else {
+        compileXPath ($i, $aName, $aType, combinePath ($prePath, $xpath), 0, $loc);
+    }
+}
+
+sub isXPath($)
+{
+    my ($fcn) = @_;
+    return $fcn =~ /^(XMLParse::)?XPath((Map)|(List))?$/;
+}
+
+sub isXPathExpn ($)
+{
+    # the only custom output functions that we support are the XPath ones
+    my ($attr) = @_;
+    return 0 if !$attr->hasAssignment();
+    if ($attr->hasAssignmentWithOutputFunction()) {
+        my $fcn = $attr->getAssignmentOutputFunctionName();
+        return 1 if isXPath($fcn);
+        # walk all the values;
+        my $args = $attr->getAssignmentOutputFunctionParameterValues();
+        my $count = scalar(@{$args});
+        for (my $i = 0; $i < $count; $i++) {
+            my $v = $attr->getAssignmentOutputFunctionParameterValueAt($i);
+            return 1 if $v->hasNestedCustomOutputFunction();
+        }
+        return 0;
+    }
+    # arbitrary expression
+    return $attr->getAssignmentValue()->hasNestedCustomOutputFunction();
+}
+
+sub checkRstringXPathArgument ($$$$)
+{
+    my ($arg, $streamNum, $fcn, $loc) = @_;
+    SPL::CodeGen::exitln (
+            SPL::Msg::STDTK_XMLPARSE_FIRST_ARG_NOT_RSTRING ($fcn, $arg->toString(), $streamNum), $loc)
+        unless $arg->isLiteral() && $arg->isPrimitiveLiteral();
+}
+
+sub validType($$)
+{
+    my ($type, $arg1) = @_;
+    if (SPL::CodeGen::Type::isList($type) || SPL::CodeGen::Type::isBList($type)) {
+        my $e = SPL::CodeGen::Type::getElementType($type);
+        return validType ($e, $arg1->getArgumentAt(1))
+            if ($arg1 && $arg1->isCall() && $arg1->getNumberOfArguments() == 2);
+        return validType ($e, $arg1);
+    }
+    return SPL::CodeGen::Type::isRString($type) || SPL::CodeGen::Type::isUString($type) ||
+           SPL::CodeGen::Type::isIntegral($type) || SPL::CodeGen::Type::isFloatingpoint($type) ||
+           (SPL::CodeGen::Type::isTuple($type) && $arg1 && $arg1->isLiteral() &&
+             $arg1->isTupleLiteral()) ||
+           ((SPL::CodeGen::Type::isList($type) || SPL::CodeGen::Type::isBList($type)) &&
+                validType(SPL::CodeGen::Type::getElementType($type), $arg1));
+}
+
+sub checkXPathArgument($$$$$$$)
+{
+    my ($streamNum, $xp, $name, $type, $arg1, $loc, $fcn) = @_;
+    if ($fcn =~ /(XMLParse::)?XPathMap/) {
+        verifyXPathMapArg ($xp, $name, $loc);
+        return;
+    }
+    # everything else
+    my $isList = SPL::CodeGen::Type::isList($type) || SPL::CodeGen::Type::isBList($type);
+    return if validType ($type, $arg1);
+
+    if ($isList) {
+        if (SPL::CodeGen::Type::hasBound($type)) {
+            my $bound = SPL::CodeGen::Type::getBound($type);
+            SPL::CodeGen::exitln(SPL::Msg::STDTK_XMLPARSE_INVALID_BLIST ($bound, $type, $name), $loc)
+                unless $bound == 1;
+        }
+        return if validType(SPL::CodeGen::Type::getElementType($type), $arg1);
+    }
+
+    # error!
+    SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_INVALID_OUTPUT_TYPE ($type, $name), $loc);
+}
+
+
+sub verifyXPathMapArg ($$$)
+{
+    my ($xpath, $aName, $loc) = @_;
+    my @tokens = split '\|', $xpath;
+    foreach my $p (@tokens) {
+        # check for legal attributes
+        SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_XPATHMAP_ARG($p, $aName), $loc)
+            unless $p =~ /^(.*\/)?@(\*|\w*)$/;
+    }
+}
+
+sub fixXPathString($$$)
+{
+    my ($aName, $loc, $xp) = @_;
+    my $ret =  substr $xp, 1, length($xp)-2;
+    SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_INVALID_XPATH($aName,$ret), $loc) if $ret eq "";
+    return $ret;
+}
+
+sub badXPathTuple($$)
+{
+    my ($str, $loc) = @_;
+    SPL::CodeGen::exitln (SPL::Msg::STDTK_XMLPARSE_TUPLE_EXPN ($str) , $loc);
+}
+
+sub checkFirstCharacter($)
+{
+    my ($c) = @_;
+
+    # Valid chars: ":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] |
+    #              [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] |
+    #              [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
+    return 1 if $c =~ /[a-zA-Z:_]/;
+    my $o = ord ($c);
+    return 1 if ($o >= 0xC0 && $o <= 0xD6);
+    return 1 if ($o >= 0xD8 && $o <= 0xF6);
+    return 1 if ($o >= 0xF8 && $o <= 0x2FF);
+    return 1 if ($o >= 0x370 && $o <= 0x37D);
+    return 1 if ($o >= 0x37F && $o <= 0x1FFF);
+    return 1 if ($o >= 0x200C && $o <= 0x200D);
+    return 1 if ($o >= 0x2070 && $o <= 0x218F);
+    return 1 if ($o >= 0x2C00 && $o <= 0x2FEF);
+    return 1 if ($o >= 0x3001 && $o <= 0xD7FF);
+    return 1 if ($o >= 0xF900 && $o <= 0xFDCF);
+    return 1 if ($o >= 0xFDF0 && $o <= 0xFFFD);
+    return 1 if ($o >= 0x10000 && $o <= 0xEFFFF);
+    return 0;
+}
+
+sub checkSubsequentCharacter($)
+{
+    my ($c) = @_;
+    return 1 if checkFirstCharacter ($c);
+    # also valid: "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
+    return 1 if $c =~ /[.0-9-]/;
+    my $o = ord ($c);
+    return 1 if ($o == 0xB7);
+    return 1 if ($o >= 0x300 && $o <= 0x36F);
+    return 1 if ($o >= 0x203F && $o <= 0x2040);
+    return 0;
+}
+
+sub componentError ($$)
+{
+    my ($msg, $loc) = @_;
+    SPL::CodeGen::exitln ($msg, $loc);
+}
+
+sub checkPathComponent($$$)
+{
+    my ($name, $msg, $loc) = @_;
+    my $len = length ($name);
+    componentError ($msg, $loc) unless checkFirstCharacter (substr ($name, 0, 1));
+    for (my $i = 1; $i < $len; $i++) {
+        my $c = substr ($name, $i, 1);
+        componentError ($msg, $loc) unless checkSubsequentCharacter ($c);
+    }
+}
+
+sub checkLastComponent($$$)
+{
+    my ($name, $msg, $loc) = @_;
+    $name =~ s/^@//;
+    return if $name eq "*";
+    $name =~ s/\(\)$//;
+    checkPathComponent($name, $msg, $loc);
+}
+
+sub checkXPath ($$$)
+{
+    my ($xPathExp, $stream, $loc) = @_;
+    my @components = split '/', $xPathExp;
+    my $len = scalar(@components);
+    for (my $i = 0; $i < $len-1; $i++) {
+        my $c = $components[$i];
+        next if length($c) == 0;
+        my $msg = SPL::Msg::STDTK_XMLPARSE_INVALID_XPATH_COMPONENT($c, $xPathExp, $stream);
+        checkPathComponent ($c, $msg, $loc);
+    }
+    my $c = $components[$len-1];
+    my $msg = SPL::Msg::STDTK_XMLPARSE_INVALID_LAST_XPATH_COMPONENT($c, $xPathExp, $stream);
+    checkLastComponent ($c, $msg, $loc);
+}
+
+sub removeNamespacesIfNeeded ($)
+{
+    my ($path) = @_;
+    return $path if $ignoreNamespaces ne 'true';
+
+    my @components = split '/', $path;
+    my $len = scalar(@components);
+    my $result;
+    for (my $i = 0; $i < $len; $i++) {
+        my $c = $components[$i];
+        $c =~ s/(@?).*:/\1/;
+        $result = $i == 0 ? $c : ($result . '/' . $c);
+    }
+    return $result;
+}
+
+sub unprefix($)
+{
+    my ($aName) = @_;
+    return $aName if !$ignorePrefix;
+
+    my @components = split '/', $aName;
+    my $len = scalar(@components);
+    my $result;
+    for (my $i = 0; $i < $len; $i++) {
+        my $c = $components[$i];
+        $c =~ s/^$ignorePrefix//;
+        $result = $i == 0 ? $c : ($result . '/' . $c);
+    }
+    return $result;
+}
+%>

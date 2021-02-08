@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns="http://www.ibm.com/xmlns/prod/streams/spl/enumeration"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/enumeration"
+           elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+   <xs:element name="enumerationModel" type="enumerationModelType"/>
+
+   <xs:complexType name="enumerationModelType">
+      <xs:sequence>
+         <xs:element name="class" type="xs:token"/>
+         <xs:element name="enumerators" type="enumeratorsType"/>
+      </xs:sequence>
+   </xs:complexType>
+
+   <xs:complexType name="enumeratorsType">
+      <xs:sequence>
+         <xs:element name="enumerator" type="enumeratorType" maxOccurs="unbounded"/>
+      </xs:sequence>
+   </xs:complexType>
+
+   <xs:complexType name="enumeratorType">
+      <xs:sequence>
+         <xs:element name="name" type="xs:token"/>
+      </xs:sequence>
+   </xs:complexType>
+</xs:schema>

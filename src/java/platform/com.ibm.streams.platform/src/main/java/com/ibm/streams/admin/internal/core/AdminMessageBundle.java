@@ -1,0 +1,361 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.ibm.streams.admin.internal.core;
+
+import com.ibm.streams.admin.internal.api.trace.Trace;
+import java.io.StringWriter;
+import java.util.Enumeration;
+import java.util.Locale;
+import java.util.ResourceBundle;
+
+public class AdminMessageBundle {
+
+  private static final String _bundleName =
+      "com.ibm.streams.resource.AdminMessageBundle"; // AdminMessageBundle.properties
+
+  /** The system Line Separator. */
+  public static final String LS = System.getProperty("line.separator", "\n");
+
+  public static void main(String args[]) {
+    ResourceBundle bundle = ResourceBundle.getBundle(_bundleName, Locale.getDefault());
+    Enumeration<String> bundleKeys = bundle.getKeys();
+    while (bundleKeys.hasMoreElements()) {
+      String key = bundleKeys.nextElement();
+      // String value = bundle.getString(key);
+      String value = getFormattedString(Locale.getDefault(), key);
+      System.out.println(key + "=" + value);
+    }
+  }
+
+  public static String getPlainFormattedString(Locale locale, String key, Object... params) {
+    Locale loc = locale;
+    if (loc == null) {
+      loc = Locale.getDefault();
+    }
+    ResourceBundle bundle = ResourceBundle.getBundle(_bundleName, loc);
+    return com.ibm.icu.text.MessageFormat.format(bundle.getString(key), params);
+  }
+
+  public static String getFormattedString(Locale locale, String key, Object... params) {
+    try {
+      Locale loc = locale;
+      if (loc == null) {
+        loc = Locale.getDefault();
+      }
+      ResourceBundle bundle = ResourceBundle.getBundle(_bundleName, loc);
+      String htmlText = com.ibm.icu.text.MessageFormat.format(bundle.getString(key), params);
+      StringWriter sw = new StringWriter();
+      sw.write("<html>" + htmlText + "</html>");
+      return sw.toString();
+    } catch (java.util.MissingResourceException mre) {
+      Trace.logError("Unexpected error: cannot find description with key: " + key);
+      Trace.logError(mre.getMessage(), mre);
+      return key;
+    }
+  }
+
+  public static boolean containsKey(Locale locale, String key) {
+    Locale loc = locale;
+    if (loc == null) {
+      loc = Locale.getDefault();
+    }
+    ResourceBundle bundle = ResourceBundle.getBundle(_bundleName, loc);
+    return bundle.containsKey(key);
+  }
+
+  public enum Id {
+    SYSTEM,
+    RSPEC_NONE,
+
+    PROP_MONITOR_PORT,
+    PROP_MONITOR_CHECK_INTERVAL_MS,
+    PROP_MONITOR_CONN_TIMEOUT_MS,
+
+    PROP_ZOOKEEPER_TICK_TIME,
+    PROP_ZOOKEEPER_CLIENT_PORT,
+    PROP_ZOOKEEPER_CLIENT_PORT_ADDRESS,
+    PROP_ZOOKEEPER_DATA_DIR,
+    PROP_ZOOKEEPER_DATA_LOG_DIR,
+    PROP_ZOOKEEPER_MIN_SESSION_TIMEOUT,
+    PROP_ZOOKEEPER_MAX_SESSION_TIMEOUT,
+    PROP_ZOOKEEPER_MAX_CLIENT_CONNS,
+    PROP_ZOOKEEPER_INIT_LIMIT,
+    PROP_ZOOKEEPER_SYNC_LIMIT,
+    PROP_ZOOKEEPER_AUTOPURGE_SNAP_RETAIN_COUNT,
+    PROP_ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL,
+    PROP_STREAMS_ZK_QUORUM,
+    PROP_STREAMS_ZK_LOG_DIR,
+    PROP_STREAMS_ZK_ROOT_LOGGER,
+    PROP_STREAMS_ZK_JVM_FLAGS,
+
+    JOB_PE_STATUS_RUNNING,
+    JOB_PE_STATUS_ENDING,
+    JOB_PE_STATUS_FAILED,
+    JOB_PE_STATUS_STARTING,
+    JOB_PE_STATUS_RESTARTING,
+    JOB_PE_STATUS_ENDED,
+    JOB_PE_STATUS_CONSTRUCTED,
+    JOB_PE_STATUS_STOPPED,
+    JOB_PE_STATUS_STOPPING,
+    JOB_PE_STATUS_CANCELLED,
+    JOB_PE_STATUS_CANCELLING,
+    JOB_PE_STATUS_UNKNOWN,
+
+    PE_STATE_REASON_AUTOMATIC,
+    PE_STATE_REASON_CRASH,
+    PE_STATE_REASON_FAILURE,
+    PE_STATE_REASON_HOSTFAILURE,
+    PE_STATE_REASON_REQUEST,
+    PE_STATE_REASON_VOLUNTARY,
+    PE_STATE_REASON_NONE,
+    PE_STATE_REASON_NO_FEASIBLE_HOST,
+    PE_STATE_REASON_SET_CAPABILITIES_FAILURE,
+
+    PE_CONNECTION_STATUS_CLOSED,
+    PE_CONNECTION_STATUS_CONNECTED,
+    PE_CONNECTION_STATUS_CONNECTING,
+    PE_CONNECTION_STATUS_INITIAL,
+
+    BUILD_STATUS_NOT_BUILT,
+    BUILD_STATUS_WAITING,
+    BUILD_STATUS_BUILT,
+    BUILD_STATUS_BUILDING,
+    BUILD_STATUS_CANCELING,
+    BUILD_STATUS_CANCELED,
+    BUILD_STATUS_FAILED,
+    BUILD_STATUS_TIMEOUT,
+    BUILD_STATUS_UNKNOWN,
+
+    STATUS_UNDEFINED,
+    INSTANCE_STATUS_NOT_STARTED,
+    INSTANCE_STATUS_STARTING,
+    INSTANCE_STATUS_DOWN,
+    INSTANCE_STATUS_PARTIAL_UP,
+    INSTANCE_STATUS_PARTIAL_DOWN,
+    INSTANCE_STATUS_UP,
+    INSTANCE_STATUS_STOPPING,
+    INSTANCE_STATUS_STALE,
+
+    HOST_STATUS_QUIESCED,
+    HOST_STATUS_STARTING,
+    HOST_STATUS_DOWN,
+    HOST_STATUS_PARTIAL_UP,
+    HOST_STATUS_PARTIAL_DOWN,
+    HOST_STATUS_UP,
+    HOST_STATUS_QUIESCING,
+    HOST_STATUS_STOPPING,
+
+    HOST_SCHED_STATUS_FAILED,
+    HOST_SCHED_STATUS_STARTING,
+    HOST_SCHED_STATUS_DEGRADED,
+    HOST_SCHED_STATUS_NOT_SCHED,
+    HOST_SCHED_STATUS_SCHED,
+    HOST_SCHED_STATUS_NOT_APPLICABLE,
+    HOST_SCHED_STATUS_DRAINING,
+    HOST_SCHED_STATUS_STOPPED,
+
+    DAEMON_STATUS_DOWN,
+    DAEMON_STATUS_UP,
+    DAEMON_STATUS_STOPPED,
+    DAEMON_STATUS_STARTING,
+    DAEMON_STATUS_DEGRADED,
+    DAEMON_STATUS_STOPPING,
+
+    STATUS_HEALTHY,
+    STATUS_UNHEALTHY,
+    STATUS_PARTIAL_HEALTHY,
+    STATUS_PARTIAL_UNHEALTHY,
+
+    HEALTH_CONNECTED,
+    HEALTH_PARTIAL,
+    HEALTH_DISCONNECTED,
+
+    CMD_DISPLAY_JOB_SETTINGS,
+    CMD_DISPLAY_JOB_GROUP,
+    CMD_DISPLAY_APP_VERSION,
+    CMD_DISPLAY_JOB_USER,
+    CMD_DISPLAY_RESOURCES,
+    CMD_DISPLAY_PRODUCT_VERSION,
+    CMD_DISPLAY_SUBMISSION_TIME,
+    CMD_DISPLAY_APP_NAME,
+    CMD_DISPLAY_PROP_OPER_PER_RESOURCE,
+    CMD_DISPLAY_JOB_RESOURCE_SHARING,
+    CMD_DISPLAY_FUSION_SCHEME,
+    CMD_DISPLAY_THREADING_MODEL,
+    CMD_DISPLAY_DYN_THREADING_ELASTIC,
+    CMD_DISPLAY_DYN_THREADING_COUNT,
+    CMD_DISPLAY_PE_SETTINGS,
+    CMD_DISPLAY_PE_ID,
+    CMD_DISPLAY_JOB_ID,
+    CMD_DISPLAY_JOB_NAME,
+    CMD_DISPLAY_STATUS,
+    CMD_DISPLAY_STATUS_REASON,
+    CMD_DISPLAY_HEALTH,
+    CMD_DISPLAY_REQ_CONNECTIONS,
+    CMD_DISPLAY_OPT_CONNECTIONS,
+    CMD_DISPLAY_RESOURCE,
+    CMD_DISPLAY_RESOURCE_ID,
+    CMD_DISPLAY_PROCESS_ID,
+    CMD_DISPLAY_TAGS,
+    CMD_DISPLAY_MOVABLE,
+    CMD_DISPLAY_RESTARTABLE,
+    CMD_DISPLAY_LAUNCH_COUNT,
+    CMD_DISPLAY_TRACING,
+    CMD_DISPLAY_TRACING_PENDING,
+    CMD_DISPLAY_OPERATORS_CSV,
+    CMD_DISPLAY_END_PE_SETTINGS,
+    CMD_DISPLAY_PORTS,
+    CMD_DISPLAY_INPUT_PORT_ID,
+    CMD_DISPLAY_INPUT_PORT_INDEX,
+    CMD_DISPLAY_INPUT_PORT_TRANSPORT_TYPE,
+    CMD_DISPLAY_OUTPUT_PORT_ID,
+    CMD_DISPLAY_OUTPUT_PORT_INDEX,
+    CMD_DISPLAY_OUTPUT_PORT_TRANSPORT_TYPE,
+    CMD_DISPLAY_END_PORTS,
+    CMD_DISPLAY_CAPABILITIES,
+    CMD_DISPLAY_NEVER,
+    CMD_DISPLAY_DEFAULT,
+
+    // TODO: delete these
+    HOST_TAG_MANAGEMENT,
+    HOST_TAG_AUTHENTICATION,
+    HOST_TAG_BUILD,
+    HOST_TAG_EXECUTION,
+    DESC_DOMAINHOST_DISPLAYNAME,
+    DESC_INSTANCEHOST_DISPLAYNAME,
+    // TODO: delete these
+
+    RESOURCE_TAG_MANAGEMENT,
+    RESOURCE_TAG_AUTHENTICATION,
+    RESOURCE_TAG_APPLICATION,
+    RESOURCE_TAG_AUDIT,
+    RESOURCE_TAG_API,
+    RESOURCE_TAG_JMX,
+    RESOURCE_TAG_SWS,
+    RESOURCE_TAG_VIEW,
+    RESOURCE_TAG_BUILD,
+
+    DESC_INSTANCE_JVMSIZECOMPUTATIONENABLED,
+    DESC_DOMAIN_DYNAMICRESOURCEALLOCATIONENABLED,
+    DESC_INSTANCE_DYNAMICRESOURCEALLOCATIONENABLED,
+
+    HOST_STAT_NUM_CPUS,
+    HOST_STAT_CPU_LOAD_AVG,
+    HOST_STAT_CPU_UTIL,
+    HOST_STAT_CPU_SPEED,
+    HOST_STAT_MEM_TOTAL,
+    HOST_STAT_MEM_FREE,
+    HOST_STAT_MEM_UTIL,
+    HOST_STAT_NETWORK_SPEED,
+    HOST_STAT_NETWORK_UTIL,
+
+    JMX_ATTR_CHANGE_MESSAGE,
+
+    SERVICE_AAS,
+    SERVICE_AUDITLOG,
+    SERVICE_CONTROLLER,
+    SERVICE_HC,
+    SERVICE_JMX,
+    SERVICE_SAM,
+    SERVICE_SRM,
+    SERVICE_SCH,
+    SERVICE_SWS,
+    SERVICE_VIEW,
+    SERVICE_APP,
+
+    EXC_OBJ_NULL,
+    EXC_PARENT_NULL,
+    EXC_APP_BUNDLE,
+    LOG_FAILED_RETRIEVE_OP,
+    EXC_NOT_AUTH_NAME_PERM,
+    EXC_AUTH_USER_NOT_RETRIEVABLE,
+    EXC_SEC_OBJ_EXISTS,
+    MSG_CANCELLED,
+    MSG_HARD_ULIMIT_FAILED,
+    EXC_INTERNAL_EXCEPTION,
+    EXC_LOG_HANDLER,
+    EXC_RESP_CODE_RECEIVED,
+    EXC_ZKCONNECT_NULL,
+    EXC_ZKCHECKER_STARTED,
+    EXC_ZKCHECKER_NOT_STARTED,
+    EXC_INVALID_ZKCONNECT,
+    EXC_INVALID_ZKNODE,
+    MSG_ZKSTATE_INFO,
+    MSG_ZK_SERVER_MSG_NOT_SERVING,
+    MSG_ZK_SERVER_MSG_VERSION,
+    MSG_ZK_SERVER_MSG_SRST,
+    MSG_ZK_SERVER_MSG_CRST,
+    EXC_ZK_SERVER_SEPARATOR,
+    EXC_ZK_SERVER_FORMAT,
+    EXC_ZK_SERVER_RESPONSE,
+    EXC_USERHOME_NULL,
+    EXC_LOCKFILE_NULL,
+    EXC_LOG_FILE_MATCH,
+    EXC_LOG_FILE_INDEX,
+    EXC_LOG_FILE_FORMAT,
+    EXC_LOG_FILE_TARGET,
+    EXC_ZIP_DIRECTORY,
+    MSG_CHALLENGE_HEADING_NOT_AUTH,
+    MSG_CHALLENGE_CREDENTIALS,
+    MSG_HTTP_HEADING_NOT_FOUND,
+    MSG_HTTP_NOT_FOUND_URL,
+    MSG_HTTP_NOT_AUTHORIZED,
+    MSG_HTTP_HEADING_BAD_REQUEST,
+    MSG_HTTP_BAD_REQUEST,
+    EXC_NUMBER_ARG_MISMATCH,
+    EXC_SERVICE_METHOD_NOT_FOUND,
+    MSG_ALREADY_CONNECTED,
+    EXC_JMX_BUILD_NAME,
+    EXC_REPLACE_CANT_BE_NULL,
+    EXC_VIEW_EXISTS,
+    EXC_CREATE_OBJECT,
+    EXC_COULD_NOT_MARSHAL,
+    EXC_COULD_NOT_INSTANTIATE,
+    EXC_TYPE_NOT_DEFINED,
+    EXC_COULD_NOT_EXTRACT_EXC,
+    EXC_UNKNOWN_NAME_SPACE,
+    EXC_COULD_NOT_MARSHAL_EXC,
+    EXC_INSTANCE_ID_NOT_SET,
+    EXC_NS_NOT_SET,
+    EXC_UID_FAIL,
+    EXC_PID_FAIL,
+    EXC_ENV_NOT_DEFINED,
+    EXC_UNKNOWN_HOST,
+    EXC_MY_HOST_NAME,
+    EXC_SOCKET,
+    EXC_IPV4_NOT_FOUND,
+    EXC_INTERFACING_NOT_FOUND,
+    EXC_IPV4_NOT_VALID,
+    EXC_FETCH_NETWORK,
+    EXC_ONLY_LOOPBACK,
+    EXC_FAILED_TO_RESOLVE,
+    EXC_CFG_PROTOBUF_NOT_FOUND,
+
+    RESOURCE_MGR_USAGE,
+    RESOURCE_MGR_COMMAND,
+    RESOURCE_MGR_OPTIONS,
+    RESOURCE_MGR_START,
+    RESOURCE_MGR_STOP,
+    RESOURCE_MGR_STATUS,
+    RESOURCE_MGR_DOMAIN_ID,
+    RESOURCE_MGR_PROPERTIES,
+    RESOURCE_MGR_HOST,
+    RESOURCE_MGR_HOSTS,
+    RESOURCE_MGR_PORT,
+    INSTANCE_CPU_FMT
+  };
+}

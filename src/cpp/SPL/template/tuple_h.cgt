@@ -1,0 +1,431 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+my $class = $model->getClass();
+my $tupleHasOptionalTypes = hasOptionalTypes($model);
+%>
+#ifndef <%=uc($class);%>_H_
+#define <%=uc($class);%>_H_
+
+#include <SPL/Runtime/Type/Tuple.h>
+#include <SPL/Runtime/Type/PrimitiveType.h>
+#include <SPL/Runtime/Type/CollectionType.h>
+#include <SPL/Runtime/Serialization/NetworkByteBuffer.h>
+#include <SPL/Runtime/Serialization/NativeByteBuffer.h>
+#include <SPL/Runtime/Serialization/VirtualByteBuffer.h>
+#include <SPL/Runtime/Type/Optional.h>
+
+<%foreach(@{$model->getHeaders()}) {%>#include "<%=$_%>.h"
+<%}%>
+
+#define SELF <%=$class%>
+
+namespace SPL {
+
+class SELF : public Tuple
+{
+public:
+    static const bool facade = false;
+
+    typedef SELF Self;
+    <%foreach (@{$model->getAttributes()}) {%>
+    typedef <%=$_->getCppType();%> <%=$_->getName();%>_type;<%}%>
+
+    enum { num_attributes = <%=$model->getNumberOfAttributes()%> } ;
+
+    SELF() : Tuple(), <%defaultCtorInitList($model);%> {}
+    SELF(const Self & ot) : Tuple(), <%copyCtorInitList($model);%>
+      { constructPayload(ot); }
+    SELF(<%attribCtorParms($model, 0);%>) : Tuple(), <%attribCtorInitList($model);%> { }
+    <%if ($tupleHasOptionalTypes) {%>SELF(<%attribCtorParms($model, 1);%>) : Tuple(), <%attribCtorInitList($model);%> { } <% }%>
+    SELF(const Tuple & ot, bool typesafe = true) : Tuple() { assignFrom(ot, typesafe); }
+    SELF(const ConstValueHandle & ot) : Tuple() { const Tuple & o = ot; assignFrom(o); }
+
+    virtual ~SELF() {}
+    <%foreach (@{$model->getAttributes()}) {%>
+    <%=$_->getName()%>_type & get_<%=$_->getName()%>() { return <%=$_->getName()%>_; }
+    const <%=$_->getName()%>_type & get_<%=$_->getName()%>() const { return <%=$_->getName()%>_; }
+    void set_<%=$_->getName()%>(const <%=$_->getName()%>_type & _<%=$_->getName()%>) { <%=$_->getName()%>_ = _<%=$_->getName()%>; }<%
+    if (SPL::CodeGen::Type::isOptional($_->getSPLType())) {%>
+    void set_<%=$_->getName()%>(const <%=$_->getName()%>_type::value_type & _<%=$_->getName()%>) { <%=$_->getName()%>_ = _<%=$_->getName()%>; }
+<%}
+    }%>
+    virtual bool equals(const Tuple & ot) const
+    {
+<%if ($model->getEqualitySupported()) {%>
+        if (typeid(*this) != typeid(ot)) { return false; }
+        const SELF & o = static_cast<const SELF &>(ot);
+        return (*this == o);
+<%} else { %>
+        return false;
+<%}%>
+    }
+
+    virtual SELF& clear();
+
+    Tuple* clone() const { return new Self(*this); }
+
+    void serialize(VirtualByteBuffer & buf) const
+    {
+        buf<%foreach(@{$model->getAttributes()}) {%> << <%=$_->getName()%>_<%}%>;
+    }
+
+    template <class BufferType>
+    void serialize(ByteBuffer<BufferType> & buf) const
+    {
+        buf<%foreach(@{$model->getAttributes()}) {%> << <%=$_->getName()%>_<%}%>;
+    }
+
+    void serialize(NativeByteBuffer & buf) const
+    {
+        this->serialize<NativeByteBuffer>(buf);
+    }
+
+    void serialize(NetworkByteBuffer & buf) const
+    {
+        this->serialize<NetworkByteBuffer>(buf);
+    }
+
+    void deserialize(VirtualByteBuffer & buf)
+    {
+        buf<%foreach(@{$model->getAttributes()}) {%> >> <%=$_->getName()%>_<%}%>;
+    }
+
+    template <class BufferType>
+    void deserialize(ByteBuffer<BufferType> & buf)
+    {
+        buf<%foreach(@{$model->getAttributes()}) {%> >> <%=$_->getName()%>_<%}%>;
+    }
+
+    void deserialize(NativeByteBuffer & buf)
+    {
+        this->deserialize<NativeByteBuffer>(buf);
+    }
+
+    void deserialize(NetworkByteBuffer & buf)
+    {
+        this->deserialize<NetworkByteBuffer>(buf);
+    }
+
+    void serialize(std::ostream & ostr) const;
+
+    void serializeWithPrecision(std::ostream & ostr) const;
+
+    void deserialize(std::istream & istr, bool withSuffix = false);
+
+    void deserializeWithNanAndInfs(std::istream & istr, bool withSuffix = false);
+
+    size_t hashCode() const
+    {
+        size_t s = 17;<%foreach (@{$model->getAttributes()}) {%>
+        s = 37 * s + std::tr1::hash<<%=$_->getName()%>_type >()(<%=$_->getName()%>_);<%}%>
+        return s;
+    }
+
+    size_t getSerializedSize() const
+    {
+        size_t size = <%=sizeInitializer($model);%>;
+        <%foreach(@{$model->getAttributes()}) {
+            print "   size += ", $_->getName(), "_.getSerializedSize();\n"
+                if(!isFixedSize($_->getCppType()));
+        }%>
+        return size;
+
+    }
+
+    uint32_t getNumberOfAttributes() const
+        { return num_attributes; }
+
+    TupleIterator getBeginIterator()
+        { return TupleIterator(*this, 0); }
+
+    ConstTupleIterator getBeginIterator() const
+        { return ConstTupleIterator(*this, 0); }
+
+    TupleIterator getEndIterator()
+        { return TupleIterator(*this, num_attributes); }
+
+    ConstTupleIterator getEndIterator() const
+        { return ConstTupleIterator(*this, num_attributes); }
+
+    TupleIterator findAttribute(const std::string & attrb)
+    {
+        std::tr1::unordered_map<std::string, uint32_t>::const_iterator it = mappings_->nameToIndex_.find(attrb);
+        if ( it == mappings_->nameToIndex_.end() ) {
+            return this->getEndIterator();
+        }
+        return TupleIterator(*this, it->second);
+    }
+
+    ConstTupleIterator findAttribute(const std::string & attrb) const
+        { return const_cast<Self*>(this)->findAttribute(attrb); }
+
+    TupleAttribute getAttribute(uint32_t index)
+    {
+        if (index >= num_attributes)
+            invalidIndex (index, num_attributes);
+        return TupleAttribute(mappings_->indexToName_[index], index, *this);
+    }
+
+    ConstTupleAttribute getAttribute(uint32_t index) const
+        { return const_cast<Self*>(this)->getAttribute(index); }
+
+    ValueHandle getAttributeValue(const std::string & attrb)
+        { return getAttributeValueRaw(lookupAttributeName(*mappings_, attrb)->second); }
+
+
+    ConstValueHandle getAttributeValue(const std::string & attrb) const
+        { return const_cast<Self*>(this)->getAttributeValue(attrb); }
+
+    ValueHandle getAttributeValue(uint32_t index)
+        { return getAttributeValueRaw(index); }
+
+    ConstValueHandle getAttributeValue(uint32_t index) const
+        { return const_cast<Self*>(this)->getAttributeValue(index); }
+
+    Self & operator=(const Self & ot)
+    { <%foreach (@{$model->getAttributes()}) {%>
+        <%=$_->getName()%>_ = ot.<%=$_->getName()%>_;<%}%>
+        assignPayload(ot);
+        return *this;
+    }
+
+    Self & operator=(const Tuple & ot)
+    {
+        assignFrom(ot);
+        return *this;
+    }
+
+    void assign(Tuple const & tuple)
+    {
+        *this = static_cast<SELF const &>(tuple);
+    }
+
+<%if ($model->getEqualitySupported()) {%>
+    bool operator==(const Self & ot) const
+    {
+       return ( <%for (my $i = 0; $i < $model->getNumberOfAttributes(); ++$i) { my $attr = $model->getAttributeAt($i);%>
+                <%=$attr->getName()%>_ == ot.<%=$attr->getName()%>_ <%print "&& " if $i != $model->getNumberOfAttributes()-1;}%>
+              );
+    }
+    bool operator==(const Tuple & ot) const { return equals(ot); }
+
+    bool operator!=(const Self & ot) const { return !(*this == ot); }
+    bool operator!=(const Tuple & ot) const { return !(*this == ot); }
+<%}%>
+
+    void swap(SELF & ot)
+    { <%for (my $i = 0; $i < $model->getNumberOfAttributes(); ++$i) { my $attr = $model->getAttributeAt($i);%>
+        std::swap(<%=$attr->getName()%>_, ot.<%=$attr->getName()%>_);<%}%>
+      std::swap(payload_, ot.payload_);
+    }
+
+    void reset()
+    {
+        *this = SELF();
+    }
+
+    void normalizeBoundedSetsAndMaps();
+
+    const std::string & getAttributeName(uint32_t index) const
+    {
+        if (index >= num_attributes)
+            invalidIndex (index, num_attributes);
+        return mappings_->indexToName_[index];
+    }
+
+    const std::tr1::unordered_map<std::string, uint32_t> & getAttributeNames() const
+        { return mappings_->nameToIndex_; }
+
+
+protected:
+
+    ValueHandle getAttributeValueRaw(const uint32_t index)
+    {
+        if (index >= num_attributes)
+            invalidIndex(index, num_attributes);
+        const TypeOffset & t = mappings_->indexToTypeOffset_[index];
+        return ValueHandle((char*)this + t.getOffset(), t.getMetaType(), &t.getTypeId());
+    }
+
+private:
+    <%foreach (@{$model->getAttributes()}) {%>
+    <%=$_->getName()%>_type <%=$_->getName()%>_;<%}%>
+
+    static TupleMappings* mappings_;
+    static TupleMappings* initMappings();
+};
+
+inline VirtualByteBuffer & operator>>(VirtualByteBuffer & sbuf, SELF & tuple)
+    { tuple.deserialize(sbuf); return sbuf; }
+inline VirtualByteBuffer & operator<<(VirtualByteBuffer & sbuf, SELF const & tuple)
+    { tuple.serialize(sbuf); return sbuf; }
+
+template <class BufferType>
+inline ByteBuffer<BufferType> & operator>>(ByteBuffer<BufferType> & sbuf, SELF & tuple)
+    { tuple.deserialize(sbuf); return sbuf; }
+template <class BufferType>
+inline ByteBuffer<BufferType> & operator<<(ByteBuffer<BufferType> & sbuf, SELF const & tuple)
+    { tuple.serialize(sbuf); return sbuf; }
+
+inline NetworkByteBuffer & operator>>(NetworkByteBuffer & sbuf, SELF & tuple)
+    { tuple.deserialize(sbuf); return sbuf; }
+inline NetworkByteBuffer & operator<<(NetworkByteBuffer & sbuf, SELF const & tuple)
+    { tuple.serialize(sbuf); return sbuf; }
+
+inline NativeByteBuffer & operator>>(NativeByteBuffer & sbuf, SELF & tuple)
+    { tuple.deserialize(sbuf); return sbuf; }
+inline NativeByteBuffer & operator<<(NativeByteBuffer & sbuf, SELF const & tuple)
+    { tuple.serialize(sbuf); return sbuf; }
+
+template<>
+inline std::ostream & serializeWithPrecision(std::ostream & ostr, SELF const & tuple)
+    { tuple.serializeWithPrecision(ostr); return ostr; }
+inline std::ostream & operator<<(std::ostream & ostr, SELF const & tuple)
+    { tuple.serialize(ostr); return ostr; }
+inline std::istream & operator>>(std::istream & istr, SELF & tuple)
+    { tuple.deserialize(istr); return istr; }
+template<>
+inline void deserializeWithSuffix(std::istream & istr, SELF  & tuple)
+{ tuple.deserialize(istr,true);  }
+inline void deserializeWithNanAndInfs(std::istream & istr, SELF  & tuple, bool withSuffix = false)
+{ tuple.deserializeWithNanAndInfs(istr,withSuffix);  }
+
+<%if(SPL::CodeGen::Type::hasBoundedSetOrMap($model->getSPLType())){%>
+template<>
+struct has_bounded_set_or_map<SELF >
+{
+    enum { value = true };
+};
+template<>
+inline void normalizeBoundedSetsAndMaps(SELF & v)
+{
+  <% foreach (@{$model->getAttributes()}) {
+       if(SPL::CodeGen::Type::hasBoundedSetOrMap($_->getSPLType())) {
+           print "    normalizeBoundedSetsAndMaps(v.get_", $_->getName(), "());\n";
+       }
+     }
+  %>
+}
+<%}%>
+
+}  // namespace SPL
+
+namespace std
+{
+    inline void swap(SPL::SELF & a, SPL::SELF & b)
+    {
+        a.swap(b);
+    }
+}
+
+namespace std {
+    namespace tr1 {
+        template <>
+        struct hash<SPL::SELF> {
+            inline size_t operator()(const SPL::SELF & self) const
+                { return self.hashCode(); }
+        };
+    }
+}
+
+#undef SELF
+#endif // <%=uc($class);%>_H_
+
+<%
+sub attribCtorInitList($)
+{
+   my ($model) = @_;
+   for (my $i = 0, my $count = $model->getNumberOfAttributes(); $i < $count; ++$i) {
+      my $attr = $model->getAttributeAt($i);
+      print $attr->getName(), "_(_", $attr->getName(), ")";
+      print ", " if $i != $count-1;
+   }
+}
+
+sub attribCtorParms($$)
+{
+   my ($model, $useOptionalUnderlyingType) = @_;
+
+   for (my $i = 0, my $count = $model->getNumberOfAttributes(); $i < $count; ++$i) {
+      my $attr = $model->getAttributeAt($i);
+      print "const ", $attr->getName(), "_type";
+      print "::value_type" if ($useOptionalUnderlyingType and SPL::CodeGen::Type::isOptional($attr->getSPLType()));
+      print " & _", $attr->getName();
+      print ", " if $i != $count-1;
+   }
+}
+
+sub defaultCtorInitList($)
+{
+   my ($model) = @_;
+   for (my $i = 0, my $count = $model->getNumberOfAttributes(); $i < $count; ++$i) {
+      my $attr = $model->getAttributeAt($i);
+      print $attr->getName(), "_()";
+      print ", " if $i != $count-1;
+   }
+}
+
+sub copyCtorInitList($)
+{
+   my ($model) = @_;
+   for (my $i = 0, my $count = $model->getNumberOfAttributes(); $i < $count; ++$i) {
+      my $attr = $model->getAttributeAt($i);
+      print $attr->getName(), "_(ot.", $attr->getName(), "_)";
+      print ", " if $i != $count-1;
+   }
+}
+
+sub sizeInitializer($)
+{
+   my ($model) = @_;
+   my $init = "";
+
+   foreach(@{$model->getAttributes()}) {
+      my $cppType = $_->getCppType();
+      if (isFixedSize($cppType)) {
+         $init .= "+" if length($init) != 0;
+         my $type = $_->getSPLType();
+         $init .= "sizeof(${cppType})";
+      }
+   }
+   if (length($init) == 0) { return "0"; }
+
+   return $init;
+}
+
+sub isFixedSize($)
+{
+   my ($type) = @_;
+   return 1 if ($type eq 'SPL::float32' || $type eq 'SPL::float64' ||
+                $type eq 'SPL::decimal32' || $type eq 'SPL::decimal64' || $type eq 'SPL::decimal128' ||
+                $type eq 'SPL::complex32' || $type eq 'SPL::complex64' ||
+                $type eq 'SPL::boolean' || $type eq 'SPL::timestamp' ||
+                $type eq 'SPL::uint8' || $type eq 'SPL::uint16' || $type eq 'SPL::uint32' || $type eq 'SPL::uint64' ||
+                $type eq 'SPL::int8' || $type eq 'SPL::int16' || $type eq 'SPL::int32' || $type eq 'SPL::int64');
+   return 0;
+}
+
+sub hasOptionalTypes($)
+{
+   my ($model) = @_;
+   foreach(@{$model->getAttributes()}) {
+      return 1 if (SPL::CodeGen::Type::isOptional($_->getSPLType()));
+   }
+   return 0;
+}
+%>

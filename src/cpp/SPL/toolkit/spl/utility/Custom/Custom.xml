@@ -1,0 +1,145 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Custom.html">
+The `Custom` operator is a special logic-related operator that can receive
+and send any number of streams and does not do anything by itself.
+Thus, it offers a blank slate for customization.
+
+The `Custom` operator can submit tuples from within its `onTuple`, `onPunct`, and `onProcess` clauses.
+It requires special support from the compiler.
+The `submit` intrinsic function is available only in the `Custom` operator, and has the following signatures:
+
+    &lt;tuple T&gt; void submit (T tupleValue, T port)                                      //1
+    &lt;tuple T&gt; void submit (enum{WindowMarker, FinalMarker} punctuation, T port )      //2
+    &lt;tuple T&gt; void submit (T tupleValue, uint32 port)                                 //3
+    &lt;tuple T&gt; void submit (enum{WindowMarker, FinalMarker} punctuation, uint32 port)  //4
+
+It is preferable to use the first two versions of the `submit` function because
+the symbolic name of the output stream is used.
+This symbolic name allows the output stream order to be changed without
+needing to update calls to `submit` and the tuple type to be checked at compile time.
+
+If the `Custom` operator has no input streams, then a `logic onProcess : stmt` clause is allowed.
+For example:
+    streams&lt;int32 a, int32 b&gt; A = Custom() {
+         logic onProcess : {
+              mutable int32 i = 0;
+              for (int32 j in range (1000)) {
+                   int32 a = i++;
+                   int32 b = i++;
+                   submit ({a = a, b = b}, A);
+              }
+         }
+    }
+
+If the `Custom` operator has one or more input streams, then the `onTuple` and `onPunct` clauses are allowed.
+
+# Checkpointed data
+
+When the `Custom` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Custom` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+`Custom` operators with an 'onProcess' clause are not supported.
+The Streams instance automatically checkpoints and resets logic state variables.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Custom` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Custom` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `Custom` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring color, int32 intensity&gt; Sensors = Beacon() {}
+        stream&lt;rstring color&gt; Queries = Beacon() {}
+        stream&lt;rstring key, int32 val&gt; Output = Custom(Sensors; Queries) {
+          logic state          : mutable map&lt;rstring, int32&gt; m;
+                onTuple Sensors: m[color] = intensity;
+                onTuple Queries: if (color in m)
+                                   submit({key=color, val=m[color]}, Output);
+                onPunct Queries: if (currentPunct() == Sys.WindowMarker)
+                                   submit(Sys.WindowMarker, Output);
+        }
+    }
+
+</description>
+      <iconUri size="16">custom_16.gif</iconUri>
+      <iconUri size="32">custom_32.gif</iconUri>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Custom Sink">
+          <description>Basic Custom Template</description>
+          <template>() as ${opInstanceName}Sink = Custom(${inputStream})  {
+            logic
+                onTuple ${inputStream}: {
+                    // Add code here
+                    ${cursor}
+                }
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="Custom with Input and Output">
+          <description>Custom with Input and Output</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = Custom(${inputStream})  {
+            logic
+                onTuple ${inputStream}: {
+                    // Add code here
+                    ${cursor}
+                }
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="Custom as a Source">
+          <description>Custom as a Source</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = Custom()  {
+            logic
+                onProcess : {
+                    // Add code here
+                    ${cursor}
+                }
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+    </parameters>
+    <inputPorts>
+      <inputPortOpenSet>
+        <description>
+The `Custom` operator can have zero or more input ports, which ingest input tuples.</description>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+      </inputPortOpenSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortOpenSet>
+        <description>
+The `Custom` operator can have zero or more output ports, which produce submitted tuples.
+If the tuple is referenced after a `submit` call, the compiler ensures that the tuple is unchanged by submitting a copy of the tuple.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+      </outputPortOpenSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

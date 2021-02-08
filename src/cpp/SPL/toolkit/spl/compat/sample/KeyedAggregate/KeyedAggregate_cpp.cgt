@@ -1,0 +1,137 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use KeyedAggregateCommon;
+    KeyedAggregateCommon::verify($model);
+    my $replacementKey = $model->getParameterByName("ReplacementKey");
+    my $aggregationKey = $model->getParameterByName("AggregationKey");
+    my $inputPort = $model->getInputPortAt(0);
+    my $outputPort = $model->getOutputPortAt(0);
+    my $inTupleName = $inputPort->getCppTupleName();
+    my $outTupleType = $outputPort->getCppTupleType();
+    my $rkeyInitializer = SPL::CodeGen::getParameterCppInitializer($replacementKey);
+    my $akeyInitializer = SPL::CodeGen::getParameterCppInitializer($aggregationKey);
+
+    my %replacements;
+    my %aggregates;
+    for (my $i = 0; $i < $replacementKey->getNumberOfValues(); $i++) {
+        my $name = $replacementKey->getValueAt($i)->getSPLExpression();
+        $name =~ s/.*\.//;
+        $replacements{$name} = 1;
+    }
+    for (my $i = 0; $i < $aggregationKey->getNumberOfValues(); $i++) {
+        my $name = $aggregationKey->getValueAt($i)->getSPLExpression();
+        $name =~ s/.*\.//;
+        $aggregates{$name} = 1;
+    }
+    my $rvalInitializer = "";
+    my $i = 0;
+    my %replacementValues;
+    my %carryoverValues;
+    my %replacementValueIndices;
+    foreach my $attr (@{$outputPort->getAttributes()}) {
+        my $name = $attr->getName();
+        next if $replacements{$name} || $aggregates{$name};
+        my $oattr = $outputPort->getAttributeByName($name);
+        next if !$oattr->hasAssignmentWithOutputFunction();
+        if ($oattr->getAssignmentOutputFunctionName() eq "Sum") {
+            $rvalInitializer .= ", " if $i > 0;
+            $rvalInitializer .= $oattr->getAssignmentOutputFunctionParameterValueAt(0)->getCppExpression();
+            $replacementValues{$name} = 1;
+            $replacementValueIndices{$name} = $i;
+            $i++;
+        } elsif ($oattr->getAssignmentOutputFunctionName() ne "None") {
+            $carryoverValues{$name} = 1;
+        }
+    }
+%>
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+MY_OPERATOR::MY_OPERATOR()
+: MY_BASE_OPERATOR()
+{
+}
+
+MY_OPERATOR::~MY_OPERATOR()
+{
+    AggregationTable::iterator it;
+    for (AggregationTable::iterator it = _aggregationMap.begin(); it != _aggregationMap.end(); it++)
+        delete it->second.second;
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+    IPort0Type const & <%=$inTupleName%> = static_cast<IPort0Type const&>(tuple);
+
+    RKeyType rkey (<%=$rkeyInitializer%>);
+    AKeyType akey (<%=$akeyInitializer%>);
+    RValueType rval (<%=$rvalInitializer%>);
+
+    AutoPortMutex (_mutex, *this);
+    RValueType *aggval;
+    AggregationTable::iterator ait = _aggregationMap.find(akey);
+    if (ait==_aggregationMap.end()) {
+      ReplacementTable * rtable = new ReplacementTable();
+      _aggregationMap.insert(std::make_pair(akey, std::make_pair(rval,rtable)));
+      rtable->insert(std::make_pair(rkey,rval));
+      aggval = &rval;
+    } else {
+      aggval = &ait->second.first;
+      ReplacementTable * rtable = ait->second.second;
+      ReplacementTable::iterator rit = rtable->find(rkey);
+      if (rit==rtable->end()) {
+        rtable->insert(std::make_pair(rkey,rval));
+        <% my $i = 0;
+          foreach my $aname (keys %replacementValues) {%>
+            aggval->field<%=$i%>_ += rval.field<%=$i%>_;
+          <%++$i;
+          }
+        %>
+      } else {
+        RValueType & orval = rit->second; <% my $i = 0;
+          foreach my $aname (keys %replacementValues) {%>
+            aggval->field<%=$i%>_ += rval.field<%=$i%>_ - orval.field<%=$i%>_;
+            orval.field<%=$i%>_ = rval.field<%=$i%>_;
+            <%++$i;
+          }
+        %>
+      }
+    }
+
+    // Generate the output now
+    <%=$outTupleType%> otuple;
+    <%foreach my $attr (@{$outputPort->getAttributes()}) {
+        my $name = $attr->getName();
+        my $e = $attr->hasAssignmentWithOutputFunction() ?
+            $attr->getAssignmentOutputFunctionParameterValueAt(0) :
+            $attr->getAssignmentValue();
+        my $exp = $e->getCppExpression();
+        my $inputName = $e->getSPLExpression();
+        $inputName =~ s/.*\.//;
+        if ($aggregates{$inputName}) {%>
+            otuple.set_<%=$name%> (<%=$inTupleName%>.get_<%=$inputName%>());
+        <%} elsif ($replacementValues{$inputName}) {
+            my $index = $replacementValueIndices{$inputName};%>
+            otuple.set_<%=$name%> (aggval->field<%=$index%>_);
+        <%} elsif ($carryoverValues{$inputName}) {%>
+            otuple.set_<%=$name%> (<%=$inTupleName%>.get_<%=$inputName%>());
+        <%}
+    }%>
+    submit (otuple, 0);
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

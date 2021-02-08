@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<reference id="spldoc_reference_function_model">
+<title>SPL 関数モデル</title>
+<refbody>
+<section id="overview">
+<p>
+関数モデル・ファイルは、1 つ以上の functionSet エレメントのシーケンスとして構成されます。
+functionSet エレメントは、C++ ヘッダー・ファイルの内部に宣言された、または C++ ヘッダー・ファイルからインクルードされるネイティブ関数のセットを表します。</p>
+</section>
+<section id="functionset">
+<dl>
+  <dlentry id="functionset__headerfilename">
+    <dt>ヘッダー・ファイル名</dt>
+    <dd>C++ 関数を宣言したヘッダー・ファイルの名前、または C++ 関数を宣言した他のヘッダー・ファイルを含むヘッダー・ファイルの名前が入ります。
+</dd>
+  </dlentry>
+  <dlentry id="functionset__cppnamespacename">
+    <dt>CPP 名前空間名 (オプション)</dt>
+    <dd>2 つ目のエレメント (オプション) は、cppNamespacename という名前で、関数の C++ 名前空間を指定します。
+cppNamespacename エレメントが存在しない場合、SPL 名前空間の「.」を「::」に変換したものが使用されます。
+</dd>
+  </dlentry>
+  <dlentry id="functionset__functions">
+    <dt>関数</dt>
+    <dd>function エレメントを 1 つ以上含むシーケンスで、各エレメントは SPL フォーマットのネイティブ関数シグニチャーを表します。<dl>
+        <dlentry id="functionset__functions__description">
+          <dt>説明</dt>
+          <dd>関数の説明</dd>
+        </dlentry>
+        <dlentry id="functionset__functions__prototype">
+          <dt>プロトタイプ</dt>
+          <dd>ネイティブ関数のプロトタイプ。ネイティブ関数のプロトタイプは、SPL 構文で宣言します。
+この構文については、<i>「IBM Streams Processing Language 言語仕様」</i> に説明があります。</dd>
+        </dlentry>
+        <dlentry id="functionset__functions__cppname">
+          <dt>CPP 名 (オプション)</dt>
+          <dd>関数の C++ 名を指定します。ない場合は、SPL 関数名が使用されます。</dd>
+        </dlentry>
+      </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="functionset__dependencies">
+    <dt>依存関係 (オプション)</dt>
+    <dd>library エレメントを 1 つ以上含むシーケンスで、各エレメントはライブラリーの依存関係を表します。library エレメントのフォーマットは、オペレーター・モデルに使用されるものと正確に同じです。
+<dl>
+        <dlentry id="functionset__dependencies__description">
+          <dt>説明 (オプション)</dt>
+          <dd>ライブラリーの説明</dd>
+        </dlentry>
+        <dlentry id="functionset__dependencies__managedlibrary">
+          <dt>管理対象ライブラリー</dt>
+          <dd>個々のライブラリー成果物の詳細を指定します。パスには、@ 記号の間に埋め込まれた環境変数を含めることができ
+(例: <tt>@FOO_FFT_HOME@/lib</tt>)、コンパイル時に SPL コンパイラーによって完全に解決されます。
+<dl>
+              <dlentry id="functionset__dependencies__managedlibrary_lib">
+                <dt>lib (オプション)</dt>
+                <dd>C++ コンパイラーの <tt>-l</tt> 引数に渡される名前を指定します (リンカーに渡されるときに <tt>-lfft</tt> に変換される <tt>fft</tt> など)。
+                </dd>
+              </dlentry>
+              <dlentry id="functionset__dependencies__managedlibrary_libPath">
+                <dt>libPath (オプション)</dt>
+                <dd>C++ コンパイラーの <tt>-L</tt> 引数に渡されるパスを指定します。</dd>
+              </dlentry>
+              <dlentry id="functionset__dependencies__managedlibrary_includePath">
+                <dt>includePath (オプション)</dt>
+                <dd>C++ コンパイラーの <tt>-I</tt> 引数に渡されるパスを指定します。</dd>
+              </dlentry>
+              <dlentry id="functionset__dependencies__managedlibrary_command">
+                <dt>コマンド (オプション)</dt>
+                <dd><tt>includePath、libPath</tt>、および <tt>lib</tt> の情報を取得するために実行されるプログラムへのパス。
+プログラムへのパスが相対的である場合、パスは演算子モデルのディレクトリーでルート化されると想定されます。プログラムは、<tt>lib、
+libPath</tt>、<tt>includePath</tt> の引数をそれぞれ使用して、3 回実行されます。これらの実行による標準出力が読み取られ、各行 (空白文字は切り取られる) が、実行のタイプに応じて、<tt>lib、libPath</tt>、および <tt>includePath</tt> のいずれかのエレメントに追加されます。# で始まる行は無視されます。相対パスは、
+演算子モデルの XML 文書があるディレクトリーでルート化されると想定されます。
+                </dd>
+              </dlentry>
+            </dl>
+          </dd>
+        </dlentry>
+    </dl>
+    </dd>
+  </dlentry>
+</dl>
+</section>
+<section id="example">
+  <title outputclass="splhead-1">例</title>
+  <!-- START NON-TRANSLATABLE -->
+  <pre>
+  &lt;functionModel
+   xmlns="http://www.ibm.com/xmlns/prod/streams/spl/function"
+   xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/function functionModel.xsd"&gt;
+  &lt;functionSet&gt;
+    &lt;!-- header file to include from within C++ code --&gt;
+    &lt;headerFileName&gt;Sample.h&lt;/headerFileName&gt;
+    &lt;!-- functions lists the SPL prototypes of the functions implemented in this library --&gt;
+    &lt;functions&gt;
+      &lt;!-- use of CDATA allows easy use of &lt; in the prototypyes --&gt;
+      &lt;function&gt;
+        &lt;description&gt;Increment all list elements by a given amount&lt;/description&gt;
+        &lt;prototype cppName="increment_by"&gt;&lt;![CDATA[ void incrementBy(mutable list&lt;int32&gt; l, int32 incr) ]]&gt;&lt;/prototype&gt;
+      &lt;/function&gt;
+      &lt;function&gt;
+        &lt;description&gt;Join two lists&lt;/description&gt;
+        &lt;prototype&gt;&lt;![CDATA[ list&lt;int32&gt; joinLists(list&lt;int32&gt; a, list&lt;int32&gt; b) ]]&gt;&lt;/prototype&gt;
+      &lt;/function&gt;
+    &lt;/functions&gt;
+    &lt;dependencies&gt;
+      &lt;!-- This library can have several dependencies. We only use one here --&gt;
+      &lt;library&gt;
+        &lt;!-- A description for this library --&gt;
+        &lt;cmn:description&gt;Sample-Functions&lt;/cmn:description&gt;
+        &lt;cmn:managedLibrary&gt;
+          &lt;!-- the name of the library for linking. Will be used as -lSample --&gt;
+          &lt;cmn:lib&gt;Sample&lt;/cmn:lib&gt;
+          &lt;!-- Where to find the library. Relative to the current directory.
+               Will be used as -L&lt;dir&gt;/lib --&gt;
+          &lt;cmn:libPath&gt;lib&lt;/cmn:libPath&gt;
+          &lt;!-- Where to find the include file. Relative to the current directory.
+               Will be used as -I&lt;dir&gt; --&gt;
+          &lt;cmn:includePath&gt;./&lt;/cmn:includePath&gt;
+        &lt;/cmn:managedLibrary&gt;
+      &lt;/library&gt;
+    &lt;/dependencies&gt;
+  &lt;/functionSet&gt;
+&lt;/functionModel&gt;
+</pre>
+<!-- END NON-TRANSLATABLE -->
+</section>
+</refbody>
+</reference>

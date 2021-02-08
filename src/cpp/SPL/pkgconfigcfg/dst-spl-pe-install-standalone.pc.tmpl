@@ -1,0 +1,10 @@
+prefix=${distinst}
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+impllibdir=${exec_prefix}/system/impl/lib
+
+Name: spl-pe-install-standalone
+Version: 1
+Requires: dst-spl-pe-install
+Description: necessary packages for executable PE-building (using installation)
+Libs: -Wl,-rpath,${libdir} -Wl,-rpath,${impllibdir} -lstreams-spl-runtime-standalone -lstreams-runtime

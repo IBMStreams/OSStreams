@@ -1,0 +1,140 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.relational$Filter.html">
+The `Filter` operator removes tuples from a stream by passing along only those tuples that satisfy a user-specified condition.
+Non-matching tuples can be sent to a second optional output.
+
+# Checkpointed data
+
+When the `Filter` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Filter` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+In a consistent region, a `Filter` operator stores its state when a checkpoint is taken.
+When the region is reset, the operator restores the state from the checkpoint.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Filter` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Filter` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Windowing
+
+The `Filter` operator does not accept any window configurations.
+
+# Assignments
+
+The `Filter` operator does not allow assignments to output attributes.
+The output tuple attributes are automatically forwarded from the input ones.
+
+# Examples
+
+This example uses the `Filter` operator.
+
+    composite Main {
+       graph
+        stream&lt;rstring name, uint32 age&gt; Beat = Beacon() {}
+        stream&lt;rstring name, uint32 age&gt; Youngs = Filter(Beat)
+        {
+          param filter : age &lt; 30u;
+        }
+        (stream&lt;Beat&gt; Younger; stream&lt;Beat&gt; Older) = Filter(Beat)
+        {
+          param filter : age &lt; 30u;
+        }
+    }
+
+</description>
+      <iconUri size="16">filter_16.gif</iconUri>
+      <iconUri size="32">filter_32.gif</iconUri>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Filter">
+          <description>Basic Filter template</description>
+          <template>stream&lt;${inputStream}&gt; ${streamName} = Filter(${inputStream}){
+            param
+                filter: ${filterExpression};
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="Filter with Two Output Streams">
+          <description>Filter with two output streams</description>
+          <template>(stream&lt;${inputStream}&gt; ${matchedStream}; stream&lt;${inputStream}&gt; ${unmatchedStream}) = Filter(${inputStream}) {
+            param filter: ${filterExpression};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>filter</name>
+        <description>
+Specifies that the condition that determines the tuples to be passed along by the `Filter` operator.
+It takes a single expression of type boolean as its value. When not specified, it is assumed to be true.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>The `Filter` operator is configurable with a single inport port that ingests tuples to be filtered.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Filter` operator is configurable with one or two output ports.
+This first output port is mandatory.
+
+The `Filter` operator requires that the stream type of the output port matches the stream type of the input port.
+This output port receives the tuples that match the filter expression.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+      <outputPortSet>
+        <description>
+The `Filter` operator is configurable with one or two output ports.
+This second output port is optional.
+
+The `Filter` operator requires that the stream type of the output port matches the stream type of the input port.
+This output port, if present, receives the tuples that fail to match the filter expression.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>true</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

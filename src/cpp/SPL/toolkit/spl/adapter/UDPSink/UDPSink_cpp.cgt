@@ -1,0 +1,250 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    unshift @INC, dirname($model->getContext()->getOperatorDirectory()) . "/Common";
+    require AdapterHelper;
+    use UDPSinkCommon;
+    UDPSinkCommon::verify($model);
+    my $format = $model->getParameterByName("format");
+    my $hasDelayField = $model->getParameterByName("hasDelayField");
+    my $compression = $model->getParameterByName("compression");
+    my $encoding = $model->getParameterByName("encoding");
+    my $separator = $model->getParameterByName("separator");
+    my $inputPort = $model->getInputPortAt(0);
+    my $tupleType = $inputPort->getCppTupleType();
+    my $address = $model->getParameterByName("address");
+    my $port = $model->getParameterByName("port");
+    my $name = $model->getParameterByName("name");
+    my $writePunctuations = $model->getParameterByName("writePunctuations");
+    my $sendBufferSize = $model->getParameterByName("sendBufferSize");
+    my $quoteStrings = $model->getParameterByName("quoteStrings");
+    my $ttl = $model->getParameterByName("timeToLive");
+
+    # Apply defaults
+    $format = $format ? $format->getValueAt(0)->getSPLExpression() : "csv";
+    $hasDelayField = $hasDelayField ? $hasDelayField->getValueAt(0)->getCppExpression() eq "true" : 0;
+    $quoteStrings = $quoteStrings ? $quoteStrings->getValueAt(0)->getSPLExpression() : "true";
+
+    $writePunctuations = $writePunctuations ?
+         $writePunctuations->getValueAt(0)->getCppExpression() eq "true" : 0;
+
+    # other corrections
+    $compression = $compression->getValueAt(0)->getSPLExpression() if $compression;
+    $encoding = $encoding->getValueAt(0)->getCppExpression() if $encoding;
+    my $sepExpr = "','";
+    if ($separator) {
+        my $sepValue = $separator->getValueAt(0);
+        my $sepType = $sepValue->getSPLType();
+        if ($sepType eq 'rstring') {
+            $sepExpr = $sepValue->getCppExpression();
+            $sepExpr =~ /SPL::rstring\(\"(.*)\".*\)/;
+            $sepExpr = "'$1'";
+        } else {
+           $sepExpr = "(unsigned char)" . $sepValue->getSPLExpression();
+        }
+    }
+    $sendBufferSize = $sendBufferSize->getValueAt(0)->getCppExpression() if $sendBufferSize;
+    $ttl = $ttl->getValueAt(0)->getCppExpression() if $ttl;
+    $name = $name->getValueAt(0)->getCppExpression() if $name;
+    $address = $address->getValueAt(0)->getCppExpression() if $address;
+    $port = $port ? $port->getValueAt(0)->getCppExpression() : 0;
+    my $firstAttrName = $inputPort->getAttributeAt(0)->getName();
+    my $binary = $format eq "bin" || $format eq "block";
+    my $writeTo = $binary ? "sbfs" : "fs";
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+
+using namespace std;
+using namespace boost::iostreams;
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    _conn.terminate();
+}
+
+MY_OPERATOR::MY_OPERATOR()
+: MY_BASE_OPERATOR(), _conn(getPE()), _connected(false)
+    <%print ", _fromUTF8 ($encoding)" if $encoding;%>
+{
+}
+
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads (1);
+}
+
+void MY_OPERATOR::process(uint32_t)
+{
+    SPLAPPTRC(L_DEBUG, "UDPSink startup...", SPL_OPER_DBG);
+    <%if ($sendBufferSize) {%>
+        _conn.setSendBufferSize(<%=$sendBufferSize%>);
+    <%}
+    if ($ttl) {%>
+        _conn.setTTL(<%=$ttl%>);
+    <%}
+    if ($name) {%>
+        _conn.setup (<%=$name%>);
+    <%} else {%>
+        _conn.setup (<%=$address%>, <%=$port%>);
+    <%}%>
+    SPLAPPTRC(L_DEBUG, "UDPSink connected, file descriptor = " << _conn.fileDescriptor(), SPL_OPER_DBG);
+    <%print "_lastTimeStamp = SPL::Functions::Time::getTimestampInSecs();" if $hasDelayField;%>
+    _connected = true;
+}
+
+
+void MY_OPERATOR::doWrite (const SPL::BufferStream& bs)
+{
+    if (getPE().getShutdownRequested())
+        return;
+
+    // Okay, it worked....
+    int ret = ::send (_conn.fileDescriptor(), bs.getDataStart(), bs.getSizeWritten(), 0);
+    if (ret < 0) {
+        if (errno == ECONNREFUSED)
+            return;  // no one listening to what we are sending
+        SPLAPPTRC(L_WARN, "UDPSink: send failed: " << RuntimeUtility::getErrorNoStr(),
+               SPL_OPER_DBG);
+   }
+}
+
+<%if ($writePunctuations) {%>
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port) {
+    AutoMutex am(_mutex);
+    if (!_connected) {
+        SPLAPPTRC(L_WARN, "UDPSink: no connection exists.  Discarded punctuation", SPL_OPER_DBG);
+        return;
+    }
+
+    // IP limited to 64K bytes (minus header)
+    char msgBuffer[64*1024];
+    boost::iostreams::stream<SPL::BufferStream> sink (msgBuffer, sizeof msgBuffer);
+    {
+        filtering_streambuf<output> filt_str;
+        <%if ($encoding) {%>
+            filt_str.push (_fromUTF8);
+        <%}
+        if ($compression) {%>
+            filt_str.push (<%=$compression%>_compressor());
+        <%}%>
+        filt_str.push (sink);
+        iostream fs(&filt_str);
+        fs.imbue(locale::classic());
+
+        <%if ($binary) {%>
+            SPL::StreamByteBuffer sbfs (fs);
+        <%}%>
+
+        <%if ($hasDelayField) {%>
+            {
+                SPL::float64 currentTimeStamp = SPL::Functions::Time::getTimestampInSecs();
+                <%if ($binary) {%>
+                    <%=$writeTo%> << currentTimeStamp - _lastTimeStamp;
+                <%} else {%>
+                    SPL::serializeWithPrecision(<%=$writeTo%>,
+                        static_cast<SPL::float64>(currentTimeStamp - _lastTimeStamp)) << ',';
+                <%}%>
+                _lastTimeStamp = currentTimeStamp;
+            }
+        <%}%>
+        <%if ($binary) {%>
+            <%=$writeTo%> << (punct == Punctuation::WindowMarker ? '\1' : '\2');
+        <%} else {%>
+            <%=$writeTo%> << "Punctuation received: " << punct << '\n';
+        <%}%>
+    }
+    doWrite (*sink);
+}
+<%}%>
+
+void MY_OPERATOR::process(Tuple const & tuple$, uint32_t port)
+{
+    AutoMutex am(_mutex);
+    if (!_connected) {
+        SPLAPPTRC(L_WARN, "UDPSink: no connection exists.  Discarded tuple " << tuple$, SPL_OPER_DBG);
+        return;
+    }
+
+    // IP limited to 64K bytes (minus header)
+    char msgBuffer[64*1024];
+    boost::iostreams::stream<SPL::BufferStream> sink (msgBuffer, sizeof msgBuffer);
+    {
+        filtering_streambuf<output> filt_str;
+        <%if ($compression) {%>
+            filt_str.push (<%=$compression%>_compressor());
+        <%}%>
+        filt_str.push (sink);
+        <%($binary) ? print "iostream" : print "ostream";%> fs(&filt_str);
+        fs.imbue(locale::classic());
+        <%if ($binary) {%>
+            SPL::StreamByteBuffer sbfs (fs);
+        <%}%>
+
+
+        // Write to output
+        const <%=$tupleType%>& tuple = static_cast<const <%=$tupleType%>&>(tuple$);
+        <%if ($hasDelayField) {%>
+            {
+                double currentTimeStamp = SPL::Functions::Time::getTimestampInSecs();
+                <%if ($binary) {%>
+                    <%=$writeTo%> << currentTimeStamp - _lastTimeStamp;
+                <%} else { %>
+                    SPL::serializeWithPrecision(<%=$writeTo%>, static_cast<SPL::float64>(currentTimeStamp - _lastTimeStamp)) << ',';
+                <%}%>
+                _lastTimeStamp = currentTimeStamp;
+            }
+        <%}%>
+        <%if ($format eq "line") {%>
+            const string& l = tuple.get_<%=$firstAttrName%>();
+            fs << l;
+        <%} elsif ($format eq "block") {%>
+            const SPL::blob& b = tuple.get_<%=$firstAttrName%>();
+            uint64_t size;
+            const unsigned char *data = b.getData (size);
+            <%=$writeTo%>.addCharSequence(reinterpret_cast<const char*>(data), size);
+        <%} elsif ($format eq "txt") { %>
+            SPL::serializeWithPrecision(fs, tuple);
+        <%} elsif ($format eq "csv") {
+            my $numAttrs = $inputPort->getNumberOfAttributes();
+            for (my $i = 0; $i < $numAttrs; ++$i) {
+               my $attr = $inputPort->getAttributeAt($i);
+               my $attrName = $attr->getName();
+               if ($quoteStrings ne "true" && SPL::CodeGen::Type::isString($attr->getSPLType())) {
+                   print "\t    SPL::serializeUnquoted(fs, tuple.get_", $attrName, "())";
+               } else {
+                   print "\t    SPL::serializeWithPrecision(fs, tuple.get_", $attrName, "())";
+               }
+               if ($i != $numAttrs-1) {
+                   print " << $sepExpr;\n";
+               } else {
+                   print ";\n";
+               }
+            }
+        } elsif ($format eq "bin") {%>
+            <%if ($writePunctuations) {%>
+                <%=$writeTo%> << '\0';
+            <%}%>
+            <%=$writeTo%> << tuple;
+        <%}%>
+    }
+    doWrite (*sink);
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

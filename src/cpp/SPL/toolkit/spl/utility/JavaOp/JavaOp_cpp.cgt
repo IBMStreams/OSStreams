@@ -1,0 +1,257 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+
+
+my $clCounter = 0;
+%>
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+
+<%
+sub isParamWithNoStreamAttributes($)
+{
+   my ($param) = @_;
+   for (my $i = 0; $i < $param->getNumberOfValues(); $i++) {
+       my $value = $param->getValueAt($i);
+       return 0 if $value->hasStreamAttributes();
+   }
+   return 1;
+}
+
+## @fn bool isCustomLiteralParameter($param)
+#  given a parameter, check if it is a custom literal
+sub isCustomLiteralParameter($)
+{
+   my ($param) = @_;
+   my $value = $param->getValueAt(0);
+   return !($value->getCppType() =~ /^SPL::/);
+}
+
+# Check the parameter types are supported
+{
+  my @paramtypes = ('rstring', 'ustring', 'boolean',
+     'int8', 'int16', 'int32', 'int64',
+     'float32', 'float64',
+     'decimal32', 'decimal64', 'decimal128');
+  my %paramtypeshash = map {$_, 1} @paramtypes;
+  foreach my $param (@{$model->getParameters()}) {
+    if ($param->getNumberOfValues() != 0) {
+      next if not isParamWithNoStreamAttributes($param);
+      my $ptype = isCustomLiteralParameter($param) ? "rstring" : $param->getValueAt(0)->getSPLType();
+      if (!$paramtypeshash{$ptype}) {
+        SPL::CodeGen::errorln("Parameter type not supported by JavaOp: %s %s",
+          $ptype, $param->getName(),
+          $param->getSourceLocation());
+      }
+    }
+  }
+}
+%>
+
+#include <dlfcn.h>
+
+#include <SPL/Toolkit/JavaOp.h>
+#include <SPL/Toolkit/RuntimeException.h>
+
+MY_OPERATOR::MY_OPERATOR()
+{
+  <%if (SPL::CodeGen::hasEventTimeContext($model)) {%>
+  /* Do not change this.  Set the mode in the Java operator. */
+  eventTimeContext_.setMode(EventTimeContext::manual);
+  <%}%>
+  /* Get a handle to the Java virtual machine */
+  SPL::JNI::JVMControl *jvmControl = SPL::JNI::JVMControl::getJVM();
+
+  /* Attach to the JVM  for the duration of the initialization */
+  JNIEnv * env = jvmControl->attach();
+
+  /* How we invoke methods against an OperatorSetup instance */
+  SPL::JNI::OpSetupInvoker* osi = jvmControl->getOpSetupInvoker();
+
+  /* OperatorSetup instance specific to this operator */
+  jobject setup = osi->newSetup(env, this);
+
+  /**
+     Pass the parameters into my OperatorSetup instance.
+  */
+  <%
+    foreach my $param (@{$model->getParameters()}) {
+      for (my $pi = 0; $pi < $param->getNumberOfValues(); $pi++)  {
+      	if(!isParamWithNoStreamAttributes($param) ) {
+      		setJavaOpParameter($param->getName(), '"' . $param->getValueAt($pi)->getCppExpression() .'"' );
+      	}
+	    else {
+	      	if(isCustomLiteralParameter($param)) {
+	      		setJavaOpParameter($param->getName(), '"' . $param->getValueAt($pi)->getCppExpression() .'"' );
+	      	}
+	      	else {
+	        	setJavaOpParameter($param->getName(), $param->getValueAt($pi)->getCppExpression());
+	        }
+        }
+      }
+    }
+  %>
+
+  /**
+    Pass input port information into the Java operator.
+
+    Are logic clauses present.
+
+    Pass the windowing information for each port as
+    a list of values for the parameter '[window].N' where
+    N is the index of the windowed input port.
+  */
+  <%
+  	my $tupleLogic = 0;
+    foreach my $inport (@{$model->getInputPorts()}) {
+       my $logicParam = "[inputPortLogic]." . $inport->getIndex();
+       if ($inport->hasTupleLogic()) {
+         setJavaOpParameter($logicParam, "\"tuple\"");
+         $tupleLogic = 1;
+       }
+       if ($inport->hasPunctLogic()) {
+         setJavaOpParameter($logicParam, "\"punct\"");
+       }
+       if ( ! ($inport->hasTupleLogic() || $inport->hasPunctLogic()) ) {
+         setJavaOpParameter($logicParam, "\"none\"");
+       }
+
+       if ($inport->hasWindow()) {
+         my $param = "[window]." . $inport->getIndex();
+         my $win = $inport->getWindow();
+         if ($win->isTimeInterval()) {
+           SPL::CodeGen::errorln("TimeInterval windows are not supported by JavaOp.",
+            $win->getSourceLocation());
+         }
+         else {
+           setJavaOpParameter($param, $win->getWindowType());
+           setJavaOpParameter($param, $win->isPartitioned());
+
+           my $evict = $win->getEvictionPolicyType();
+           setJavaOpParameter($param, $evict);
+           setJavaOpParameter($param, ("\"" . $win->getEvictionPolicyAttribute()->getSPLExpression()) . "\"") if ($evict == $SPL::Operator::Instance::Window::DELTA);
+           setJavaOpParameter($param, $win->getEvictionPolicySize()->getCppExpression()) unless ($evict == $SPL::Operator::Instance::Window::PUNCT);
+
+           if ($win->isSliding()) {
+             my $trigger = $win->getTriggerPolicyType();
+             setJavaOpParameter($param, $trigger);
+             setJavaOpParameter($param, ("\"" . $win->getTriggerPolicyAttribute()->getSPLExpression()) ."\"") if ($trigger == $SPL::Operator::Instance::Window::DELTA);
+            setJavaOpParameter($param, $win->getTriggerPolicySize()->getCppExpression());
+           }
+
+           if ($win->hasPartitionEvictionPolicy()) {
+             my $partitionEvictPolicy = $win->getPartitionEvictionPolicyKind();
+             setJavaOpParameter($param, 'SPL::rstring("' . $partitionEvictPolicy . '")');
+             if ($partitionEvictPolicy eq "partitionAge") {
+                setJavaOpParameter($param, $win->getPartitionEvictionPolicyAge()->getCppExpression());
+             } else {
+                setJavaOpParameter($param, $win->getPartitionEvictionPolicyCount()->getCppExpression());
+             }
+           }
+         }
+       }
+    }
+    print " hasTupleLogic = ", ($tupleLogic) ? "true" : "false", ";\n";
+  %>
+
+
+  /* At this point all the initialization information has been
+     passed to OperatorSetup. Create a JNIBridge instance object
+     we use to communicate with the user's Operator implementation
+     at runtime.
+  */
+
+  _bi = jvmControl->getBridgeInvoker();
+  _bridge = _bi->newBridge(env, this, setup);
+
+  /* Completed Java initialization, detach from the JVM */
+  jvmControl->detach();
+
+  setupStateHandler();
+
+  void * handle = dlopen("libstreams-stdtk-javaop.so", RTLD_LAZY);
+  if (!handle) {
+    const FormattableMessage& m = SPL_APPLICATION_RUNTIME_EXCEPTION("libstreams-stdtk-javaop.so");
+    THROW_STRING(SPLRuntimeJavaOperator, m);
+  }
+  _fp = (FP) dlsym(handle, "callProcessTupleWithNativeByteBuffer");
+}
+
+MY_OPERATOR::~MY_OPERATOR()
+{
+}
+
+void MY_OPERATOR::setupStateHandler()
+{
+    _stateHandler.reset(new SPL::JNI::JavaOpStateHandler(_bi, _bridge));
+    getContext().registerStateHandler(*_stateHandler);
+}
+
+void MY_OPERATOR::allPortsReady()
+{
+    _bi->allPortsReady(_bridge);
+    createThreads(1);
+}
+
+void MY_OPERATOR::prepareToShutdown()
+{
+   _bi->shutdown(_bridge);
+}
+
+void MY_OPERATOR::process(uint32_t idx)
+{
+   _bi->complete(_bridge);
+}
+
+void MY_OPERATOR::process(Tuple & tuple, uint32_t port)
+{
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+   _bi->processTuple(_bridge, tuple, port);
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+   _bi->processPunctuation(_bridge, punct, port);
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>
+
+<%
+# Sub-routine to set a parameter that is passed to the Java runtime.
+# First argument is name of the parameter.
+# Second argument is the value that will be passed as-is to setParameter
+# in the C++ code.
+# Handle classLibrary in $STREAMS_INSTALL as a special case
+sub setJavaOpParameter ($$)
+{
+  my ($name, $value) = @_;
+#  if ($name eq 'classLibrary' && $value =~ /^SPL::rstring/) {
+#    my $classLib = SPL::CodeGen::extractPerlValue($value, 'rstring');
+#    my $clVar = "cl_$clCounter";
+#    print "   SPL::rstring $clVar;\n";
+#    SPL::CodeGen::runtimePath($model, $classLib, $clVar);
+#    $value = $clVar;
+#    ++$clCounter;
+#  }
+  print "   osi->setParameter(env, setup, \"$name\", $value);\n";
+}
+
+%>

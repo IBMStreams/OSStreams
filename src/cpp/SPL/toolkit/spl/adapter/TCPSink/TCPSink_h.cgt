@@ -1,0 +1,175 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use TCPSinkCommon;
+    TCPSinkCommon::verify($model);
+    my $format = $model->getParameterByName("format");
+    my $compression = $model->getParameterByName("compression");
+    my $hasDelayField = $model->getParameterByName("hasDelayField");
+    my $flush = $model->getParameterByName("flush");
+    my $writePunctuations = $model->getParameterByName("writePunctuations");
+    my $role = $model->getParameterByName("role");
+    my $encoding = $model->getParameterByName("encoding");
+    my $reconnectionBound = $model->getParameterByName("reconnectionBound");
+    my $confirmWireFormat = $model->getParameterByName("confirmWireFormat");
+    my $closeMode = $model->getParameterByName("closeMode");
+    my $port = $model->getParameterByName("port");
+    my $detectDisconnectsBeforeSends = $model->getParameterByName("detectDisconnectsBeforeSends");
+
+    # Apply defaults
+    if (!defined $format) {
+        $format = "csv";
+    } else {
+        $format = $format->getValueAt(0)->getSPLExpression();
+    }
+    $compression = $compression->getValueAt(0)->getSPLExpression()
+            if defined $compression;
+    $role = $role->getValueAt(0)->getSPLExpression()
+            if defined $role;
+    $flush = $flush->getValueAt(0)->getCppExpression() if defined $flush;
+    if (!defined $hasDelayField) {
+        $hasDelayField = 0;
+    } else {
+        $hasDelayField = $hasDelayField->getValueAt(0)->getCppExpression() eq "true";
+    }
+    if (!defined $writePunctuations) {
+        $writePunctuations = 0;
+    } else {
+        $writePunctuations = $writePunctuations->getValueAt(0)->getCppExpression() eq "true";
+    }
+    my $binary = $format eq "bin" || $format eq "block";
+    $reconnectionBound = $reconnectionBound->getValueAt(0)->getCppExpression()
+        if defined $reconnectionBound;
+    $confirmWireFormat = $confirmWireFormat ? $confirmWireFormat->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    $closeMode = $closeMode ? $closeMode->getValueAt(0)->getSPLExpression() : "never";
+    $detectDisconnectsBeforeSends = $detectDisconnectsBeforeSends ? $detectDisconnectsBeforeSends->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+
+    my @includes;
+    push @includes, "#include <sys/types.h>";
+    push @includes, "#include <sys/stat.h>";
+    push @includes, "#include <fcntl.h>";
+    push @includes, "#include <fstream>";
+    push @includes, "#include <boost/iostreams/filter/$compression.hpp>" if $compression;
+    push @includes, "#include <boost/iostreams/stream.hpp>";
+    push @includes, "#include <boost/iostreams/filtering_streambuf.hpp>";
+    push @includes, "#include <SPL/Runtime/Serialization/StreamByteBuffer.h>" if ($binary);
+    push @includes, "#include <boost/iostreams/device/file_descriptor.hpp>";
+    push @includes, "#include <SPL/Toolkit/FromUTF8.h>" if $encoding;
+    my $TCPconnector;
+    if ($role eq "client") {
+        $TCPconnector = "TCPClient";
+    } else {
+        $TCPconnector = "TCPServer";
+    }
+
+    my $sslConfigName = $model->getParameterByName("sslConfigName");
+    my $sslProtocol = $model->getParameterByName("sslProtocol");
+    my $connectorType;
+
+    if (defined $sslConfigName || defined $sslProtocol) {
+        $connectorType = "Secure" . $TCPconnector;
+    } elsif ($confirmWireFormat) {
+        $connectorType = $TCPconnector . "Extended";
+    } else {
+        $connectorType = $TCPconnector;
+    }
+
+    push @includes, "#include <SPL/Toolkit/$TCPconnector.h>";
+    push @includes, "#include <SPL/Runtime/Common/Metric.h>";
+%>
+<%SPL::CodeGen::headerPrologue($model, \@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR<%if ($ckptKind ne "none") {%>, public StateHandler<%}%>
+{
+public:
+    MY_OPERATOR();
+
+
+    virtual void prepareToShutdown();
+
+    virtual void process(Tuple const & tuple, uint32_t port);
+    bool processInternal(Tuple const & tuple, uint32_t port);
+
+    virtual void process(Punctuation const & punct, uint32_t port);
+    bool processInternal(Punctuation const & punct, uint32_t port);
+
+    <%if ($closeMode ne 'dynamic') {%>
+        virtual void allPortsReady();
+        virtual void process(uint32_t index);
+    <%}%>
+
+private:
+    <%if (defined $sslConfigName || defined $sslProtocol) {%>
+        class SecureSource;
+        class SecureSink;
+        class Security;
+
+        <%if ($role eq "client") {%>
+            class SecureTCPClient;
+            class SSLClient;
+            class UnencryptedTCPClient;
+        <%} else {%>
+            class SecureTCPServer;
+            class SSLServer;
+            class UnencryptedTCPServer;
+        <%}%>
+    <%}%>
+
+    inline void setupLocked (int32_t fd);
+    void setup (int32_t fd);
+    void cleanup();
+    void closeConnection ();
+    bool isDisconnected();
+    void reconnectToNewConnection();
+    inline bool canReconnect();
+
+    <%if (defined $sslConfigName || defined $sslProtocol) {%>
+        std::auto_ptr<SecureSink> _fd_sink;
+        std::auto_ptr<<%=$connectorType%>> _connector;
+    <%} else {%>
+	std::auto_ptr<boost::iostreams::file_descriptor_sink> _fd_sink;
+        std::auto_ptr<SPL::<%=$connectorType%>> _connector;
+    <%}%>
+    std::auto_ptr<boost::iostreams::filtering_streambuf<boost::iostreams::output> > _filt_str;
+    std::auto_ptr<std::<%($binary) ? print "iostream" : print "ostream";%>> _fs;
+    <%if ($binary) {%>
+        std::auto_ptr<SPL::StreamByteBuffer> _sbfs;
+    <%}%>
+    <%print "double _lastTimeStamp;" if $hasDelayField;%>
+    <%if ($closeMode ne 'dynamic') {%>
+        CV _cv;
+    <%}%>
+    Mutex _mutex;
+    <%if (defined $flush) { %>
+    uint32_t _tuplesUntilFlush;
+    <%}%>
+    <%print "uint32_t _reconnectsLeft;" if defined $reconnectionBound;%>
+    volatile bool _connected, _connectionClosed;
+    <%print "FromUTF8Filter _fromUTF8;" if $encoding;%>
+    Metric& _numReconnects;
+    Metric& _numConnections;
+    Metric& _numWireFormatHandshakesFailed;
+    <%print "std::string _wireFormat;" if $confirmWireFormat;%>
+    <%if ($closeMode eq 'dynamic') {%>
+        void dynamicConnect();
+        std::string _lastAddress;
+        <%=$port->getValueAt(0)->getCppType()%> _lastPort;
+    <%}%>
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

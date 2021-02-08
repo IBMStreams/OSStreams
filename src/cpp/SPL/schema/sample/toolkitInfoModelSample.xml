@@ -1,0 +1,29 @@
+<toolkitInfoModel
+    xmlns="http://www.ibm.com/xmlns/prod/streams/spl/toolkitInfo"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+    xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/toolkitInfo toolkitInfoModel.xsd">
+  <identity>
+    <name>test-pkg</name>
+    <description>Test</description>
+    <version>1.2.3.build_123-4</version>
+    <requiredProductVersion>[1.0,2.3.4.a)</requiredProductVersion>
+  </identity>
+  <dependencies>
+    <toolkit>
+      <cmn:name>test-pkg</cmn:name>
+      <cmn:version>(10.28.3,11]</cmn:version>
+    </toolkit>
+    <toolkit>
+      <cmn:name>another-test-pkg</cmn:name>
+      <cmn:version>4.1</cmn:version>
+    </toolkit>
+  </dependencies>
+  <resources>
+    <messageSet name="MyMessages">
+      <lang default="true">en/MyMessages.xlf</lang>
+      <lang>tr/MyMessages.xlf</lang>
+      <lang>fr/MyMessages.xlf</lang>
+    </messageSet>
+  </resources>
+</toolkitInfoModel>

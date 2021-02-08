@@ -1,0 +1,155 @@
+Overview
+--------
+
+SPLDOC produces user documentation for Streams toolkits by analysing
+the toolkit source code. The inputs are the XML model files and SPL
+files for the toolkits and their artifacts (operators, functions and
+data types). The output is user documentation in HTML format. SPLDOC
+is documented in the Streams user documentation.
+
+SPLDOC produces user documentation in DITA format prior to translation
+into HTML format. The DITA format is used to generate the Streams user
+manual API reference documentation for Streams toolkits.
+
+Processing
+----------
+SPLDOC uses the following:
+- spl-make-toolkit to produce XML model files for SPL source code
+- Eclipse Modelling Framework (EMF) to process XML files
+- Batik to use scalable vector graphics (SVG) to produce diagrams
+- Darwin Information Typing Architecture (DITA) for document formatting
+- DITA Open Toolkit (DITA-OT) to translate DITA format into HTML.
+
+Location of source code
+-----------------------
+Most source code is in Java under:
+- /repos/Distillery/Infrastructure/java/SPLDOC.
+
+The Main method for the Java program is in:
+- com.ibm.streams.tools.sdl.splmakedoc/
+  src/com/ibm/streams/tools/sdl/splmakedoc/Driver.java.
+
+The spl-make-doc perl script which runs the Java program is in:
+- /repos/Distillery/Infrastructure/src/SPL/script/spl-make-doc.
+
+XML model schema changes (.xsd files)
+-------------------------------------
+SPLDOC had its own copies of the schema for the artifacts that are
+documented (toolkits, operators, etc). When the schema are changed,
+the SPLDOC copy of the schema, and the associated SPLDOC processing
+and output, should be updated, as follows:
+- install EMF SDK in Eclipse
+- replace old schema under com.ibm.streams.tools.sdl.core/model
+- use EMF wizard to generate new ecore and genmodel files:
+  - r-click on changed xsd file
+  - select: new->other
+  - open: Eclipse Modeling Framework
+  - select: EMF Generator Model
+  - select: Next > XML Schema > Next > Load > Next
+  - select: Select All > Finish (may include generating common.ecore)
+- use EMF wizard to generate new model code in src directory:
+  - rename directories being replaced if required
+  - open genmodel file
+  - r-click on root node in model
+  - select: Generate Model Code
+- modify SPLDOC code that uses changed model components, as required
+- update model reference descriptions under com.ibm.streams.tools.doc.references
+- verify the model by running spl-make-doc on a toolkit with the new components
+- verify the processing and output, by checking the HTML output
+- checkin changes, including EMF-generated files:
+  - new ecore, genmodel files in model directory
+  - new java files in src directory, including incl and util subdirectories.
+
+A description of the EMF plugin for Eclipse is available at:
+- http://publib.boulder.ibm.com/infocenter/iadthelp/v6r0/index.jsp?topic=/org.eclipse.emf.doc/tutorials/xlibmod/xlibmod.html.
+
+SPLDOC parser changes
+---------------------
+The SPLDOC parser parses SPLDOC markup. The IDE has its own copy of
+the parser, and so the IDE team need to be notified of changes to the
+parser. The parser is in ParserSPLDOC.java under:
+- com.ibm.streams.tools.doc.generator.dita.
+
+The IDE copy is in the package:
+- com.ibm.streams.studio.spleditor.ui.spldoc.
+
+Testing
+-------
+Consider testing with multiple browsers:
+- when different DITA code is used
+- when style sheets are changed
+- eg, Internet Explorer, Firefox, Safari
+
+Location of regression tests
+----------------------------
+Regression tests using "runTD" are under:
+- /repos/Distillery/Infrastructure/test/FunctionalTest/SPL/MakeDoc.
+
+DITA releases
+-------------
+SPLDOC should be kept reasonably current by migrating to new DITA releases.
+
+Development in Eclipse
+----------------------
+SPLDOC was developed in Eclipse using Eclipse plug-ins. To set up
+development in Eclipse on a PC:
+- install EMF SDK in Eclipse
+- make sure the Clearcase view includes (eg via web view load rules):
+  repos/Distillery/Ext/dita-ot
+  repos/Distillery/Infrastructure/java/SPLDOC
+  repos/Distillery/Infrastructure/src/SPL
+- in Eclipse import SPLDOC projects:
+  - import existing projects under repos/Distillery/Infrastructure/java/SPLDOC
+- create external library:
+  - on cluster:
+    - build the streams product (make install)
+    - collect required jar files, as listed in the class paths in:
+      - /repos/Distillery/Ext/dita-ot/install/Distillery/ext/dita-ot/startcmd.sh
+      - /repos/Distillery/Infrastructure/src/SPL/script/spl-make-doc
+  - on PC:
+    - create directory in Eclipse workspace:
+      - ${workspace_loc}/spldoc/com.ibm.streams.tools.libs/lib
+    - copy required jar files into above directory
+    - in Eclipse:
+      - create new plug-in project com.ibm.streams.tools.libs:
+        - using location ${workspace_loc}/spldoc/com.ibm.streams.tools.libs
+      - export packages:
+	- open MANIFEST.MF
+	- set classpath (add all jar files in "lib" via Runtime->Classpath->Add)
+	- set exported packages (add all via Runtime->"Exported Packages"->Add)
+- in Eclipse build all projects
+  - may need to use "quick fix" to export remaining packages if build fails
+- on PC set up DITA directory:
+  - unzip (to "dita-ot" dir):
+    repos/Distillery/Ext/dita-ot/DITA-OT1.5.4_full_easy_install_bin.zip
+- set up Vwap toolkit for testing that SPLDOC runs:
+  - on cluster run spl-make-doc to create toolkit and source model files:
+    export STREAMS_MAKE_DOC_SAVE_TEMP=1
+    spl-make-doc -i \
+      /repos/Distillery/Infrastructure/src/SPL/sample/application/Vwap
+  - on PC:
+    - copy toolkit.xml from cluster Vwap directory to equivalent directory on PC
+    - create directory in Eclipse workspace:
+      ${workspace_loc}/spldoc/vwap/temp/1
+    - copy to this directory temp/1/.sourceModel.xml from cluster Vwap directory
+- in Eclipse run SPLDOC on Vwap toolkit:
+  - create Java application launcher for SPLDOC:
+    - select:
+      - com.ibm.streams.tools.sdl.splmakedoc/spl-make-doc.jar
+    - set main class:
+      - com.ibm.streams.tools.sdl.splmakedoc.Driver
+    - set program arguments:
+      "-i ${project_loc}/../../../src/SPL/sample/application/Vwap" "-b ${project_loc}/../../../.libs" "-v" "--output-directory ${workspace_loc}/spldoc/vwap" "--include-all"
+    - set environment:
+      ANT_HOME = /usr/local/DITA-OT1.5.4/tools/ant
+      ANT_OPTS = -Xmx512m -Djavax.xml.transform.TransformerFactory=net.sf.saxon.TransformerFactoryImpl
+      CLASSPATH = /usr/local/DITA-OT1.5.4/lib/saxon/saxon9.jar;/usr/local/DITA-OT1.5.4/lib/saxon/saxon9-dom.jar;/usr/local/DITA-OT1.5.4/lib/dost.jar;/usr/local/DITA-OT1.5.4/lib/commons-codec-1.4.jar;/usr/local/DITA-OT1.5.4/lib/resolver.jar;/usr/local/DITA-OT1.5.4/lib/icu4j.jar
+      DITA_HOME = /usr/local/DITA-OT1.5.4
+      JAVA_HOME = C:/java/sdk (or as required)
+      PATH = /usr/local/DITA-OT1.5.4/tools/ant/bin;${env_var:PATH}
+  - run SPLDOC
+    - if you get a Panel.addNotify() exception:
+      - change the program argument "include-all" to "include-source"
+  - check the following output using a web browser:
+    file:///${workspace_loc}/spldoc/vwap/html/index.html.
+

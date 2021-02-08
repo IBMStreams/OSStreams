@@ -1,0 +1,181 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use BarrierCommon;
+    BarrierCommon::verify($model);
+
+    my $numInputPorts = $model->getNumberOfInputPorts();
+    my $numParameters = $model->getNumberOfParameters();
+    my @parameters = $model->getParameters();
+    my $outputPort = $model->getOutputPortAt(0);
+    my $bufferSize = $model->getParameterByName("bufferSize");
+
+    my $seenPartitionBy = 0;
+    my @partitions;
+    for (my $i = 0; $i < $numParameters; $i++) {
+        my $p = $model->getParameterAt($i);
+        my $pName = $p->getName();
+        if ($pName =~ /^partitionByLHS$/) {
+            $seenPartitionBy = 1;
+            $partitions[0] = $p;
+        } elsif ($pName =~ /^partitionByRHS$/) {
+            $seenPartitionBy = 1;
+            $partitions[$numInputPorts-1] = $p;
+        } elsif ($pName =~ /^partitionBy(\d+)$/) {
+            $seenPartitionBy = 1;
+            $partitions[$1] = $p;
+        }
+    }
+
+    # partition support
+    my @partitionByTypes = SPL::CodeGen::getParameterCppTypes($partitions[0]);
+    my $partitionCppType = ($seenPartitionBy)
+        ? SPL::CodeGen::emitClass($model, 'PartitionByType', @partitionByTypes) : "int32_t";
+    my @includes;
+    push @includes, "#include <deque>";
+    my $buffAndPart = $seenPartitionBy && $bufferSize;
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    if ($isInConsistentRegion or $ckptKind ne "none") {
+        push @includes, "#include <SPL/Runtime/Operator/State/StateHandler.h>";
+    }
+%>
+<%SPL::CodeGen::headerPrologue($model, \@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR<%if ($isInConsistentRegion or $ckptKind ne "none") {%>, public StateHandler<%}%>
+{
+public:
+    typedef <%=$partitionCppType%> PartitionByType;
+
+    typedef std::deque<const Tuple*> DequeType;
+    struct OneQueueSet
+    {
+        OneQueueSet () : _nonEmptyQueues(0)
+            <%print ", _waitCount(0)" if($buffAndPart);%> {}
+
+        void resetToInitialState() {
+            _nonEmptyQueues = 0;
+            <%if ($buffAndPart) {%>
+                _waitCount = 0;
+            <%}%>
+            for (uint32_t i = 0; i < <%=$numInputPorts%>; i++) {
+                DequeType & d = _tuples[i];
+                for (DequeType::iterator it = d.begin(); it != d.end(); it++)
+                    delete *it;
+                d.clear();
+            }
+        }
+
+        template <class S>
+        friend SPL::ByteBuffer<S> & operator>>(ByteBuffer<S> & buf, OneQueueSet & value) {
+            buf >> value._nonEmptyQueues;
+            <%if ($buffAndPart) {%>
+                uint32_t waitCount;
+                buf >> waitCount;
+                value._waitCount = waitCount;
+            <%}%>
+            uint64_t queueSize;
+            <%for (my $i = 0; $i < $numInputPorts; $i++) { %>
+                // Queue size
+                buf >> queueSize;
+                <%my $name = $model->getInputPortAt($i)->getCppTupleName();%>
+                DequeType & d<%=$i%> = value._tuples[<%=$i%>];
+                // Clear deque before inserting data to it
+                d<%=$i%>.clear();
+                // Each tuple in the queue
+                IPort<%=$i%>Type <%=$name%>;
+                for (int i = 0; i < queueSize; i++) {
+                    buf >> <%=$name%>;
+                    d<%=$i%>.push_back(<%=$name%>.clone());
+                }
+            <%}%>
+            return buf;
+        }
+
+        template <class S>
+        friend SPL::ByteBuffer<S> & operator<<(SPL::ByteBuffer<S> & buf, const OneQueueSet & value) {
+            buf << value._nonEmptyQueues;
+            <%if ($buffAndPart) {%>
+                buf << (uint32_t) value._waitCount;
+                uint64_t queueSize;
+            <%}%>
+            <%for (my $i = 0; $i < $numInputPorts; $i++) { %>
+                // Queue size
+                buf << (uint64_t) value._tuples[<%=$i%>].size();
+                <%my $name = $model->getInputPortAt($i)->getCppTupleName();%>
+                const DequeType & d<%=$i%> = value._tuples[<%=$i%>];
+                // Each tuple in the queue
+                for (DequeType::const_iterator it = d<%=$i%>.begin(); it != d<%=$i%>.end(); it++) {
+                    const Tuple * tup = static_cast<const Tuple *>(*it);
+                    const IPort<%=$i%>Type& <%=$name%> =
+                        static_cast<const IPort<%=$i%>Type&>(*tup);
+                    buf << <%=$name%>;
+                }
+            <%}%>
+            return buf;
+        }
+
+        DequeType _tuples[<%=$numInputPorts%>];
+        uint32_t _nonEmptyQueues;
+        <%if ($buffAndPart) {%>
+            volatile uint32_t _waitCount;
+        <%}%>
+    };
+
+    <%if ($seenPartitionBy) {%>
+        typedef std::tr1::unordered_map<<%=$partitionCppType%>, OneQueueSet> MapType;
+    <%}%>
+
+    MY_OPERATOR();
+    ~MY_OPERATOR();
+
+    virtual void process(Tuple const & tuple, uint32_t port);
+
+    <%if ($bufferSize) {%>
+        virtual void prepareToShutdown();
+    <%}%>
+
+    <%if ($isInConsistentRegion or $ckptKind ne "none") {%>
+        virtual void checkpoint(Checkpoint & ckpt);
+        virtual void reset(Checkpoint & ckpt);
+        virtual void resetToInitialState();
+    <%}%>
+
+private:
+    <%if ($isInConsistentRegion or $ckptKind ne "none") {%>
+        void resetCommon();
+    <%}%>
+
+    Mutex _mutex;
+    <%if ($bufferSize) {%>
+        CV _notFull;
+        uint32_t _bufferSize;
+    <%}
+    if ($seenPartitionBy) {%>
+        MapType Partitions;
+    <%} else {%>
+        OneQueueSet Tuples;
+    <%}
+    if ($seenPartitionBy) {
+        for (my $i = 0; $i < $numInputPorts; $i++) {
+            my $name = $model->getInputPortAt($i)->getCppTupleName();%>
+            IPort<%=$i%>Type <%=$name%>;
+        <%}
+    }%>
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

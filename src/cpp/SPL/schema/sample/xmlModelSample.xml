@@ -1,0 +1,7 @@
+<xmlModel xmlns="http://www.ibm.com/xmlns/prod/streams/spl/xml"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/xml xmlModel.xsd">
+   <class>foo</class>
+   <schema>bar</schema>
+   <toolkitIndex>1</toolkitIndex>
+</xmlModel>

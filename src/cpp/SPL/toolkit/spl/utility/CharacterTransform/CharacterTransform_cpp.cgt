@@ -1,0 +1,97 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    my $inputPort = $model->getInputPortAt(0);
+    my $inTupleName = $inputPort->getCppTupleName();
+
+    my $outputPort = $model->getOutputPortAt(0);
+    my $numAttrs = $outputPort->getNumberOfAttributes();
+    my @convertInput;
+    for (my $i = 0; $i < $numAttrs; $i++) {
+        my $attr = $outputPort->getAttributeAt($i);
+        if ($attr->hasAssignmentWithOutputFunction()) {
+            my $aName = $attr->getName();
+            next if $attr->getAssignmentOutputFunctionName() eq "AsIs";
+            my $attrType = $attr->getSPLType();
+            if ($attrType ne 'blob') {
+                SPL::CodeGen::exitln (SPL::Msg::STDTK_ATTRIBUTE_TYPE_MISMATCH_WITH_OUTPUT_FUNCTION ($aName, $attrType,
+                    $attr->getAssignmentOutputFunctionName(), 'blob'), $outputPort->getSourceLocation());
+            }
+            push @convertInput, $attr;
+        }
+    }
+    my $numConvertInputAttrs = scalar (@convertInput);
+
+    my $initOperator = "";
+    for (my $i = 0; $i < $numConvertInputAttrs; $i++) {
+        my $attr = $convertInput[$i];
+        my $n = $attr->getName();
+        my $from = $attr->getAssignmentOutputFunctionParameterValueAt(0)->getCppExpression();
+        my $to = $attr->getAssignmentOutputFunctionParameterValueAt(1)->getCppExpression();
+        $initOperator .= $initOperator eq ""  ? ": " : ", ";
+        $initOperator .= "_enc_$n($from, $to)";
+    }
+
+SPL::CodeGen::implementationPrologue($model);%>
+
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Toolkit/RuntimeException.h>
+
+using namespace std;
+
+MY_OPERATOR::MY_OPERATOR()
+<%print $initOperator if $initOperator ne "";%>
+{
+    SPLAPPTRC(L_DEBUG, "CharacterTransform startup...", SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port) {
+    forwardWindowPunctuation(punct);
+}
+
+void MY_OPERATOR::process(Tuple const & tuple$, uint32_t port)
+{
+    const IPort0Type <%=$inTupleName%> = static_cast<const IPort0Type&>(tuple$);
+
+    OPort0Type otuple;
+    <%for (my $i = 0; $i < $numConvertInputAttrs; $i++) {
+        my $attr = $convertInput[$i];
+        my $n = $attr->getName();
+        my $expn = $attr->getAssignmentOutputFunctionParameterValueAt(2)->getCppExpression();%>
+        _enc_<%=$n%>.convert(<%=$expn%>, otuple.get_<%=$n%>());
+    <%}%>
+
+    <%for (my $i = 0; $i < $numAttrs; $i++) {
+        my $attr = $outputPort->getAttributeAt($i);
+        my $n = $attr->getName();
+        if ($attr->hasAssignment()) {
+            my $expn;
+            if ($attr->hasAssignmentWithOutputFunction()) {
+                my $of = $attr->getAssignmentOutputFunctionName();
+                next if $of ne "AsIs";
+                $expn = SPL::CodeGenHelper::ensureValue ($attr->getSPLType(),
+                                                            $attr->getAssignmentOutputFunctionParameterValueAt(0)->getCppExpression());
+            } else {
+                $expn = $attr->getAssignmentOutputFunctionParameterValues()->[0]->getCppExpression();
+            }%>
+            otuple.set_<%=$n%>(<%=$expn%>);
+        <%}
+    }%>
+    submit (otuple, 0);
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified"
+       targetNamespace="http://www.ibm.com/xmlns/prod/streams/runtime/utils/mr"
+       xmlns:mr="http://www.ibm.com/xmlns/prod/streams/runtime/utils/mr"
+       xmlns="http://www.ibm.com/xmlns/prod/streams/runtime/utils/mr"
+       xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+<xs:element name="messageRecordingConfiguration" 	type="mr:MessageRecordingConfigurationType"/>
+
+<xs:complexType name="MessageRecordingConfigurationType">
+    <xs:attribute name="tracingLevel" type="mr:tracingLevelType" use="optional"/>
+    <xs:attribute name="loggingLevel"   type="mr:loggingLevelType" use="optional"/>
+</xs:complexType>
+
+<!-- loggingLevelType -->
+  <xs:simpleType name="loggingLevelType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the logging levels from most verbose, trace, to least verbose (and non-maskable), error.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="error"/>
+      <xs:enumeration value="warn"/>
+      <xs:enumeration value="info"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+ <!-- tracingType -->
+  <xs:complexType name="tracingType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure the tracing information
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="level" use="required" type="tracingLevelType"/>
+    <xs:attribute name="style" type="tracingStyleType"/>
+    <xs:attribute name="size" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- tracingLevelType -->
+  <xs:simpleType name="tracingLevelType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the trace levels from least verbose, off, to most verbose, trace.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="off"/>
+      <xs:enumeration value="error"/>
+      <xs:enumeration value="warn"/>
+      <xs:enumeration value="info"/>
+      <xs:enumeration value="debug"/>
+      <xs:enumeration value="trace"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- tracingStyleType -->
+  <xs:simpleType name="tracingStyleType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the trace styles supported
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="spill"/>
+      <xs:enumeration value="wrap"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+</xs:schema>

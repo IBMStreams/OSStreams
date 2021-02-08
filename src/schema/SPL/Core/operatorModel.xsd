@@ -1,0 +1,598 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:common="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/common"
+           schemaLocation="commonModel.xsd"/>
+
+<!-- The operator model.  -->
+<xs:element name="operatorModel" type="operatorModelType"/>
+
+<!-- The operator model type.  -->
+<xs:complexType name="operatorModelType">
+  <xs:choice>
+    <xs:element name="cppOperatorModel" type="opModelType"/>
+    <xs:element name="javaOperatorModel" type="javaOpModelType"/>
+  </xs:choice>
+</xs:complexType>
+
+<!-- The operator model type.  -->
+<xs:complexType name="opModelType">
+  <xs:sequence>
+    <!-- The operator context, stuff that relates to the operator as a whole.  -->
+    <xs:element name="context" type="contextType"/>
+    <!-- Parameters for this operator.  -->
+    <xs:element name="parameters" type="parametersType"/>
+    <!-- Input ports for this operator.  -->
+    <xs:element name="inputPorts" type="inputPortsType"/>
+    <!-- Output ports for this operator.  -->
+    <xs:element name="outputPorts" type="outputPortsType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The java operator model type.  -->
+<xs:complexType name="javaOpModelType">
+  <xs:sequence>
+    <!-- The operator context, stuff that relates to the operator as a whole.  -->
+    <xs:element name="context" type="javaOpContextType"/>
+    <!-- Parameters for this operator.  -->
+    <xs:element name="parameters" type="javaOpParametersType"/>
+    <!-- Input ports for this operator.  -->
+    <xs:element name="inputPorts" type="javaOpInputPortsType"/>
+    <!-- Output ports for this operator.  -->
+    <xs:element name="outputPorts" type="javaOpOutputPortsType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The operator context type, stores stuff that relates to the operator as a whole.  -->
+<xs:complexType name="contextType">
+  <xs:sequence>
+    <!-- The optional description for the operator.  -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- The URI to the icon for the operator -->
+    <xs:element name="iconUri" type="iconUriType" minOccurs="0" maxOccurs="unbounded"/>
+    <!-- Metrics used by the operator -->
+    <xs:element name="metrics" type="metricsType" minOccurs="0" maxOccurs="1"/>
+    <!-- Custom literals to be used by this operator. -->
+    <xs:element name="customLiterals" type="enumerationsType" minOccurs="0" maxOccurs="1"/>
+    <!-- Custom output functions to be used by this operator. -->
+    <xs:element name="customOutputFunctions" type="customOutputFunctionsType" minOccurs="0" maxOccurs="1"/>
+    <!-- Library dependencies for the operator. -->
+    <xs:element name="libraryDependencies" type="libraryDependenciesType" minOccurs="0" maxOccurs="1"/>
+    <!-- Threading mode of the operator. -->
+    <xs:element name="providesSingleThreadedContext" type="singleThreadedContextType"/>
+    <!-- Incremental compilation strategy for the operator -->
+    <xs:element name="incrementalCompilationStrategy" type="incrementalCompilationStrategyType" minOccurs="0" maxOccurs="1"/>
+    <!-- Is a logic clause allowed in the operator -->
+    <xs:element name="allowCustomLogic" type="xs:boolean" minOccurs="0" maxOccurs="1"/>
+    <!-- Code templates for the operator. -->
+    <xs:element name="codeTemplates" type="codeTemplatesType" minOccurs="0" maxOccurs="1"/>
+    <!-- Should SPL expression trees be generated for output and/or parameter expressions? Default is no -->
+    <xs:element name="splExpressionTree" type="splExpressionTreeType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="capability" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+  <xs:attribute name="verificationModule" type="xs:token"/>
+</xs:complexType>
+
+<!-- The operator context type, stores stuff that relates to the operator as a whole.  -->
+<xs:complexType name="javaOpContextType">
+  <xs:sequence>
+    <!-- The optional description for the operator. -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- The URI to the icon for the operator -->
+    <xs:element name="iconUri" type="iconUriType" minOccurs="0" maxOccurs="unbounded"/>
+    <!-- Metrics used by the operator -->
+    <xs:element name="metrics" type="metricsType" minOccurs="0" maxOccurs="1"/>
+    <!-- Custom literals to be used by this operator. -->
+    <xs:element name="customLiterals" type="enumerationsType" minOccurs="0" maxOccurs="1"/>
+    <!-- Execution settings for the Java operator -->
+    <xs:element name="executionSettings" type="javaOpExecutionSettingsType"/>
+    <!-- Library dependencies for the operator. -->
+    <xs:element name="libraryDependencies" type="javaOpLibraryDependenciesType" minOccurs="0" maxOccurs="1"/>
+    <!-- Code templates for the operator. -->
+    <xs:element name="codeTemplates" type="codeTemplatesType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for execution settings for the Java operator. -->
+<xs:complexType name="javaOpExecutionSettingsType">
+  <xs:sequence>
+    <!-- Name of Java class that implements the operator -->
+    <xs:element name="className" type="xs:token"/>
+    <!-- List of VM args for the operator -->
+    <xs:element name="vmArgs" type="javaOpVMArgsType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for a list of VM args. -->
+<xs:complexType name="javaOpVMArgsType">
+  <xs:sequence>
+    <!-- Command line options passed to the Java Virtual Machine at startup -->
+    <xs:element name="vmArg" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for an iconUri. -->
+<xs:complexType name="iconUriType">
+  <xs:simpleContent>
+    <xs:extension base="xs:string">
+      <xs:attribute name="size" type="xs:int" use="required"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+
+<!-- Type for a list of metrics. -->
+<xs:complexType name="metricsType">
+  <xs:sequence>
+    <!-- The optional description for all the metrics.  -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- Zero or more metrics. -->
+    <xs:element name="metric" type="metricType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for a metric. -->
+<xs:complexType name="metricType">
+  <xs:sequence>
+    <xs:element name="name" type="xs:string"/>
+    <xs:element name="description" type="common:descriptionType"/>
+    <xs:element name="kind" type="metricKindType"/>
+    <!-- Is this metric to be created by the operator dynamically at runtime? -->
+    <xs:element name="dynamic" type="xs:boolean" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for metric kind. -->
+  <xs:simpleType name="metricKindType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Gauge"/>
+      <xs:enumeration value="Counter"/>
+      <xs:enumeration value="Time"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- Type for a list of enumerations. -->
+<xs:complexType name="enumerationsType">
+  <xs:sequence>
+    <!-- Zero or more enumerations. -->
+    <xs:element name="enumeration" type="enumerationType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The for enumerations, like custom literals. -->
+<xs:complexType name="enumerationType">
+  <xs:sequence>
+    <!-- Name of the enumeration. -->
+    <xs:element name="name" type="xs:string"/>
+    <!-- Value of the enumeration. -->
+    <xs:element name="value" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for a list of customOutputFunctions. -->
+<xs:complexType name="customOutputFunctionsType">
+  <xs:sequence>
+    <!-- Zero or more custom functions. -->
+    <xs:element name="customOutputFunction" type="customOutputFunctionSetType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- A Set of custom output functions. -->
+<xs:complexType name="customOutputFunctionSetType">
+  <xs:sequence>
+    <!-- Name of the set of custom output functions. -->
+    <xs:element name="name" type="xs:string"/>
+    <!-- list of custom output functions. -->
+    <xs:element name="function" type="customOutputFunctionType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="customOutputFunctionType">
+  <xs:sequence>
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="prototype" type="xs:string"/>
+  </xs:sequence>
+  <xs:attribute name="pseudoFunction" type="xs:boolean"/>
+</xs:complexType>
+
+<!-- Type for list of library dependencies. -->
+<xs:complexType name="libraryDependenciesType">
+  <xs:sequence>
+    <!-- Zero or more library dependencies. -->
+    <xs:element name="library" type="common:libraryType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for a list of library dependencies. -->
+<xs:complexType name="javaOpLibraryDependenciesType">
+  <xs:sequence>
+    <!-- Class path of Java class library -->
+    <xs:element name="library" type="common:javaOpLibraryType" minOccurs="1" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for the incremental compilation strategy. -->
+<xs:simpleType name="incrementalCompilationStrategyType">
+  <xs:restriction base="xs:string">
+    <!-- Recompile when parametarization of the code generation changes. -->
+    <xs:enumeration value="SourceDependent"/>
+    <!-- Recompile when the generated code changes. -->
+    <xs:enumeration value="ResultDependent"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<!-- Type for threading mode of the operator (see the operator model reference). -->
+<xs:simpleType name="singleThreadedContextType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="Never"/>
+    <xs:enumeration value="Always"/>
+    <xs:enumeration value="WindowBound"/>
+    <xs:enumeration value="WindowTriggerBound"/>
+    <xs:enumeration value="WindowEvictionBound"/>
+    <xs:enumeration value="WindowPartitionEvictionBound"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<!-- Type for code templates. -->
+<xs:complexType name="codeTemplatesType">
+  <xs:sequence>
+    <!-- Zero or more code templates for this operator. -->
+    <xs:element name="codeTemplate" type="codeTemplateType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for one code template. -->
+<xs:complexType name="codeTemplateType">
+  <xs:sequence>
+    <!-- Description of the code template. -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- code template value. -->
+    <xs:element name="template" type="xs:string"/>
+  </xs:sequence>
+  <!-- code template name. -->
+  <xs:attribute name="name" type="xs:string" use="required"/>
+</xs:complexType>
+
+<!-- Type for a list of parameters. -->
+<xs:complexType name="parametersType">
+  <xs:sequence>
+    <!-- Description of the parameters. -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- Whether we allow arbitrary parameters or not. -->
+    <xs:element name="allowAny" type="xs:boolean"/>
+    <!-- Zero or more parameters. -->
+    <xs:element name="parameter" type="parameterType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for a list of parameters. -->
+<xs:complexType name="javaOpParametersType">
+  <xs:sequence>
+    <!-- Description of the parameters. -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- Zero or more parameters. -->
+    <xs:element name="parameter" type="javaOpParameterType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for parameters. -->
+<xs:complexType name="parameterType">
+  <xs:sequence>
+    <!-- Name of the parameter. -->
+    <xs:element name="name" type="xs:string"/>
+    <!-- Description of the parameter. -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- Whether the parameter is optional or not. -->
+    <xs:element name="optional" type="xs:boolean"/>
+    <!-- Whether expression rewriting is allowed or not. -->
+    <xs:element name="rewriteAllowed" type="xs:boolean"/>
+    <!-- The expression mode of the parameter. -->
+    <xs:element name="expressionMode" type="expressionModeType"/>
+    <!-- Type of the parameter. If the expression mode is 'CustomLiteral', then
+     the type below refers to a custom literal defined under the context section. -->
+    <xs:element name="type" type="xs:string" minOccurs="0" maxOccurs="1"/>
+    <!-- Number of expressions allowed for the parameter value. -->
+    <xs:element name="cardinality" type="xs:integer" minOccurs="0" maxOccurs="1"/>
+    <!-- Port scope for the parameter value expressions. -->
+    <xs:element name="portScope" type="portScopeType" minOccurs="0" maxOccurs="1"/>
+    <!-- Allow custom output functions to be visible in parameter. -->
+    <xs:element name="customOutputFunction" type="xs:string" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for parameters. -->
+<xs:complexType name="javaOpParameterType">
+  <xs:sequence>
+    <!-- Name of the parameter. -->
+    <xs:element name="name" type="xs:string"/>
+    <!-- Description of the parameter. -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- Whether the parameter is optional or not. -->
+    <xs:element name="optional" type="xs:boolean"/>
+    <!-- The expression mode of the parameter. -->
+    <xs:element name="expressionMode" type="javaOpExpressionModeType" minOccurs="0" maxOccurs="1"/>
+    <!-- Type of the parameter -->
+    <xs:element name="type" type="xs:string" minOccurs="0" maxOccurs="1"/>
+    <!-- Number of expressions allowed for the parameter value. -->
+    <xs:element name="cardinality" type="xs:integer" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for port scopes. -->
+<xs:complexType name="portScopeType">
+  <xs:sequence>
+    <!-- One or more port indices. -->
+    <xs:element name="port" type="xs:nonNegativeInteger" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for optional port scopes. -->
+<xs:complexType name="optionalPortScopeType">
+  <xs:sequence>
+    <!-- One or more port indices. -->
+    <xs:element name="port" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for expression modes.  -->
+<xs:simpleType name="expressionModeType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="Attribute"/>
+    <xs:enumeration value="AttributeFree"/>
+    <xs:enumeration value="Constant"/>
+    <xs:enumeration value="CustomLiteral"/>
+    <xs:enumeration value="Expression"/>
+    <xs:enumeration value="Nonexistent"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<!-- Type for expression modes.  -->
+<xs:simpleType name="javaOpExpressionModeType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="Attribute"/>
+    <xs:enumeration value="AttributeFree"/>
+    <xs:enumeration value="CustomLiteral"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<!-- Type for window expression modes.  -->
+<xs:simpleType name="windowExpressionModeType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="Constant"/>
+    <xs:enumeration value="AttributeFree"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<!-- Type for a list of input ports. -->
+<xs:complexType name="inputPortsType">
+  <xs:sequence>
+    <!-- Zero or more input port sets. An input port set is a fixed number of input ports . -->
+    <xs:element name="inputPortSet" type="inputPortSetType" minOccurs="0" maxOccurs="unbounded"/>
+    <!-- Zero or one input port open set. An input port open set is one or more input ports (as in a+). -->
+    <xs:element name="inputPortOpenSet" type="inputPortOpenSetType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for a list of input ports. -->
+<xs:complexType name="javaOpInputPortsType">
+  <xs:sequence>
+    <!-- Zero or more input port sets. An input port set is a fixed number of input ports . -->
+    <xs:element name="inputPortSet" type="javaOpInputPortSetType" minOccurs="0" maxOccurs="unbounded"/>
+    <!-- Zero or one input port open set. An input port open set is one or more input ports. -->
+    <xs:element name="inputPortOpenSet" type="javaOpInputPortOpenSetType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for input port open sets. -->
+<xs:complexType name="inputPortOpenSetType">
+  <xs:sequence>
+    <!-- The optional description for the port set.  -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- The optional description for the window behavior for this port set. -->
+    <xs:element name="windowingDescription" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- Whether tuples received on this port can be mutated or not. -->
+    <xs:element name="tupleMutationAllowed" type="xs:boolean"/>
+    <!-- Windowing mode for the input port. -->
+    <xs:element name="windowingMode" type="windowingModeType"/>
+    <!-- Window punctuation mode for the input port. -->
+    <xs:element name="windowPunctuationInputMode" type="windowPunctuationInputModeType"/>
+    <!-- Is this port used only for controlling the operator, not submitting tuples? -->
+    <xs:element name="controlPort" type="xs:boolean" minOccurs="0" maxOccurs="1"/>
+    <!-- Window Expression mode for count/time/delta expression. -->
+    <xs:element name="windowExpressionMode" type="windowExpressionModeType" minOccurs="0" maxOccurs="1"/>
+    <!-- Whether rewriting of window count/time/delta expressions are allowed or not. -->
+    <xs:element name="rewriteAllowedForWindowExpression" type="xs:boolean" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for input port open sets. -->
+<xs:complexType name="javaOpInputPortOpenSetType">
+  <xs:sequence>
+    <!-- The optional description for the port set.  -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- The optional description for the window behavior for this port set. -->
+    <xs:element name="windowingDescription" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- Windowing mode for the input port. -->
+    <xs:element name="windowingMode" type="windowingModeType"/>
+    <!-- Window punctuation mode for the input port. -->
+    <xs:element name="windowPunctuationInputMode" type="windowPunctuationInputModeType"/>
+    <!-- Is this port used only for controlling the operator, not submitting tuples? -->
+    <xs:element name="controlPort" type="xs:boolean" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for input port sets. -->
+<xs:complexType name="inputPortSetType">
+  <xs:complexContent>
+    <xs:extension base="inputPortOpenSetType">
+      <xs:sequence>
+        <!-- Number of ports in the input port set. -->
+        <xs:element name="cardinality" type="xs:nonNegativeInteger"/>
+        <!-- Whether the port set is optional or not. An optional port set should
+         not be followed by a non-optional port set inside the inputPorts element. -->
+        <xs:element name="optional" type="xs:boolean"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<!-- Type for input port sets. -->
+<xs:complexType name="javaOpInputPortSetType">
+  <xs:complexContent>
+    <xs:extension base="javaOpInputPortOpenSetType">
+      <xs:sequence>
+        <!-- Number of ports in the input port set. -->
+        <xs:element name="cardinality" type="xs:nonNegativeInteger"/>
+        <!-- Whether the port set is optional or not. -->
+        <xs:element name="optional" type="xs:boolean"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<!-- Type for windowing modes. -->
+<xs:simpleType name="windowingModeType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="NonWindowed"/>
+    <xs:enumeration value="Windowed"/>
+    <xs:enumeration value="OptionallyWindowed"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<!-- Type for window punctuation input modes. -->
+<xs:simpleType name="windowPunctuationInputModeType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="Expecting"/>
+    <xs:enumeration value="Oblivious"/>
+    <xs:enumeration value="WindowBound"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<!-- Type for a list of output ports. -->
+<xs:complexType name="outputPortsType">
+  <xs:sequence>
+    <!-- Zero or more output port sets. An output port set is a fixed number of output ports . -->
+    <xs:element name="outputPortSet" type="outputPortSetType" minOccurs="0" maxOccurs="unbounded"/>
+    <!-- Zero or one output port open set. An output port open set is one or more output ports (as in a+). -->
+    <xs:element name="outputPortOpenSet" type="outputPortOpenSetType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for a list of output ports. -->
+<xs:complexType name="javaOpOutputPortsType">
+  <xs:sequence>
+    <!-- Zero or more output port sets. An output port set is a fixed number of output ports . -->
+    <xs:element name="outputPortSet" type="javaOpOutputPortSetType" minOccurs="0" maxOccurs="unbounded"/>
+    <!-- Zero or one output port open set. An output port open set is one or more output ports. -->
+    <xs:element name="outputPortOpenSet" type="javaOpOutputPortOpenSetType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for output port open sets. -->
+<xs:complexType name="outputPortOpenSetType">
+  <xs:sequence>
+    <!-- The optional description for the port set.  -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- Expression mode for the output attribute assignments. -->
+    <xs:element name="expressionMode" type="expressionModeType"/>
+    <!-- Whether auto assignment of output attribtues from the input ones should be performed or not. -->
+    <xs:element name="autoAssignment" type="xs:boolean"/>
+    <!-- Whether all output attribtues require an assignment. -->
+    <xs:element name="completeAssignment" type="xs:boolean"/>
+    <!-- Whether rewriting of assignment expressions are allowed or not. -->
+    <xs:element name="rewriteAllowed" type="xs:boolean"/>
+    <!-- Output functions used in output attribute assignments. -->
+    <xs:element name="outputFunctions" type="outputFunctionsType" minOccurs="0" maxOccurs="1"/>
+    <!-- Window punctuation mode for the output ports. -->
+    <xs:element name="windowPunctuationOutputMode" type="windowPunctuationOutputModeType"/>
+    <!-- The input port whose window punctuation is forwarded if the windowPunctuationOutputMode is Preserving. -->
+    <xs:element name="windowPunctuationInputPort" type="xs:integer" minOccurs="0" maxOccurs="1"/>
+    <!-- The list of input ports used to forward punctuations to the output ports. -->
+    <xs:element name="finalPunctuationPortScope" type="optionalPortScopeType" minOccurs="0" maxOccurs="1"/>
+    <!-- Whether tuples submitted from this output port can be mutated or not. -->
+    <xs:element name="tupleMutationAllowed" type="xs:boolean"/>
+    <!-- The list of input ports whose attributes could be used in output attribute assignments. -->
+    <xs:element name="outputAssignmentPortScope" type="portScopeType" minOccurs="0" maxOccurs="1"/>
+    <!-- Whether custom output functions may appear nested in expressions, or only at the top level. -->
+    <xs:element name="allowNestedCustomOutputFunctions" type="xs:boolean" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for output port open sets. -->
+<xs:complexType name="javaOpOutputPortOpenSetType">
+  <xs:sequence>
+    <!-- The optional description for the port set.  -->
+    <xs:element name="description" type="common:descriptionType" minOccurs="0" maxOccurs="1"/>
+    <!-- Window punctuation mode for the output ports. -->
+    <xs:element name="windowPunctuationOutputMode" type="windowPunctuationOutputModeType"/>
+    <!-- The input port whose window punctuation is forwarded if the windowPunctuationOutputMode is Preserving. -->
+    <xs:element name="windowPunctuationInputPort" type="xs:integer" minOccurs="0" maxOccurs="1"/>
+    <!-- The list of input ports used to forward punctuations to the output ports. -->
+    <xs:element name="finalPunctuationPortScope" type="optionalPortScopeType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for output port sets. -->
+<xs:complexType name="outputPortSetType">
+  <xs:complexContent>
+    <xs:extension base="outputPortOpenSetType">
+      <xs:sequence>
+        <!-- Number of ports in the output port set. -->
+        <xs:element name="cardinality" type="xs:nonNegativeInteger"/>
+        <!-- Whether the port set is optional or not. An optional port set should
+         not be followed by a non-optional port set inside the outputPorts element. -->
+        <xs:element name="optional" type="xs:boolean"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<!-- Type for output port sets. -->
+<xs:complexType name="javaOpOutputPortSetType">
+  <xs:complexContent>
+    <xs:extension base="javaOpOutputPortOpenSetType">
+      <xs:sequence>
+        <!-- Number of ports in the output port set. -->
+        <xs:element name="cardinality" type="xs:nonNegativeInteger"/>
+        <!-- Whether the port set is optional or not. -->
+        <xs:element name="optional" type="xs:boolean"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<!-- Type for output functions. -->
+<xs:complexType name="outputFunctionsType">
+  <xs:sequence>
+    <!-- The default output function, as in 'Last' for the Aggregate operator.-->
+    <xs:element name="default" type="xs:string"/>
+    <!-- The type of the output functions, which should refer back to one of the CustomOutputFunctions.-->
+    <xs:element name="type" type="xs:string"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for window punctuation output modes. -->
+<xs:simpleType name="windowPunctuationOutputModeType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="Generating"/>
+    <xs:enumeration value="Free"/>
+    <xs:enumeration value="Preserving"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<!-- Type for splExpressionTree. -->
+<xs:complexType name="splExpressionTreeType">
+  <!-- Should the C++ code for the SPL expression be generated in the SPL Expression tree?-->
+  <xs:attribute name="cppCode" type="xs:boolean" use="optional"/>
+  <!-- Should the SPL expression tree be generated for parameters?-->
+  <xs:attribute name="param" type="xs:boolean" use="optional"/>
+  <!-- Should the SPL expression tree be generated for output ?-->
+  <xs:attribute name="output" type="xs:boolean" use="optional"/>
+</xs:complexType>
+
+</xs:schema>

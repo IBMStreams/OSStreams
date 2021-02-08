@@ -1,0 +1,808 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use JoinCommon;
+    JoinCommon::verify($model);
+    my $class = $model->getContext()->getClass();
+
+    my $inputPortLHS = $model->getInputPortAt(0);
+    my $inputLHSName = $inputPortLHS->getCppTupleName();
+    my $windowLHS = $inputPortLHS->getWindow();
+    my $windowLHSCppInitializer =
+        SPL::CodeGen::getPartitionedWindowCppInitializer($windowLHS, "IPort0Type*", "LRU");
+
+    my $inputPortRHS = $model->getInputPortAt(1);
+    my $inputRHSName = $inputPortRHS->getCppTupleName();
+    my $windowRHS = $inputPortRHS->getWindow();
+    my $windowRHSCppInitializer =
+        SPL::CodeGen::getPartitionedWindowCppInitializer($windowRHS, "IPort1Type*", "LRU");
+
+    my $partitionByLHSParam = $model->getParameterByName("partitionByLHS");
+    my $partitionByLHSArgs = SPL::CodeGen::getParameterCppInitializer ($partitionByLHSParam);
+
+    my $partitionByRHSParam = $model->getParameterByName("partitionByRHS");
+    my $partitionByRHSArgs = SPL::CodeGen::getParameterCppInitializer ($partitionByRHSParam);
+
+    my $algorithm = $model->getParameterByName("algorithm");
+    $algorithm = !defined ($algorithm) ? "inner" :
+                        $algorithm->getValueAt(0)->getSPLExpression();
+    my $LHSCount = $windowLHS->hasEvictionPolicy() ? $windowLHS->getEvictionPolicySize()->getCppExpression() : 0;
+    my $RHSCount = $windowRHS->hasEvictionPolicy() ?  $windowRHS->getEvictionPolicySize()->getCppExpression() : 0;
+    my $numOutputs = $model->getNumberOfOutputPorts();
+
+    my $assignments = SPL::CodeGen::getOutputTupleCppInitializer($model->getOutputPortAt(0));
+    # equality stuff - must be same types for both
+    my $equalityLHS = $model->getParameterByName("equalityLHS");
+    my $equalityLHSArgs = SPL::CodeGen::getParameterCppInitializer ($equalityLHS);
+    my $equalityRHS = $model->getParameterByName("equalityRHS");
+    my $equalityRHSArgs = SPL::CodeGen::getParameterCppInitializer ($equalityRHS);
+    my $match = $model->getParameterByName("match");
+    $match = $match ? $match->getValueAt(0)->getCppExpression() : "true";
+    my $defaultTupleLHS = $model->getParameterByName("defaultTupleLHS");
+    $defaultTupleLHS = $defaultTupleLHS->getValueAt(0)->getCppExpression() if($defaultTupleLHS);
+    my $defaultTupleRHS = $model->getParameterByName("defaultTupleRHS");
+    $defaultTupleRHS = $defaultTupleRHS->getValueAt(0)->getCppExpression() if($defaultTupleRHS);
+
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <SPL/Runtime/Operator/OperatorMetrics.h>
+#include <SPL/Runtime/Utility/LogTraceMessage.h>
+#include <stdexcept>
+
+
+MY_OPERATOR::MY_OPERATOR()
+: MY_BASE_OPERATOR(),
+  _windowLHS(<%=$windowLHSCppInitializer%>),
+  _winLHSHandler (*this),
+  _windowRHS(<%=$windowRHSCppInitializer%>),
+  _winRHSHandler (*this),
+  _lhsPartitionCount(getContext().getMetrics().getCustomMetricByName("nCurrentPartitionsLHS")),
+  _rhsPartitionCount(getContext().getMetrics().getCustomMetricByName("nCurrentPartitionsRHS"))
+<%if ($isInConsistentRegion) {%>
+  ,_crContext(static_cast<ConsistentRegionContext *>(getContext().getOptionalContext(CONSISTENT_REGION)))
+<%}%>
+{
+    resetSubmitted();
+
+    _windowLHS.registerBeforeTupleEvictionHandler(&_winLHSHandler);
+    _windowRHS.registerBeforeTupleEvictionHandler(&_winRHSHandler);
+
+    <%if($windowLHS->hasPartitionEvictionPolicy()) {%>
+        _windowLHS.registerOnWindowPartitionEviction(&_winLHSHandler);
+    <%}%>
+    <%if($windowRHS->hasPartitionEvictionPolicy()) {%>
+        _windowRHS.registerOnWindowPartitionEviction(&_winRHSHandler);
+    <%}%>
+    <%if ($numOutputs == 1) {%>
+        <%if (($algorithm eq "outer" || $algorithm eq "leftOuter") && ! $defaultTupleRHS) {%>
+            _ClearedRHS.clear();
+        <%} if (($algorithm eq "outer" || $algorithm eq "rightOuter") && ! $defaultTupleLHS) {%>
+            _ClearedLHS.clear();
+        <%}%>
+    <%}%>
+    <%if($defaultTupleLHS) {%>
+        _ClearedLHS = <%=$defaultTupleLHS%>;
+    <%}%>
+    <%if($defaultTupleRHS) {%>
+        _ClearedRHS = <%=$defaultTupleRHS%>;
+    <%}%>
+    _emptyCountLHS = (<%=$LHSCount%>==0) && (_windowLHS.getEvictionPolicy().getType()==WindowPolicy::Count);
+    _emptyCountRHS = (<%=$RHSCount%>==0) && (_windowRHS.getEvictionPolicy().getType()==WindowPolicy::Count);
+    _lhsPartitionCount.setValueNoLock(0);
+    _rhsPartitionCount.setValueNoLock(0);
+}
+
+MY_OPERATOR::~MY_OPERATOR()
+{
+    // Delete any remaining tuples in the windows
+    _windowLHS.deleteWindowObjects();
+    _windowRHS.deleteWindowObjects();
+}
+
+<%if($windowLHS->hasPartitionEvictionPolicy()) {%>
+void MY_OPERATOR::WindowLHSHandler::onWindowPartitionEviction(WindowType & window,
+                                            PartitionIterator const& begin,
+                                            PartitionIterator const& end)
+{
+    // We have a window being evicted.   Clean up
+    PartitionIterator it;
+    for (it = begin; it != end; it++) {
+        // delete the tuples
+        WindowType::DataType & data = window.getWindowData(it.partition());
+        for(uint32_t i=0, iu=data.size(); i<iu; ++i) {
+            <%if ($equalityLHS) {%>
+                op_.cleanLHS (data[i]);
+            <%} else {%>
+                Allocator<WindowType::TupleType>::deallocate(data[i]);
+            <%}%>
+        }
+    }
+}
+<%}%>
+
+<%if($windowRHS->hasPartitionEvictionPolicy()) {%>
+void MY_OPERATOR::WindowRHSHandler::onWindowPartitionEviction(WindowType & window,
+                                            PartitionIterator const& begin,
+                                            PartitionIterator const& end)
+{
+    // We have a window being evicted.   Clean up
+    PartitionIterator it;
+    for (it = begin; it != end; it++) {
+        // delete the tuples
+        WindowType::DataType & data = window.getWindowData(it.partition());
+        for(uint32_t i=0, iu=data.size(); i<iu; ++i) {
+            <%if ($equalityRHS) {%>
+                op_.cleanRHS (data[i]);
+            <%} else {%>
+                Allocator<WindowType::TupleType>::deallocate(data[i]);
+            <%}%>
+        }
+    }
+}
+<%}%>
+
+void MY_OPERATOR::cleanLHS (WindowLHSTupleType & tuple)
+{
+    <%if ($equalityLHS) { # need to clean up data structures %>
+        IPort0Type const & <%=$inputLHSName%> = Referencer<WindowLHSTupleType>::dereference(tuple);
+
+        EqualityKeyType key (<%=$equalityLHSArgs%>);
+        LHSEqMapType::iterator eqIt = _LHSEq.find (key);
+        assert (eqIt != _LHSEq.end());
+        LHSEqType& data = eqIt->second;
+        <%if ($partitionByLHSParam) {%>
+            PartitionByLHSType partition(<%=$partitionByLHSArgs%>);
+            LHSEqType::iterator eqIt2 = data.find(partition);
+            assert (eqIt2 != data.end());
+            std::deque<WindowLHSTupleType>& tuples = eqIt2->second;
+            if (tuples.front() == tuple)
+                tuples.pop_front();
+            else {
+                std::deque<WindowLHSTupleType>::iterator it =
+                    std::find (tuples.begin(), tuples.end(), tuple);
+                assert (it != tuples.end());
+                tuples.erase(it);
+            }
+            if (tuples.size() == 0) {
+                data.erase(eqIt2);
+                if (data.size() == 0)
+                    _LHSEq.erase(eqIt);
+            }
+        <%} else {%>
+            if (data.front() == tuple)
+                data.pop_front();
+            else {
+                std::deque<WindowLHSTupleType>::iterator it =
+                    std::find (data.begin(), data.end(), tuple);
+                assert (it != data.end());
+                data.erase(it);
+            }
+            if (data.size() == 0)
+                _LHSEq.erase(eqIt);
+        <%}%>
+    <%}%>
+    _lhsPartitionCount.setValueNoLock (_windowLHS.getWindowStorage().size());
+    Allocator<WindowLHSTupleType>::deallocate(tuple);
+}
+
+void MY_OPERATOR::evictLHS (WindowLHSTupleType & tuple)
+{
+    <%if ($algorithm eq "outer" || $algorithm eq "leftOuter") {%>
+        // Did it match?
+        std::tr1::unordered_set<WindowLHSTupleType>::iterator it = _MatchedLHS.find(tuple);
+        if (it != _MatchedLHS.end())
+            _MatchedLHS.erase(it);
+        else {
+            IPort0Type & derefTuple = Referencer<WindowLHSTupleType>::dereference(tuple);
+            <%if ($numOutputs > 1) {%>
+                submit (derefTuple, 1);
+            <%} else {%>
+                IPort0Type& <%=$inputLHSName%> = derefTuple;
+                IPort1Type& <%=$inputRHSName%> = _ClearedRHS;
+                OPort0Type otuple (<%=$assignments%>);
+                submit (otuple, 0);
+            <%}%>
+        }
+    <%}%>
+    cleanLHS (tuple);
+}
+
+void MY_OPERATOR::cleanRHS (WindowRHSTupleType & tuple)
+{
+    <%if ($equalityRHS) { # need to clean up data structures %>
+        IPort1Type const & <%=$inputRHSName%> = Referencer<WindowRHSTupleType>::dereference(tuple);
+        EqualityKeyType key (<%=$equalityRHSArgs%>);
+        RHSEqMapType::iterator eqIt = _RHSEq.find (key);
+        assert (eqIt != _RHSEq.end());
+        RHSEqType& data = eqIt->second;
+        <%if ($partitionByRHSParam) {%>
+            PartitionByRHSType partition(<%=$partitionByRHSArgs%>);
+            RHSEqType::iterator eqIt2 = data.find(partition);
+            assert (eqIt2 != data.end());
+            std::deque<WindowRHSTupleType>& tuples = eqIt2->second;
+            if (tuples.front() == tuple)
+                tuples.pop_front();
+            else {
+                std::deque<WindowRHSTupleType>::iterator it =
+                    std::find (tuples.begin(), tuples.end(), tuple);
+                assert (it != tuples.end());
+                tuples.erase(it);
+            }
+            if (tuples.size() == 0) {
+                data.erase(eqIt2);
+                if (data.size() == 0)
+                    _RHSEq.erase(eqIt);
+            }
+            _rhsPartitionCount.setValueNoLock (_windowRHS.getWindowStorage().size());
+        <%} else {%>
+            if (data.front() == tuple)
+                data.pop_front();
+            else {
+                RHSEqType::iterator it =
+                    std::find (data.begin(), data.end(), tuple);
+                assert (it != data.end());
+                data.erase(it);
+            }
+            if (data.size() == 0)
+                _RHSEq.erase(eqIt);
+        <%}%>
+    <%}%>
+    _rhsPartitionCount.setValueNoLock (_windowRHS.getWindowStorage().size());
+    Allocator<WindowRHSTupleType>::deallocate(tuple);
+}
+
+void MY_OPERATOR::evictRHS (WindowRHSTupleType & tuple)
+{
+    <%if ($algorithm eq "outer" || $algorithm eq "rightOuter") {%>
+        // Did it match?
+        std::tr1::unordered_set<WindowRHSTupleType>::iterator it = _MatchedRHS.find(tuple);
+        if (it != _MatchedRHS.end())
+            _MatchedRHS.erase(it);
+        else {
+            IPort1Type & derefTuple = Referencer<WindowRHSTupleType>::dereference(tuple);
+            <%if ($numOutputs > 1) {%>
+                submit (derefTuple, <%print $algorithm eq "outer" ? "2" : "1";%>);
+            <%} else {%>
+                IPort0Type& <%=$inputLHSName%> = _ClearedLHS;
+                IPort1Type& <%=$inputRHSName%> = derefTuple;
+                OPort0Type otuple (<%=$assignments%>);
+                submit (otuple, 0);
+            <%}%>
+        }
+    <%}%>
+    cleanRHS (tuple);
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port) {
+<%if ($isInConsistentRegion || $ckptKind ne "none") {%>
+    AutoMutex am(_mutex);
+<% } else {%>
+    AutoPortMutex apm(_mutex, *this);
+<% } %>
+
+    bool match = false;
+    resetSubmitted();
+
+    if (port == 0) { // LHS
+        SPLAPPTRC(L_DEBUG, "LHS process tuple " << tuple, SPL_OPER_DBG);
+
+        const IPort0Type& <%=$inputLHSName%> = static_cast<const IPort0Type&>(tuple);
+        <%if ($partitionByLHSParam) {%>
+            PartitionByLHSType partition(<%=$partitionByLHSArgs%>);
+        <%}%>
+        <%if ($equalityRHS) {%>
+            EqualityKeyType key (<%=$equalityLHSArgs%>);
+        <%}%>
+        if (!_emptyCountRHS) {
+            AutoWindowDataAcquirer<WindowRHSTupleType,PartitionByRHSType,WindowRHSType::DataType,WindowRHSType::StorageType> awda(_windowRHS);
+            <%if ($equalityLHS) {%>
+                RHSEqMapType::const_iterator it = _RHSEq.find (key);
+                if (it != _RHSEq.end()) {
+                    const RHSEqType& data = it->second;
+                    <%if ($partitionByRHSParam) {
+                        # data is unordered_map<partitionType,deque<const WindowRHSTupleType>%>
+                        for (RHSEqType::const_iterator it2 = data.begin();
+                                    it2 != data.end(); it2++) {
+                            const std::deque<WindowRHSTupleType>& tuples = it2->second;
+                            for (std::deque<WindowRHSTupleType>::const_iterator it3 = tuples.begin();
+                                    it3 != tuples.end(); it3++) {
+                                const IPort1Type& <%=$inputRHSName%> =
+                                    static_cast<const IPort1Type&>(**it3);
+                                if (<%=$match%>) {
+                                    match = true;
+                                    <%if ($algorithm eq "outer" || $algorithm eq "rightOuter") {%>
+                                        _MatchedRHS.insert (*it3);
+                                    <%}%>
+                                    OPort0Type otuple (<%=$assignments%>);
+                                    submit (otuple, 0);
+                                }
+                            }
+                        }
+                    <%} else {
+                        # data is a dequeue<const Tuple *>%>
+                        for (RHSEqType::const_iterator it2 = data.begin();
+                                it2 != data.end(); it2++) {
+                            const IPort1Type& <%=$inputRHSName%> =
+                                static_cast<const IPort1Type&>(**it2);
+                            if (<%=$match%>) {
+                                match = true;
+                                <%if ($algorithm eq "outer" || $algorithm eq "rightOuter") {%>
+                                    _MatchedRHS.insert (*it2);
+                                <%}%>
+                                OPort0Type otuple (<%=$assignments%>);
+                                submit (otuple, 0);
+                            }
+                        }
+                    <%}%>
+                }
+            <%} else {%>
+                const WindowRHSType::StorageType& map = awda.getWindowStorage();
+                WindowRHSType::StorageType::const_iterator it;
+                for (it = map.begin(); it != map.end(); it++) {
+                    const WindowRHSType::DataType& data = it->second;
+                    WindowRHSType::DataType::const_iterator it2;
+                    for (it2 = data.begin(); it2 != data.end(); it2++) {
+                        const IPort1Type& <%=$inputRHSName%> =
+                            static_cast<const IPort1Type&>(**it2);
+                        if (<%=$match%>) {
+                            match = true;
+                            <%if ($algorithm eq "outer" || $algorithm eq "rightOuter") {%>
+                                _MatchedRHS.insert (*it2);
+                            <%}%>
+                            OPort0Type otuple (<%=$assignments%>);
+                            submit (otuple, 0);
+                        }
+                    }
+                }
+            <%}%>
+            _rhsPartitionCount.setValueNoLock (_windowRHS.getWindowStorage().size());
+        }
+        if (!_emptyCountLHS) {
+            WindowLHSTupleType newTuple = Creator<WindowLHSTupleType>::create(tuple);
+            <%if ($equalityRHS) { # need to add LHS tuple to map%>
+              {
+                AutoWindowDataAcquirer<WindowLHSTupleType,PartitionByLHSType,WindowLHSType::DataType,WindowLHSType::StorageType> awda(_windowLHS);
+                LHSEqMapType::iterator eqIt = _LHSEq.find(key);
+                if (eqIt == _LHSEq.end())
+                    eqIt = _LHSEq.insert (
+                        LHSEqMapType::value_type(key, LHSEqType())).first;
+                <%if ($partitionByLHSParam) {%>
+                    LHSEqType& data = eqIt->second;
+                    LHSEqType::iterator eqIt2 = data.find(partition);
+                    if (eqIt2 == data.end())
+                        eqIt2 = data.insert(
+                            LHSEqType::value_type(partition,
+                                        LHSEqType::mapped_type())).first;
+                    eqIt2->second.push_back(newTuple);
+                <%} else {%>
+                    eqIt->second.push_back(newTuple);
+                <%}%>
+              }
+            <%}%>
+            <%if ($algorithm eq "outer" || $algorithm eq "leftOuter") {%>
+                if (match) {
+                    AutoWindowDataAcquirer<WindowLHSTupleType,PartitionByLHSType,WindowLHSType::DataType,WindowLHSType::StorageType> awda(_windowLHS);
+                    _MatchedLHS.insert (newTuple);
+                }
+            <%}%>
+            _windowLHS.insert (newTuple<%print ", partition" if $partitionByLHSParam;%>);
+            _lhsPartitionCount.setValueNoLock (_windowLHS.getWindowStorage().size());
+        } else {
+            <%if ($algorithm eq "outer" || $algorithm eq "leftOuter") {%>
+                if (!match) {
+                    <%if ($numOutputs > 1) {%>
+                        OPort1Type otuple (<%=$inputLHSName%>);
+                        submit (otuple, 1);
+                    <%} else {%>
+                        const IPort1Type& <%=$inputRHSName%> = _ClearedRHS;
+                        OPort0Type otuple (<%=$assignments%>);
+                        submit (otuple, 0);
+                    <%}%>
+                }
+            <%}%>
+        }
+    } else { // RHS
+        SPLAPPTRC(L_DEBUG, "RHS process tuple " << tuple, SPL_OPER_DBG);
+        const IPort1Type& <%=$inputRHSName%> = static_cast<const IPort1Type&>(tuple);
+        <%if ($partitionByRHSParam) {%>
+            PartitionByRHSType partition(<%=$partitionByRHSArgs%>);
+        <%}%>
+        <%if ($equalityRHS) {%>
+            EqualityKeyType key (<%=$equalityRHSArgs%>);
+        <%}%>
+        if (!_emptyCountLHS) {
+            AutoWindowDataAcquirer<WindowLHSTupleType,PartitionByLHSType,WindowLHSType::DataType,WindowLHSType::StorageType> awda(_windowLHS);
+            <%if ($equalityRHS) {%>
+                LHSEqMapType::const_iterator it = _LHSEq.find (key);
+                if (it != _LHSEq.end()) {
+                    const LHSEqType& data = it->second;
+                    <%if ($partitionByLHSParam) {
+                        # data is unordered_map<partitionType,deque<WindowLHSTupleType>%>
+                        for (LHSEqType::const_iterator it2 = data.begin();
+                                    it2 != data.end(); it2++) {
+                            const std::deque<WindowLHSTupleType>& tuples = it2->second;
+                            for (std::deque<WindowLHSTupleType>::const_iterator it3 = tuples.begin();
+                                    it3 != tuples.end(); it3++) {
+                                const IPort0Type& <%=$inputLHSName%> =
+                                    static_cast<const IPort0Type&>(**it3);
+                                if (<%=$match%>) {
+                                    match = true;
+                                    <%if ($algorithm eq "outer" || $algorithm eq "leftOuter") {%>
+                                        _MatchedLHS.insert (*it3);
+                                    <%}%>
+                                    OPort0Type otuple (<%=$assignments%>);
+                                    submit (otuple, 0);
+                                }
+                            }
+                        }
+                    <%} else {
+                        # data is a dequeue<const Tuple *>%>
+                        for (LHSEqType::const_iterator it2 = data.begin();
+                                it2 != data.end(); it2++) {
+                            const IPort0Type& <%=$inputLHSName%> =
+                                static_cast<const IPort0Type&>(**it2);
+                            if (<%=$match%>) {
+                                match = true;
+                                <%if ($algorithm eq "outer" || $algorithm eq "leftOuter") {%>
+                                    _MatchedLHS.insert (*it2);
+                                <%}%>
+                                OPort0Type otuple (<%=$assignments%>);
+                                submit (otuple, 0);
+                            }
+                        }
+                    <%}%>
+                }
+            <%} else {%>
+                const WindowLHSType::StorageType& map = awda.getWindowStorage();
+                WindowLHSType::StorageType::const_iterator it;
+                for (it = map.begin(); it != map.end(); it++) {
+                    const WindowLHSType::DataType& data = it->second;
+                    WindowLHSType::DataType::const_iterator it2;
+                    for (it2 = data.begin(); it2 != data.end(); it2++) {
+                        const IPort0Type& <%=$inputLHSName%> = static_cast<const IPort0Type&>(**it2);
+                        if (<%=$match%>) {
+                            match = true;
+                            <%if ($algorithm eq "outer" || $algorithm eq "leftOuter") {%>
+                                _MatchedLHS.insert (*it2);
+                            <%}%>
+                            OPort0Type otuple (<%=$assignments%>);
+                            submit (otuple, 0);
+                        }
+                    }
+                }
+            <%}%>
+        }
+        if (!_emptyCountRHS) {
+            WindowRHSTupleType newTuple = Creator<WindowRHSTupleType>::create(tuple);
+            <%if ($equalityRHS) { # need to add LHS tuple to map%>
+              {
+                AutoWindowDataAcquirer<WindowRHSTupleType, PartitionByRHSType,WindowRHSType::DataType,WindowRHSType::StorageType> awda(_windowRHS);
+                RHSEqMapType::iterator eqIt = _RHSEq.find(key);
+                if (eqIt == _RHSEq.end())
+                    eqIt = _RHSEq.insert (
+                        RHSEqMapType::value_type(key, RHSEqType())).first;
+                <%if ($partitionByRHSParam) {%>
+                    RHSEqType& data = eqIt->second;
+                    RHSEqType::iterator eqIt2 = data.find(partition);
+                    if (eqIt2 == data.end())
+                        eqIt2 = data.insert(
+                            RHSEqType::value_type(partition,
+                                        RHSEqType::mapped_type())).first;
+                    eqIt2->second.push_back(newTuple);
+                <%} else {%>
+                    eqIt->second.push_back(newTuple);
+                <%}%>
+              }
+            <%}%>
+            <%if ($algorithm eq "outer" || $algorithm eq "rightOuter") {%>
+                if (match) {
+                    AutoWindowDataAcquirer<WindowRHSTupleType,PartitionByRHSType,WindowRHSType::DataType,WindowRHSType::StorageType> awda(_windowRHS);
+                    _MatchedRHS.insert (newTuple);
+                }
+            <%}%>
+            _windowRHS.insert (newTuple<%print ", partition" if $partitionByRHSParam;%>);
+        } else {
+            <%if ($algorithm eq "outer" || $algorithm eq "rightOuter") {%>
+                if (!match) {
+                    <%if ($numOutputs > 1) {
+                      my $port = $algorithm eq "outer" ? 2 : 1; %>
+                        OPort<%=$port%>Type otuple (<%=$inputRHSName%>);
+                        submit (otuple, <%=$port%>);
+                    <%} else {%>
+                        const IPort0Type& <%=$inputLHSName%> = _ClearedLHS;
+                        OPort0Type otuple (<%=$assignments%>);
+                        submit (otuple, 0);
+                    <%}%>
+                }
+            <%}%>
+        }
+    }
+    if (_submitted)
+        submit(Punctuation::WindowMarker, 0);
+}
+
+void MY_OPERATOR::drain()
+{
+    SPLAPPTRC(L_DEBUG, "drain", SPL_OPER_DBG);
+    _windowLHS.drain();
+    _windowRHS.drain();
+}
+
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    SPLAPPTRC(L_DEBUG, "checkpoint " << ckpt.getSequenceId(), SPL_OPER_DBG);
+    _windowLHS.checkpoint(ckpt);
+    _windowRHS.checkpoint(ckpt);
+
+    <%if ($algorithm eq "outer" || $algorithm eq "leftOuter") {%>
+    TupleMapLHSType tupleMapLHS;
+    populateTupleMap(_windowLHS, tupleMapLHS);
+    serializeMatches (ckpt, _MatchedLHS, tupleMapLHS);
+    <%}%>
+    <%if ($algorithm eq "outer" || $algorithm eq "rightOuter") {%>
+    TupleMapRHSType tupleMapRHS;
+    populateTupleMap(_windowRHS, tupleMapRHS);
+    serializeMatches (ckpt, _MatchedRHS, tupleMapRHS);
+    <%}%>
+}
+
+
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    SPLAPPTRC(L_DEBUG, "reset " << ckpt.getSequenceId(), SPL_OPER_DBG);
+    _windowLHS.reset(ckpt);
+    _windowRHS.reset(ckpt);
+
+    <%if ($equalityLHS) {%>
+    {
+        _LHSEq.clear();
+        if (!_emptyCountLHS) {
+            SPL::AutoWindowDataAcquirer<WindowLHSTupleType,PartitionByLHSType,WindowLHSType::DataType,WindowLHSType::StorageType> dataAcquirer(_windowLHS);
+            WindowLHSType::StorageType const & storage = dataAcquirer.getWindowStorage();
+            for (WindowLHSType::StorageType::const_iterator storageIt = storage.begin(); storageIt != storage.end(); ++storageIt) {
+                WindowLHSType::DataType const & data = storageIt->second;
+                for (WindowLHSType::DataType::const_iterator dataIt = data.begin(); dataIt != data.end(); ++dataIt) {
+                    WindowLHSTupleType const& tuple = *dataIt;
+                    IPort0Type const & <%=$inputLHSName%> = Referencer<WindowLHSTupleType>::dereference(tuple);
+                    <%if ($partitionByLHSParam) {%>
+                    PartitionByLHSType partition(<%=$partitionByLHSArgs%>);
+                    <%}%>
+                    EqualityKeyType key (<%=$equalityLHSArgs%>);
+                    LHSEqMapType::iterator eqIt = _LHSEq.find(key);
+                    if (eqIt == _LHSEq.end())
+                        eqIt = _LHSEq.insert(LHSEqMapType::value_type(key, LHSEqType())).first;
+                    <%if ($partitionByLHSParam) {%>
+                    LHSEqType& data = eqIt->second;
+                    LHSEqType::iterator eqIt2 = data.find(partition);
+                    if (eqIt2 == data.end())
+                        eqIt2 = data.insert(LHSEqType::value_type(partition, LHSEqType::mapped_type())).first;
+                    eqIt2->second.push_back(tuple);
+                    <%} else {%>
+                    eqIt->second.push_back(tuple);
+                    <%}%>
+                }
+            }
+        }
+    }
+    <%}%>
+    <%if ($equalityRHS) {%>
+    {
+        _RHSEq.clear();
+        if (!_emptyCountRHS) {
+            SPL::AutoWindowDataAcquirer<WindowRHSTupleType,PartitionByRHSType,WindowRHSType::DataType,WindowRHSType::StorageType> dataAcquirer(_windowRHS);
+            WindowRHSType::StorageType const & storage = dataAcquirer.getWindowStorage();
+            for (WindowRHSType::StorageType::const_iterator storageIt = storage.begin(); storageIt != storage.end(); ++storageIt) {
+                WindowRHSType::DataType const & data = storageIt->second;
+                for (WindowRHSType::DataType::const_iterator dataIt = data.begin(); dataIt != data.end(); ++dataIt) {
+                    WindowRHSTupleType const & tuple = *dataIt;
+                    IPort1Type const & <%=$inputRHSName%> = Referencer<WindowRHSTupleType>::dereference(tuple);
+                    <%if ($partitionByRHSParam) {%>
+                    PartitionByRHSType partition(<%=$partitionByRHSArgs%>);
+                    <%}%>
+                    EqualityKeyType key (<%=$equalityRHSArgs%>);
+                    RHSEqMapType::iterator eqIt = _RHSEq.find(key);
+                    if (eqIt == _RHSEq.end())
+                        eqIt = _RHSEq.insert(RHSEqMapType::value_type(key, RHSEqType())).first;
+                    <%if ($partitionByRHSParam) {%>
+                    RHSEqType& data = eqIt->second;
+                    RHSEqType::iterator eqIt2 = data.find(partition);
+                    if (eqIt2 == data.end())
+                        eqIt2 = data.insert(RHSEqType::value_type(partition, RHSEqType::mapped_type())).first;
+                    eqIt2->second.push_back(tuple);
+                    <%} else {%>
+                    eqIt->second.push_back(tuple);
+                    <%}%>
+                }
+            }
+        }
+    }
+    <%}%>
+
+    <%if ($algorithm eq "outer" || $algorithm eq "leftOuter") {%>
+    _MatchedLHS.clear();
+    TupleVectorLHSType tupleVectorLHS;
+    populateTupleVector(_windowLHS, tupleVectorLHS);
+    deserializeMatches (ckpt, _MatchedLHS, tupleVectorLHS);
+    <%}%>
+    <%if ($algorithm eq "outer" || $algorithm eq "rightOuter") {%>
+    _MatchedRHS.clear();
+    TupleVectorRHSType tupleVectorRHS;
+    populateTupleVector(_windowRHS, tupleVectorRHS);
+    deserializeMatches (ckpt, _MatchedRHS, tupleVectorRHS);
+    <%}%>
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    AutoMutex am(_mutex);
+
+    SPLAPPTRC(L_DEBUG, "resetToInitialState", SPL_OPER_DBG);
+    _windowLHS.resetToInitialState();
+    _windowRHS.resetToInitialState();
+
+    <%if ($equalityLHS) {%>
+      _LHSEq.clear();
+      _RHSEq.clear();
+
+    <%}%>
+
+    <% if ($algorithm ne "inner") {%>
+        <%if ($algorithm eq "outer" || $algorithm eq "leftOuter") {%>
+            _MatchedLHS.clear();
+        <%}%>
+        <%if ($algorithm eq "outer" || $algorithm eq "rightOuter") {%>
+            _MatchedRHS.clear();
+        <%}%>
+    <%}%>
+}
+
+// Serialization support for checkpoints.
+//
+// The state for the Join operator contains pointers to tuples.  These
+// pointers are created by this class, then inserted into one of the
+// windows, and possibly into data structures owned by this class.  The
+// same pointers are thus shared by the window and by this class.
+// When we checkpoint the state of this operator, we want to store
+// each tuple only once, and when the state is restored, restore the
+// single instance of each tuple into a new tuple pointer.  To
+// accomplish this, we allow the window to actually save the tuples,
+// and to create the new pointers on reset.  We create mappings from
+// tuple pointer to integer on checkpoint, and from integer to tuple
+// pointer (implemented as a vector) on reset.  For each pointer
+// referenced in the data structures owned by this class, we look up
+// the corresponding integer value and serialize that on checkpoint,
+// and on reset, deserialize the integers and look up tuple pointers.
+
+template <typename T>
+void MY_OPERATOR::deserialize (SPL::Checkpoint & ckpt, std::deque<T> & value, std::vector<T> const & tupleVector) {
+
+    typename std::deque<T>::size_type size = 0;
+    ckpt >> size;
+    for (typename std::deque<T>::size_type index = 0;
+         index != size;
+	 ++index) {
+	uint64_t tupleIndex;
+	ckpt >> tupleIndex;
+        T const & tuple = tupleVector.at(tupleIndex);
+	value.push_back(tuple);
+    }
+}
+
+
+template <typename T>
+void MY_OPERATOR::serialize (SPL::Checkpoint & ckpt, std::deque<T> const & value, std::tr1::unordered_map<T, uint64_t> const & tupleMap) {
+    typename std::deque<T>::size_type size = value.size();;
+    ckpt << size;
+    for (typename std::deque<T>::const_iterator valueIt = value.begin();
+         valueIt != value.end();
+         ++valueIt) {
+
+        typename std::tr1::unordered_map<T, uint64_t>::const_iterator found = tupleMap.find(*valueIt);
+	if (found == tupleMap.end()) {
+	  throw std::out_of_range("Value not found in Join::serialize");
+	}
+	ckpt << found->second;
+    }
+}
+
+template <typename Key, typename Value, typename T>
+void MY_OPERATOR::deserialize (SPL::Checkpoint & ckpt, std::tr1::unordered_map<Key, Value> & map, std::vector<T> const & tupleVector) {
+    map.clear ();
+    typename Value::size_type size = 0;
+    ckpt >> size;
+    for (typename Value::size_type index = 0; index != size; ++index) {
+        Key key;
+        Value value;
+        ckpt >> key;
+        deserialize (ckpt, value, tupleVector);
+        map[key] = value;
+    }
+}
+
+template <typename Key, typename Value, typename T>
+void MY_OPERATOR::serialize (SPL::Checkpoint & ckpt, std::tr1::unordered_map<Key, Value> const & map, std::tr1::unordered_map<T, uint64_t> const & tupleMap) {
+    ckpt << map.size();
+    for (typename std::tr1::unordered_map<Key, Value>::const_iterator it = map.begin();
+         it != map.end();
+         ++it) {
+        Key key = it->first;
+        Value value = it->second;
+        ckpt << key;
+        serialize (ckpt, value, tupleMap);
+    }
+}
+
+template <typename T>
+void MY_OPERATOR::deserializeMatches (SPL::Checkpoint& ckpt, std::tr1::unordered_set<T> & matches, std::vector<T> const & tupleVector) {
+    typename std::tr1::unordered_set<T>::size_type size = 0;
+    ckpt >> size;
+    for (typename std::tr1::unordered_set<T>::size_type index = 0; index != size; ++index) {
+        uint64_t tupleIndex = 0;
+        ckpt >> tupleIndex;
+        T const & tuple = tupleVector.at(tupleIndex);
+        matches.insert (tuple);
+    }
+}
+
+template <typename T>
+void MY_OPERATOR::serializeMatches (SPL::Checkpoint& ckpt, std::tr1::unordered_set<T> const & matches, std::tr1::unordered_map<T, uint64_t> const & tupleMap) {
+    ckpt << matches.size();
+    for (typename std::tr1::unordered_set<T>::const_iterator matchIt = matches.begin(); matchIt != matches.end(); ++matchIt) {
+        typename std::tr1::unordered_map<T, uint64_t>::const_iterator tuple = tupleMap.find(*matchIt);
+        if (tuple == tupleMap.end()) {
+            throw std::out_of_range("Value not found in Join::serializeMatches");
+        }
+        ckpt << tuple->second;
+    }
+}
+
+template<typename T, typename G, typename D, typename S>
+void MY_OPERATOR::populateTupleMap (SPL::Window<T,G,D,S> & window, std::tr1::unordered_map<T, uint64_t> & tupleMap) {
+    SPL::AutoWindowDataAcquirer<T,G,D,S> dataAcquirer(window);
+    typename SPL::Window<T,G,D,S>::StorageType const & storage = dataAcquirer.getWindowStorage();
+
+    uint64_t index = 0;
+
+    for (typename SPL::Window<T,G,D,S>::StorageType::const_iterator storageIt = storage.begin(); storageIt != storage.end(); ++storageIt) {
+        typename SPL::Window<T,G,D,S>::DataType const & data = storageIt->second;
+        for (typename SPL::Window<T,G,D,S>::DataType::const_iterator dataIt = data.begin(); dataIt != data.end(); ++dataIt) {
+            tupleMap[*dataIt] = index++;
+        }
+    }
+}
+
+template<typename T, typename G, typename D, typename S>
+void MY_OPERATOR::populateTupleVector (SPL::Window<T,G,D,S> & window, std::vector<T> & tupleVector) {
+    SPL::AutoWindowDataAcquirer<T,G,D,S> dataAcquirer(window);
+    typename SPL::Window<T,G,D,S>::StorageType const & storage = dataAcquirer.getWindowStorage();
+    for (typename SPL::Window<T,G,D,S>::StorageType::const_iterator storageIt = storage.begin(); storageIt != storage.end(); ++storageIt) {
+        typename SPL::Window<T,G,D,S>::DataType const & data = storageIt->second;
+        for (typename SPL::Window<T,G,D,S>::DataType::const_iterator dataIt = data.begin(); dataIt != data.end(); ++dataIt) {
+            tupleVector.push_back(*dataIt);
+        }
+    }
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

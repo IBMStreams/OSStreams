@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/wireFormatType"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:tt="http://www.ibm.com/xmlns/prod/streams/spl/tupleType"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/wireFormatType"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/tupleType"
+           schemaLocation="../../Core/tupleTypeModel.xsd"/>
+
+<!-- The wire format.  -->
+<xs:element name="wireformat" type="wireFormatType"/>
+
+  <xs:complexType name="wireFormatType">
+    <xs:sequence>
+      <!-- The InfoSphere Streams tuple schema used by the wireFormat. -->
+      <xs:element name="schema" type="tt:tupleType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <!-- In what format with the data be read/written -->
+    <xs:attribute name="format" type="dataFormatType" use="required"/>
+    <!-- Is the data compressed? -->
+    <xs:attribute name="compression" type="compressionType"/>
+    <!-- Is the data encoded in an encoding other than UTF8? -->
+    <xs:attribute name="encoding" type="xs:string"/>
+    <!-- Are punctuations sent in the data stream? -->
+    <xs:attribute name="includesPunctuations" type="xs:boolean"/>
+    <!-- Is there a time delay before the data? -->
+    <xs:attribute name="hasDelay" type="xs:boolean"/>
+  </xs:complexType>
+
+  <xs:simpleType name="dataFormatType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the on-the-wire data format.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="streams_txt"/>
+      <xs:enumeration value="streams_csv"/>
+      <xs:enumeration value="streams_bin"/>
+      <xs:enumeration value="streams_line"/>
+      <xs:enumeration value="streams_block"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="compressionType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists whether the wire format uses data compression, and if so, the compression algorithm being used.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="zlib"/>
+      <xs:enumeration value="gzip"/>
+      <xs:enumeration value="bzip2"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>

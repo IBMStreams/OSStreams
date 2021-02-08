@@ -1,0 +1,97 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Union.html">
+The `Union` operator merges the streams that are connected to multiple input ports into a single stream.
+
+# Checkpointed data
+
+When the `Union` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Union` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+In a consistent region, a `Union` operator stores its state when a checkpoint is taken.
+When the region is reset, the operator restores the state from the checkpoint.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Union` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Union` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `Union` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring a, int32 d, rstring b&gt; A = Beacon() {}
+        stream&lt;rstring a, rstring b, uint32 c&gt; B = Beacon() {}
+        // Accept all tuples from A and B, and grab the b and a fields from each
+        stream &lt;rstring b, rstring a&gt; C = Union (A; B) {}
+    }
+
+</description>
+      <iconUri size="16">union_16.gif</iconUri>
+      <iconUri size="32">union_32.gif</iconUri>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Union">
+          <description>Basic Union template</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = Union(${inputStream1};${inputStream2}) {
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Union` operator has two or more input ports, which ingest tuples to be unioned.
+All attributes in the output port must be present in the schema of each input port, with the same type.
+The order of attributes in the input port is not required to match the output port.
+The input port schemas can contain extra attributes that do not appear in the output port schema.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>2</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+      <inputPortOpenSet>
+        <description>Additional ports that ingest tuples to be unioned.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+      </inputPortOpenSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Union` operator has one output port, which produces unioned tuples.
+The output tuple attributes are automatically forwarded from the input ones.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <windowPunctuationOutputMode>Free</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

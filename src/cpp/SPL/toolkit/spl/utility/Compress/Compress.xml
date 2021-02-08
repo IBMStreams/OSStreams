@@ -1,0 +1,180 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Compress.html">
+The `Compress` operator is used to compress data in a blob and generate blob output.
+
+# Checkpointed data
+
+When the `Compress` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Compress` operator can be used in a consistent region. It cannot be used as the start of the region.
+In a consistent region, a `Compress` operator stores its state when a checkpoint is taken.
+When the region is reset, the operator restores the state from the checkpoint.
+
+In a consistent region, it is recommended that each sequence creates a block of data that is decompressed as a unit.
+For example, write the output of each sequence to a separate file.
+The drain action is to complete generation of tuples for all data received,
+including any end-of-stream data that the compression algorithm requires.
+At receipt of the first tuple in any sequence, a new compressed stream is generated,
+including any start-of-stream data that the compression algorithm requires.
+
+The generation of a single compressed stream from multiple consistent region sequences is not supported.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Compress` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Compress` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `Compress` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring a, int32 b&gt; A = Beacon() {
+          param iterations : 100;
+        }
+        stream&lt;blob b&gt; B = Format (A) {
+          param format : txt;
+          output B     : b = Output();
+        }
+        stream&lt;blob b&gt; C = Compress (B) {
+          param compression : gzip;
+          // compressionInput defaults to 'b', as there is only 1 input attribute
+        }
+        // Write it to a file
+        () as Nul = FileSink (C) {
+          param file   : "out";
+                format : block;
+        }
+    }
+
+    // This example is equivalent to the following SPL program:
+    composite Main2 {
+      graph
+        stream&lt;rstring a, int32 b&gt; A = Beacon() {
+          param iterations : 100;
+        }
+        // Write it to a file
+        () as Nul = FileSink (A) {
+          param file        : "out";
+                format      : txt;
+                compression : gzip;
+        }
+    }
+
+</description>
+      <iconUri size="16">compress_16.gif</iconUri>
+      <iconUri size="32">compress_32.gif</iconUri>
+      <customLiterals>
+        <enumeration>
+          <name>CompressionAlg</name>
+          <value>zlib</value>
+          <value>gzip</value>
+          <value>bzip2</value>
+        </enumeration>
+      </customLiterals>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Compress">
+          <description>Basic Compress template</description>
+          <template>(stream&lt;blob&gt; ${outputStream} = Compress(${inputStream})   {
+            param
+                compression : ${algorithm};
+                compressInput : ${inputAttribute};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>compression</name>
+        <description>
+Specifies the compression mode, which compresses the input to the output by using the specified algorithm.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>CompressionAlg</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>compressionInput</name>
+        <description>
+Specifies the data to be compressed.
+If this parameter is not specified, the input stream must consist of a single blob attribute.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <type>blob</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>flushOnPunct</name>
+        <description>
+Specifies when the compression is completed.
+
+If the parameter value is `true`, the compression is completed when a window punctuation is received.
+The remaining data is generated followed by a window punctuation.
+Any subsequent input tuples cause the compression to reset to the initial state.
+
+If the parameter is not specified or the value is `false`, the compression is completed when a final punctuation is received.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Compress` operator is configurable with a single input port, which ingests tuples that contain data to be compressed.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Compress` operator is configurable with a single output port, which produces tuples that contain compressed data.</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

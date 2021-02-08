@@ -1,0 +1,394 @@
+#!/usr/bin/env perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use FindBin;
+use lib "${FindBin::Bin}";
+
+use strict;
+use Getopt::Long qw(:config no_ignore_case bundling);
+use XML::SAX;
+use base qw(XML::SAX::Base);
+use Data::Dumper;
+use GrammarParser;
+
+
+package Element;
+sub genGrammar
+{
+   my ($self) = @_;
+   die("$self->{_kind} needs to override method 'genGrammar'");
+}
+
+sub genComment
+{
+   my ($self) = @_;
+   die("$self->{_kind} needs to override method 'genComment'");
+}
+
+sub isNonTerminal
+{
+   return 0;
+}
+
+1;
+#******************************************************
+package Not;
+
+sub genComment
+{
+   my ($self) = @_;
+   $self->genGrammar(0);
+}
+
+sub genGrammar
+{
+   my ($self, $currentState) = @_;
+   print " ~";
+   return $currentState;
+}
+
+1;
+#******************************************************
+package Dot;
+
+sub genComment
+{
+   my ($self) = @_;
+   $self->genGrammar(0);
+}
+
+sub genGrammar
+{
+   my ($self, $currentState) = @_;
+   print " .";
+   print "$self->{_repetition}";
+   return $currentState;
+}
+
+1;
+#******************************************************
+package SpecialTerminal;
+
+sub genComment
+{
+   my ($self) = @_;
+   $self->genGrammar(0);
+}
+
+sub genGrammar
+{
+   my ($self, $currentState) = @_;
+   print " $self->{_text}";
+   return $currentState;
+}
+
+1;
+#******************************************************
+package Terminal;
+
+sub genComment
+{
+   my ($self) = @_;
+   $self->genGrammar(0);
+}
+
+sub genGrammar
+{
+   my ($self, $currentState) = @_;
+   print " '$self->{_text}'";
+   return $currentState;
+}
+
+1;
+#******************************************************
+package TerminalRange;
+
+sub genComment
+{
+   my ($self) = @_;
+   $self->genGrammar(0);
+}
+
+sub genGrammar
+{
+   my ($self, $currentState) = @_;
+   print @{$self->{_range}}[0]->genGrammar();
+   print "..";
+   print @{$self->{_range}}[1]->genGrammar();
+   return $currentState;
+}
+
+1;
+#******************************************************
+package Argument;
+
+sub genComment
+{
+   my ($self) = @_;
+   $self->genGrammar();
+}
+
+sub genGrammar
+{
+   my ($self) = @_;
+   print " $self->{_text}";
+}
+
+1;
+#******************************************************
+package NonTerminal;
+
+sub genComment
+{
+   my ($self) = @_;
+   $self->genGrammar(0);
+}
+
+sub genGrammar
+{
+   my ($self, $currentState) = @_;
+   print " {cc<<${currentState};}" if ($currentState > 0);
+   print " $self->{_name}";
+   if (defined($self->{_args}) && scalar(@{$self->{_args}}) != 0) {
+      print "[";
+      my $first = 1;
+      foreach my $arg (@{$self->{_args}}) {
+         print ", " if ($first);
+         $first = 0;
+         $arg->genGrammar();
+      }
+      print "]";
+   }
+   print "$self->{_repetition}";
+   return ++$currentState;
+}
+
+sub isNonTerminal
+{
+   return 1;
+}
+1;
+#******************************************************
+package Group;
+
+sub genComment
+{
+   my ($self) = @_;
+   print " (";
+   foreach my $child (@{$self->{_rule}}) {
+      $child->genGrammar();
+   }
+   print " )";
+   print "$self->{_repetition}";
+}
+
+sub genGrammar
+{
+   my ($self, $currentState) = @_;
+   print " (";
+   foreach my $child (@{$self->{_rule}}) {
+      $currentState = $child->genGrammar($currentState);
+   }
+   print " )";
+   print "$self->{_repetition}";
+   return $currentState;
+}
+
+sub isNonTerminal
+{
+   my ($self) = @_;
+    foreach my $child (@{$self->{_rule}}) {
+       return 1 if ($child->isNonTerminal());
+    }
+    return 0;
+}
+
+1;
+#******************************************************
+package Choice;
+
+sub genComment
+{
+   my ($self) = @_;
+   my $first = 1;
+   foreach my $child (@{$self->{_rule}}) {
+      if (!$first) { print " |"}
+      $first = 0;
+      $child->genComment();
+   }
+}
+
+sub genGrammar
+{
+   my ($self, $currentState) = @_;
+   my $first = 1;
+   my $entryState = $currentState;
+   foreach my $child (@{$self->{_rule}}) {
+      if (!$first) { print " |"}
+      $first = 0;
+      $currentState = $child->genGrammar($entryState);
+   }
+   return $currentState;
+}
+
+sub isNonTerminal
+{
+   my ($self) = @_;
+    foreach my $child (@{$self->{_rule}}) {
+       return 1 if ($child->isNonTerminal());
+    }
+    return 0;
+}
+
+1;
+#******************************************************
+package Sequence;
+
+sub genComment
+{
+   my ($self) = @_;
+   foreach my $child (@{$self->{_rule}}) {
+      $child->genComment();
+   }
+}
+
+sub genGrammar
+{
+   my ($self, $currentState) = @_;
+   my $entryState = $currentState;
+   foreach my $child (@{$self->{_rule}}) {
+      $currentState = $child->genGrammar($currentState);
+   }
+   return $currentState;
+}
+
+sub isNonTerminal
+{
+   my ($self) = @_;
+    foreach my $child (@{$self->{_rule}}) {
+       return 1 if ($child->isNonTerminal());
+    }
+    return 0;
+}
+
+1;
+#******************************************************
+package SyntacticPredicate;
+
+sub genComment
+{
+   my ($self) = @_;
+   $self->genGrammar();
+}
+
+sub genGrammar
+{
+   my ($self, $currentState) = @_;
+   print " (";
+   foreach my $child (@{$self->{_rule}}) {
+      $child->genComment($currentState);
+   }
+   print " )=>";
+   return $currentState;
+}
+
+1;
+#******************************************************
+package Production;
+
+sub genGrammar
+{
+   my ($self) = @_;
+   return if ($self->{_gen} eq "no");
+
+   printf ("%-20s", $self->{_name});
+   print "//-> ";
+   foreach my $child (@{$self->{_rule}}) {
+      $child->genComment();
+   }
+   my $currentState = 0;
+   print "\n";
+   printf("%+21s", ":");
+   foreach my $child (@{$self->{_rule}}) {
+      $currentState = $child->genGrammar($currentState);
+   }
+   print "\n\n";
+}
+
+1;
+#******************************************************
+package Fragment;
+
+sub start_element
+{
+   my ($self, $element) = @_;
+   if ($element->{'LocalName'} eq 'sequence') {
+      push(@{$self->{_rule}}, new Sequence($element));
+   } elsif ($element->{'LocalName'} eq 'choice') {
+      push(@{$self->{_rule}}, new Choice($element));
+   } else {
+      die("Production::Unexpected element type $element->{'LocalName'}\n");
+   }
+}
+
+sub genGrammar
+{
+   my ($self) = @_;
+   print "fragment $self->{_name} : ";
+   foreach my $child (@{$self->{_rule}}) {
+      $child->genGrammar();
+   }
+   print "\n";
+}
+1;
+#******************************************************
+package Grammar;
+
+sub genGrammar
+{
+   my ($self) = @_;
+   foreach my $production (@{$self->{_productions}}) {
+      $production->genGrammar();
+   }
+}
+
+1;
+#******************************************************
+package GrammarParser;
+
+sub genGrammar
+{
+   my ($self) = @_;
+   $self->{_grammar}->genGrammar();
+}
+
+1;
+#******************************************************
+
+package main;
+
+
+my %opts;
+my @options = ('file=s', 'debug|d');
+GetOptions(\%opts, @options);
+die ("file not specified") if (!defined($opts{file}));
+
+my $parser = GrammarParser->new;
+$parser->parse($opts{'file'});
+
+$parser->genGrammar();

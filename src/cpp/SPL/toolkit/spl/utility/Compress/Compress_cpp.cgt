@@ -1,0 +1,151 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+
+    use CompressCommon;
+    CompressCommon::verify($model);
+    my $inputPort = $model->getInputPortAt(0);
+    my $inTupleName = $inputPort->getCppTupleName();
+
+    my $compression = $model->getParameterByName("compression");
+    my $compressionInput = $model->getParameterByName("compressionInput");
+    my $flushOnPunct = $model->getParameterByName("flushOnPunct");
+
+    if ($compressionInput) {
+        $compressionInput = $compressionInput->getValueAt(0)->getCppExpression();
+    } else {
+        # input must be just one blob attribute
+        $compressionInput = "$inTupleName.get_" . $inputPort->getAttributeAt(0)->getName() . "()";
+    }
+    $compression = $compression->getValueAt(0)->getSPLExpression();
+    $flushOnPunct = $flushOnPunct ? $flushOnPunct->getValueAt(0)->getSPLExpression() eq 'true' : 0;
+
+    #consistent region support
+    my $crContext = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $isInConsistentRegion = $crContext ? 1 : 0;
+    my $isStart = $crContext ? $crContext->isStartOfRegion() : 0;
+    my $isTrigger = $crContext ? $crContext->isTriggerOperator() : 0;
+
+SPL::CodeGen::implementationPrologue($model);%>
+
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Toolkit/RuntimeException.h>
+#include <SPL/Toolkit/WriteBufferStream.h>
+#include <fstream>
+#include <boost/iostreams/filter/<%=$compression%>.hpp>
+
+using namespace std;
+using namespace boost::iostreams;
+
+MY_OPERATOR::MY_OPERATOR()
+: _filt_str (new filtering_streambuf<output>), _fs (new ostream(_filt_str.get()))
+    <%if ($isInConsistentRegion) {%>
+        ,_crContext()
+    <%}%>
+{
+    SPLAPPTRC(L_DEBUG, "Compress startup...", SPL_OPER_DBG);
+    _filt_str->push (<%=$compression%>_compressor());
+    _filt_str->push (SPL::WriteBufferStream<OPort0Type, 0>(*this));
+
+<%if ($isInConsistentRegion) {%>
+    _crContext = static_cast<ConsistentRegionContext *>
+            (getContext().getOptionalContext(CONSISTENT_REGION));
+    getContext().registerStateHandler(*this);
+<%}%>
+
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port) {
+    <%if ($isInConsistentRegion) {%>
+        AutoMutex am(_mutex);
+    <%}%>
+    <%if ($flushOnPunct) {%>
+        <%unless ($isInConsistentRegion) {%>
+            AutoPortMutex apm(_mutex, *this);
+        <%}%>
+        if (punct == Punctuation::WindowMarker) {
+            _fs.reset(NULL);
+            _filt_str.reset(NULL);
+            submit (Punctuation::WindowMarker, 0);
+        } else
+    <%}%>
+    if (punct == Punctuation::FinalMarker) {
+        _fs.reset(NULL);
+        _filt_str.reset(NULL);
+        <%if (!$flushOnPunct) {%>
+            submit (Punctuation::WindowMarker, 0);
+        <%}%>
+    }
+}
+
+void MY_OPERATOR::process(Tuple const & tuple$, uint32_t port)
+{
+    <%if ($isInConsistentRegion) {%>
+        AutoMutex am(_mutex);
+    <%}%>
+    const IPort0Type <%=$inTupleName%> = static_cast<const IPort0Type&>(tuple$);
+
+    const blob& _b = <%=$compressionInput%>;
+    uint64_t size;
+    unsigned char const * data = _b.getData(size);
+    <%if ($flushOnPunct && !$isInConsistentRegion){%>
+        AutoPortMutex apm(_mutex, *this);
+    <%}%>
+    <%if ($flushOnPunct || $isInConsistentRegion){%>
+        if (!_fs.get()) {
+            _filt_str.reset(new filtering_streambuf<output>);
+            _fs.reset (new ostream(_filt_str.get()));
+            _filt_str->push (<%=$compression%>_compressor());
+            _filt_str->push (SPL::WriteBufferStream<OPort0Type, 0>(*this));
+        }
+    <%}%>
+    _fs->write((const char *) data, size);
+}
+
+<%if ($isInConsistentRegion) {%>
+void MY_OPERATOR::drain() {
+    AutoMutex am(_mutex);
+    _fs.reset(NULL);
+    _filt_str.reset(NULL);
+}
+
+void MY_OPERATOR::resetCommon()
+{
+    AutoMutex am(_mutex);
+    _fs.reset(NULL);
+    // We cannot do a .reset() on _filt_str directly,
+    // as this may cause tuple submission on a reset,
+    // making the reset state inconsistent.
+    // The reason it causes a tuple submission is that the
+    // destructor will close the filter gracefully, which
+    // in case of WriteBufferStream includes tuple submission.
+    _filt_str->set_auto_close(false);
+    _filt_str->pop();
+    _filt_str.reset(NULL);
+}
+
+void MY_OPERATOR::reset(Checkpoint& ckpt) {
+    resetCommon();
+}
+
+void MY_OPERATOR::resetToInitialState() {
+    resetCommon();
+}
+
+<%}%>
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

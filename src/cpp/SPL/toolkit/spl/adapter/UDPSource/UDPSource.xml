@@ -1,0 +1,443 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.adapter$UDPSource.html">
+The `UDPSource` operator reads data from a UDP socket and creates tuples and punctuation out of it.
+Each tuple must fit into a single UDP packet and a single UDP packet must contain only a single tuple or punctuation.
+
+The `UDPSource` operator accepts an optional output clause.
+Any SPL expression and supported custom output functions can be used in the output clause.
+Output attributes can be assigned values on the output clause.
+If they have an assignment, the expression value is assigned to the attribute
+and the attribute is not part of the value that is read from the source.
+For the line and block formats, there must be only one attribute that is not assigned by an output assignment
+and this attribute must have type rstring (for line format) or blob (for block format).
+For all other formats, any attributes that are not assigned in the output clause are read from the input by using csv, txt, or bin format.
+
+# Checkpointed data
+
+When the `UDPSource` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `UDPSource` operator is not supported in a consistent region.
+
+# Checkpointing behavior in an autonomous region
+
+When the `UDPSource` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `UDPSource` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Exceptions
+
+The `UDPSource` operator throws an exception in the following cases:
+* The host cannot be resolved.
+* The name cannot be located.
+* Unable to bind to port.
+* Unable to locate interface.
+
+# Examples
+
+This example uses the `UDPSource` operator.
+
+    composite Main {
+       graph
+         // udp socket on local host, using port for "ftp"
+         stream&lt;rstring name, uint32 age, uint64 salary&gt; Beat = UDPSource()
+         {
+           param
+             port : "ftp";
+         }
+        // udp on local host, accepts packets from "some.node.some.host" on port 23145
+        stream&lt;Beat&gt; Beat1 = UDPSource()
+        {
+          param
+            address : "some.node.some.host";
+            port    : 23145u;
+        }
+        // same as above, but using a receive buffer size, and waiting 5 secs at start-up
+        stream&lt;Beat&gt; Beat2 = UDPSource()
+        {
+          param
+            address           : "some.node.some.host";
+            port              : 23145u;
+            receiveBufferSize : 10240u;
+            initDelay         : 5.0;
+        }
+        // same as above but also registers its location to the name server
+        stream&lt;Beat&gt; Beat3 = UDPSource()
+        {
+          param
+             port    : 23145u;
+             name    : "my_server";
+        }
+        // udp on local host, uses any port, registers its location to the name server
+        stream&lt;Beat&gt; Beat4 = UDPSource()
+        {
+          param
+             name : "my_server";
+        }
+        // udp on local host, uses port "ftp", registers its location to the name server
+        stream&lt;Beat&gt; Beat5 = UDPSource()
+        {
+          param
+            port  : "ftp";
+            name  : "my_server";
+        }
+        // udp on local host, accepts packets sent to a multicast address, on port 23145
+        stream&lt;Beat&gt; Beat6 = UDPSource()
+        {
+          param
+            address : "some.multicast.address";
+            port    : 23145u;
+        }
+        // same as above but also registers its location to the name server
+        stream&lt;Beat&gt; Beat7 = UDPSource()
+        {
+          param
+            port : 23145u;
+            name : "my_server";
+        }
+        // same as above but uses a specific interface for receiving packets
+        stream&lt;Beat&gt; Beat8 = UDPSource()
+        {
+          param
+            address   : "some.multicast.address";
+            port      : 23145u;
+            interface : "ib1";
+        }
+    }
+
+</description>
+      <iconUri size="16">UDPSource_16.gif</iconUri>
+      <iconUri size="32">UDPSource_32.gif</iconUri>
+      <metrics>
+        <metric>
+          <name>nInvalidTuples</name>
+          <description>The number of tuples that failed to read correctly in csv or txt format.</description>
+          <kind>Counter</kind>
+        </metric>
+      </metrics>
+      <customLiterals>
+        <enumeration>
+          <name>DataFormat</name>
+          <value>csv</value>
+          <value>txt</value>
+          <value>bin</value>
+          <value>block</value>
+          <value>line</value>
+        </enumeration>
+        <enumeration>
+          <name>ParseOption</name>
+          <value>strict</value>
+          <value>permissive</value>
+          <value>fast</value>
+        </enumeration>
+        <enumeration>
+          <name>CompressionAlg</name>
+          <value>zlib</value>
+          <value>gzip</value>
+          <value>bzip2</value>
+        </enumeration>
+      </customLiterals>
+      <customOutputFunctions>
+        <customOutputFunction>
+          <name>OutputFunctions</name>
+          <function>
+            <description>Returns the address of the current UDP packet. If the name cannot be resolved, this value is a host name or a dotted IP address</description>
+            <prototype><![CDATA[rstring RemoteIP()]]></prototype>
+          </function>
+          <function>
+            <description>Returns the port number of the remote UDP packet. </description>
+            <prototype><![CDATA[uint32 RemotePort()]]></prototype>
+          </function>
+          <function>
+            <description>Returns the port number that the UDP server is listening on. </description>
+            <prototype><![CDATA[uint32 ServerPort()]]></prototype>
+          </function>
+          <function>
+            <description>
+Returns the number of tuples that are generated by this operator since the processing element (PE) was last started.
+The first tuple that is generated has number 0.
+</description>
+            <prototype><![CDATA[int64 TupleNumber()]]></prototype>
+          </function>
+          <function>
+            <description>Return the input value</description>
+            <prototype><![CDATA[<any T> T AsIs(T)]]></prototype>
+          </function>
+        </customOutputFunction>
+      </customOutputFunctions>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:lib>boost_iostreams</cmn:lib>
+            <cmn:lib>boost_system</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="UDPSource with Address">
+          <description>UDPSource with Address</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = UDPSource() {
+            param
+                address : "${hostOrIp}";
+                port : "${sourcePort}";
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="UDPSource with Name">
+          <description>UDPSource with Name</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = UDPSource() {
+            param
+                name : "${name}";
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>address</name>
+        <description>
+Specifies the address of the sender whose UDP packets are accepted.
+
+If the address is a multicast address, then all UDP packets that are destined to that multicast address
+at the specified port are accepted regardless of the address of the sender.
+
+If this parameter is not specified, all UDP packets that are destined at the port are accepted.
+
+The parameter value can be a host name or an IP address.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>interface</name>
+        <description>
+Specifies the network interface to use for UDP multicast packets or to register by using the **name** parameter.
+This parameter is only valid when the **address** or **name** parameters are specified.
+Using the **interface** parameter with the **name** parameter ensures that `UDPSink` operators with the same **name** parameter use the wanted interface.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>port</name>
+        <description>
+Specifies the port address on which the UDP packets are accepted.
+It takes a single value of type rstring or type uint33.
+The parameter value can be a well-known port alias, such as http or ftp, or a plain port number, such as 45134u.
+
+This parameter must be specified when the **name** parameter is not specified; it is optional otherwise.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>name</name>
+        <description>
+Specifies the name that is used to register the address of the node that is hosting the operator
+and port pair for this operator with the name service.
+The corresponding `UDPSink` operator can look it up and send its UDP packets to the registered address at the registered port.
+
+These names are automatically prefixed by the application scope, thus applications with differing scopes cannot communicate through the same name.
+The application scope can be set by using `config applicationScope` on the main composite in the application.
+It is an error for a name with the same application scope to be defined multiple times with an instance.
+If multiple operators attempt to define the same name, the second and subsequent operators keep trying periodically
+to register the name with an error message for each failure.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>format</name>
+        <description>
+Specifies the format of the data.
+For more information, see the **format** parameter in the [FileSource] operator.
+
+The formatting applies to each packet individually.
+For csv, txt, bin formats, each UDP packet is a single tuple in the corresponding format.
+For line format, each packet contains a single line and there is no **eolMarker** parameter.
+Trailing carriage returns ("\\r") and new lines ("\\n") are removed from the string.
+For block format, each packet contains a single block and there is no blockSize parameter.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>DataFormat</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>encoding</name>
+        <description>
+Specifies the character set encoding of the input.
+For more information, see the **encoding** parameter in the [FileSource] operator.
+The encoding applies to each packet, independently.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>defaultTuple</name>
+        <description>
+Specifies the default tuple to use for missing fields.
+For more information, see the **defaultTuple** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>compression</name>
+        <description>
+Specifies the compression mode.
+For more information, see the **compression** parameter in the [FileSource] operator.
+The compression applies to each packet, independently.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>CompressionAlg</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>parsing</name>
+        <description>
+Specifies the parsing behavior of the `UDPSource` operator.
+There are three valid values: `strict`, `permissive`, and `fast`.
+
+When the parameter value is `strict`, incorrectly formatted tuples result in a runtime error and termination of the operator.
+
+When the parameter value is `permissive`, incorrectly formatted tuples result in the creation of a runtime log entry
+and the parser continues with the next packet. This parameter value can be used with only txt, csv, and bin formats.
+
+When the parameter value is `fast`, the input packet is assumed to be formatted correctly and no runtime checks are performed.
+Incorrect input in fast mode causes undefined behavior.
+
+The default parsing mode is `strict`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>ParseOption</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>hasDelayField</name>
+        <description>
+Specifies whether the format contains inter-arrival delays as the first field.
+For more information, see the **hasDelayField** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>receiveBufferSize</name>
+        <description>Specifies the kernel receive buffer size for the UDP socket.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>initDelay</name>
+        <description>
+Specifies the number of seconds to delay before starting to produce tuples.
+For more information, see the **initDelay** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>separator</name>
+        <description>
+Specifies the separator character for the csv format.
+For more information, see the **separator** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>readPunctuations</name>
+        <description>
+Specifies whether to read punctuations from 'bin' format input.
+For more information, see the **readPunctuations** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>ignoreExtraCSVValues</name>
+        <description>
+Specifies whether to skip any extra fields before the end of line when reading in CSV format.
+For more information, see the **ignoreExtraCSValues** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `UDPSource` operator is configurable with a single output port, which produces tuples read from UDP packets.</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <outputFunctions>
+          <default>AsIs</default>
+          <type>OutputFunctions</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

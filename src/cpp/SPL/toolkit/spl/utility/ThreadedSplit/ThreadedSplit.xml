@@ -1,0 +1,191 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$ThreadedSplit.html">
+The `ThreadedSplit` operator splits tuples across multiple output ports to improve concurrency.
+
+One thread is used for each output port to submit tuples as quickly as possible.
+It is not possible to determine in advance to which output port a tuple is sent.
+The `ThreadedSplit` operator maintains one buffer for each output port.
+When all the queues fill up, the `ThreadedSplit` operator busy waits until there is
+space in one of them to add a new tuple, therefore blocking the input tuple.
+When a thread that submits tuples encounters an empty buffer, it busy waits until a tuple arrives at its buffer.
+
+The `ThreadedSplit` operator is not a direct replacement for the `Split` operator.
+The `ThreadedSplit` operator does not allow choosing to which stream a tuple is sent.
+
+For information about controlling the mechanism that is used when the `ThreadedSplit` is waiting on a full queue,
+see the **--avoid-runtime-yield** compiler option in the **sc** command.
+
+# Checkpointed data
+
+When the `ThreadedSplit` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `ThreadedSplit` operator can be an operator within the reachability graph of a consistent region.
+During drain processing, all threads finish submitting queued tuples.
+During reset processing, the operator discards all currently queued tuples.
+In a consistent region, a `ThreadedSplit` operator stores its state when a checkpoint is taken.
+When the region is reset, the operator restores the state from the checkpoint.
+
+# Checkpointing behavior in an autonomous region
+
+When the `ThreadedSplit` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `ThreadedSplit` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `ThreadedSplit` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring name&gt; Input = Beacon () {}
+        // split tuples to two output streams.
+        (stream&lt;rstring name&gt; Out1;
+         stream&lt;rstring name&gt; Out2) = ThreadedSplit(Input)
+        {
+          param
+            bufferSize: 1000u;
+        }
+    }
+
+</description>
+      <iconUri size="16">threadedSplit_16.gif</iconUri>
+      <iconUri size="32">threadedSplit_32.gif</iconUri>
+      <metrics>
+        <metric>
+          <name>queueSize</name>
+<description>
+The size of the queue for each output port.
+</description>
+          <kind>Gauge</kind>
+          <dynamic>true</dynamic>
+        </metric>
+        <metric>
+          <name>nItemsQueued (port N)</name>
+<description>
+The number of items currently queued for port number N.
+</description>
+          <kind>Gauge</kind>
+          <dynamic>true</dynamic>
+        </metric>
+        <metric>
+          <name>maxItemsQueued (port N)</name>
+<description>
+The largest number of items queued for port number N.
+</description>
+          <kind>Gauge</kind>
+          <dynamic>true</dynamic>
+        </metric>
+        <metric>
+          <name>recentMaxItemsQueued (port N)</name>
+<description>
+The recent largest number of items queued for port number N.
+</description>
+          <kind>Gauge</kind>
+          <dynamic>true</dynamic>
+        </metric>
+        <metric>
+          <name>recentMaxItemsQueuedInterval</name>
+<description>
+The interval used to determine the recent largest number of items queued (milliseconds), where the number reported is the largest number from the current and previous intervals, and each interval duration is five minutes.
+</description>
+          <kind>Gauge</kind>
+          <dynamic>true</dynamic>
+        </metric>
+        <metric>
+          <name>nEnqueueWaits</name>
+<description>
+The number of waits due to all queues full.
+</description>
+          <kind>Gauge</kind>
+          <dynamic>true</dynamic>
+        </metric>
+      </metrics>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:lib>pthread</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Never</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="ThreadedSplit">
+          <description>Basic ThreadedSplit template</description>
+          <template>(stream&lt;${inputStream}&gt; ${outputStream1};stream&lt;${inputStream}&gt; ${outputStream2}) = ThreadedSplit(${inputStream}) {
+            param
+                bufferSize: ${bufferSize};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>bufferSize</name>
+        <description>
+Specifies the size of each buffer that is used to store the input tuples for each output port.
+The final punctuation marker is not forwarded until all buffers are drained.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `ThreadedSplit` operator has one input port, which ingests tuples to be split amongst multiple threads.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `ThreadedSplit` operator is configurable by having one or more output ports.
+The schema for each output port must match the schema of the input port.
+The output tuple attributes are automatically forwarded from the input ones.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+      <outputPortOpenSet>
+        <description>Additional ports that produce the split tuples.</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+      </outputPortOpenSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

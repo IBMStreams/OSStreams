@@ -1,0 +1,48 @@
+<body>
+Java Operator API for Streams.
+The main interface for an operator is {@link com.ibm.streams.operator.Operator Operator},
+an instance of operator acts as a processor of tuples. When an <code>Operator</code> has streaming inputs (ports)
+incoming tuples are passed into its
+{@link com.ibm.streams.operator.Operator#process(StreamingInput, Tuple) process} method as
+{@link com.ibm.streams.operator.Tuple Tuple} objects.
+An {@link com.ibm.streams.operator.OperatorContext OperatorContext} provides information
+about the context the operator is executing in and access to the method to
+{@link com.ibm.streams.operator.StreamingOutput#submit(Object) submit} tuples
+on its streaming outputs.
+<P>
+Java Operators are invoked from a IBM Streams Processing Language (SPL) application
+either using a Java primitive operator or
+the generic <code>spl.utility.JavaOp</code> operator from the SPL Standard toolkit.
+</P>
+<h3>Java Primitive Operators</h3>
+A Java primitive operator defines the operator class and its required jar files in
+its operator model. In addition the operator model defines the syntax
+for the operator, such as expected parameters, ports and windowing semantics.
+A Java primitive operator is then is invoked like any other operator within SPL.
+<h3>JavaOp</h3>
+A JavaOp operator invocation supports these parameters:
+<UL>
+<LI><code>generated</code> <I>Optional</I> - A boolean parameter, that if set to true it indicates
+that the SPL compilation generates classes and interfaces specific to the operator and its ports.
+</LI>
+<LI><code>className</code> <I>Required </I> - The full class name of the operator that
+is used to process and submit tuples. The specified class must implement {@link com.ibm.streams.operator.Operator Operator}.
+</LI>
+<LI><code>classLibrary</code> <I> Required </I> - Application specific class path elements
+required by the operator class, each value corresponds to a single
+JAR file or a directory containing Java classes.
+</LI>
+<LI><code>vmArg</code> <I> Optional </I> Command line arguments passed to the invoked
+Java virtual machine the operator is executed within. Operators that are fused into a single processing
+element must have equivalent values for vmArg.
+While Java system properties can be set using <code>vmArg</code>, the preference should be to set them
+within the operator's code, to avoid incompatible <code>vmArg</code> setting for fusing. Only when
+a system property is required to be set at JVM startup should it be set using <code>vmArg</code>.
+</LI>
+</UL>
+In addition any number of arbitrary constant parameters can be defined that will be
+handled by the application's operator within the class defined by <code>className</code>.
+<P>
+For full details see the SPL Standard Toolkit reference.
+</P>
+</body>

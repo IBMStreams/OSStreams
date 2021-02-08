@@ -1,0 +1,9 @@
+# -*- shell-script -*-
+
+prefix=${distinst}
+Name: pe-install
+Version: 1
+Description: PE-building necessary packages (from an usable installation)
+Cflags: -D_REENTRANT -fPIC
+Libs: -rdynamic
+Requires: dst-pe-distillery dst-pe-ext

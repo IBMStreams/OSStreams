@@ -1,0 +1,136 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+my $class = $model->getClass();
+sub escapeQuotes($);
+%>
+#include "<%=$class%>.h"
+#include <sstream>
+
+#define SELF <%=$class%>
+
+using namespace SPL;
+
+TupleMappings* SELF::mappings_ = SELF::initMappings();
+
+static void addMapping(TupleMappings & tm, TypeOffset & offset,
+                       std::string const & name, uint32_t index)
+{
+    tm.nameToIndex_.insert(std::make_pair(name, index));
+    tm.indexToName_.push_back(name);
+    tm.indexToTypeOffset_.push_back(offset);
+}
+
+static Tuple * initer() { return new SELF(); }
+
+TupleMappings* SELF::initMappings()
+{
+    instantiators_.insert(std::make_pair("<%=escapeQuotes($model->getSPLType())%>",&initer));
+    TupleMappings * tm = new TupleMappings();
+#define MY_OFFSETOF(member, base) \
+    ((uintptr_t)&reinterpret_cast<Self*>(base)->member) - (uintptr_t)base
+
+    // initialize the mappings
+    <%for (my $i = 0; $i < $model->getNumberOfAttributes(); ++$i) {
+        my $attr = $model->getAttributeAt($i);%>
+    {
+        std::string s("<%=$attr->getName()%>");
+        TypeOffset t(MY_OFFSETOF(<%=$attr->getName()%>_, tm),
+                     Meta::Type::typeOf<<%=$attr->getCppType()%> >(),
+                     &typeid(<%=$attr->getCppType()%>));
+        addMapping(*tm, t, s, <%=$i%>);
+    }
+    <%}%>
+    return tm;
+}
+
+void SELF::deserialize(std::istream & istr, bool withSuffix)
+{
+   std::string s;
+   char c;
+
+   istr >> c; if (!istr) { return; }
+   if (c != '{') { istr.setstate(std::ios_base::failbit); return; }
+   <%for (my $i = 0, my $count = $model->getNumberOfAttributes(); $i < $count; ++$i) { my $attr = $model->getAttributeAt($i);%>
+   if (!readAttributeIdentifier(istr, s)) { return; }
+   if (s != "<%=$attr->getName()%>") { istr.setstate(std::ios_base::failbit); return; }
+   istr >> c; if (!istr) { return; }
+   if (c != '=') { istr.setstate(std::ios_base::failbit); return; }
+   if (withSuffix)
+     SPL::deserializeWithSuffix(istr, <%=$attr->getName()%>_);
+   else
+     istr >> <%=$attr->getName()%>_;
+   if (!istr) { return; }
+   istr >> c; if (!istr) { return; }
+   <%print "if (c != ',') { istr.setstate(std::ios_base::failbit); return; }\n" if $i < $count-1;
+   }%>
+   if (c != '}') { istr.setstate(std::ios_base::failbit); return; }
+}
+
+void SELF::deserializeWithNanAndInfs(std::istream & istr, bool withSuffix)
+{
+   std::string s;
+   char c;
+
+   istr >> c; if (!istr) { return; }
+   if (c != '{') { istr.setstate(std::ios_base::failbit); return; }
+   <%for (my $i = 0, my $count = $model->getNumberOfAttributes(); $i < $count; ++$i) { my $attr = $model->getAttributeAt($i);%>
+   if (!readAttributeIdentifier(istr, s)) { return; }
+   if (s != "<%=$attr->getName()%>") { istr.setstate(std::ios_base::failbit); return; }
+   istr >> c; if (!istr) { return; }
+   if (c != '=') { istr.setstate(std::ios_base::failbit); return; }
+   SPL::deserializeWithNanAndInfs(istr, <%=$attr->getName()%>_, withSuffix);
+   if (!istr) { return; }
+   istr >> c; if (!istr) { return; }
+   <%print "if (c != ',') { istr.setstate(std::ios_base::failbit); return; }\n" if $i < $count-1;
+   }%>
+   if (c != '}') { istr.setstate(std::ios_base::failbit); return; }
+}
+
+void SELF::serialize(std::ostream & ostr) const
+{
+    ostr << '{'<%for (my $i = 0, my $count = $model->getNumberOfAttributes(); $i < $count; ++$i) { my $attr = $model->getAttributeAt($i);%>
+         << "<%=$attr->getName()%>=" << get_<%=$attr->getName()%>()  <%print "<< \",\"" if $i < $count-1;%><%}%>
+         << '}';
+}
+
+void SELF::serializeWithPrecision(std::ostream & ostr) const
+{
+    ostr << '{';<%for (my $i = 0, my $count = $model->getNumberOfAttributes(); $i < $count; ++$i) { my $attr = $model->getAttributeAt($i);%>
+    SPL::serializeWithPrecision(ostr << "<%=$attr->getName()%>=", get_<%=$attr->getName()%>()) <%print "<< \",\"" if $i < $count-1;%>;<%}%>
+    ostr << '}';
+}
+
+SELF& SELF::clear()
+{
+<%SPL::CodeGenHelper::genTupleClear($model);%>
+    return *this;
+}
+
+void SELF::normalizeBoundedSetsAndMaps()
+{
+    SPL::normalizeBoundedSetsAndMaps(*this);
+}
+
+<%
+sub escapeQuotes($)
+{
+    my ($string) = @_;
+    $string =~ s/"/\\"/g;
+    return $string;
+}
+%>

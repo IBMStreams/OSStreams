@@ -1,0 +1,117 @@
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: streams-instance-operator
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streams-instance-operator
+  labels:
+    app: streams
+    svc: operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: streams
+      svc: instance-operator
+  template:
+    metadata:
+      name: streams-instance-operator
+      labels:
+        app: streams
+        svc: instance-operator
+    spec:
+      securityContext:
+        runAsUser: 2098
+        runAsGroup: 2015
+      containers:
+        - name: controller
+          image: us.icr.io/spl_team/streams-runtime:6.release
+          imagePullPolicy: Always
+          command:
+            - java
+            - -cp
+            - /usr/local/streams/system/impl/lib/com.ibm.streams.controller.jar
+            - -Dcom.ibm.jsse2.overrideDefaultTLS=true
+            - com.ibm.streams.controller.instance.Main
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+          env:
+            - name: DOCKER_REGISTRY
+              value: us.icr.io
+            - name: DOCKER_NAMESPACE
+              value: spl_team
+            - name: STREAMS_CHECKPOINT_PATH
+              value: /tmp
+            - name: STREAMS_DATA_PATH
+              value: /tmp
+            - name: STREAMS_BUILD_TYPE
+              value: debug
+            - name: STREAMS_LOG_LEVEL
+              value: INFO
+            - name: MY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MY_POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+        - name: repository
+          image: us.icr.io/spl_team/streams-runtime:6.release
+          imagePullPolicy: Always
+          command:
+            - redis-server
+            - --protected-mode no
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+      imagePullSecrets:
+        - name: ibm-ccr-apikey
+      serviceAccountName: streams-instance-operator
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: streams-api
+  labels:
+    app: streams
+    svc: api
+spec:
+  type: ClusterIP
+  ports:
+    - name: api
+      port: 10000
+      protocol: TCP
+    - name: repository
+      port: 6379
+      protocol: TCP
+  selector:
+    app: streams
+    svc: instance-operator
+...

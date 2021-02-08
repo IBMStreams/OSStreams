@@ -1,0 +1,206 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:xi="http://www.w3.org/2001/Xinclude"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description  docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.compat$V1TCPSource.html">
+The `V1TCPSource` operator reads binary data from a TCP socket that is connected to a InfoSphere Streams Version 1.2 TCP `Sink` operator
+and creates tuples from that data.
+It can be configured as a TCP server, which listens for a client connection, or as a TCP client, which initiates a connection to a server.
+In both modes, it handles a single connection at a time.
+
+It works with both IPv4 and IPv6 addresses.
+
+The corresponding `V1TCPSink` operator must have a **binFormat** modifier to send the data in binary form.
+The `V1TCPSource` operator is defined in the spl.compat namespace, and must be included through a `use spl.compat::V1TCPSource;` statement.
+
+# Exceptions
+
+The `V1TCPSource` operator throws an exception in the following cases:
+* The host cannot be resolved.
+* Unable to set SO_REUSEADDR on TCP socket.
+* Unable to bind to port.
+
+# Examples
+
+This example uses the `V1TCPSource` operator.
+
+    composite Main {
+      graph
+        // Read from an InfoSphere Streams V1.2 system
+        stream&lt;rstring name, int32 age, int64 salary&gt; v1Data = spl.compat::V1TCPSource()
+        {
+           param port : 4000u;
+                 role : server;
+        }
+    }
+
+The following example is the corresponding V1.2 TCP Source:
+
+    stream FromV2 (schemaFor(T)) :=
+    Source() ["stcp://thishost:4001/", binFormat] {}
+
+</description>
+      <iconUri size="16">../../adapter/TCPSource/TCPSource_16.gif</iconUri>
+      <iconUri size="32">../../adapter/TCPSource/TCPSource_32.gif</iconUri>
+      <metrics>
+        <metric>
+          <name>nInvalidTuples</name>
+          <description>The number of tuples that failed to read correctly in csv or txt format.</description>
+          <kind>Counter</kind>
+        </metric>
+        <metric>
+          <name>nReconnections</name>
+          <description>The number of times the input connection was re-establised.</description>
+          <kind>Counter</kind>
+        </metric>
+      </metrics>
+      <customLiterals>
+        <enumeration>
+          <name>SocketRole</name>
+          <value>server</value>
+          <value>client</value>
+        </enumeration>
+        <enumeration>
+          <name>ReconnectionPolicy</name>
+          <value>InfiniteRetry</value>
+          <value>NoRetry</value>
+          <value>BoundedRetry</value>
+        </enumeration>
+      </customLiterals>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>address</name>
+        <description>
+For a client-based `V1TCPSource` operator, this parameter specifies the destination address of the TCP connection.
+This parameter must be specified when the **role** parameter value is `client`.
+
+The parameter value can be a host name or an IP address.
+
+For a server-based `V1TCPSource` operator, this parameter is not valid.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>port</name>
+        <description>
+For a client-based `V1TCPSource` operator, this parameter specifies the destination port address.
+It takes a single value of type rstring or uint32.
+This value can be a well-known port alias, such as "http" or "ftp", as specified in `/etc/services`.
+It can also be a plain port number, such as 45134u.
+
+For a server-based `V1TCPSource` operator, this parameter specifies the port address on which the connections are accepted.
+When the parameter is omitted, its default value is `0`, which picks any available port.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>role</name>
+        <description>
+Specifies whether the operator is server-based or client-based. It takes one of the following two values: `server` or `client`.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>SocketRole</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>reconnectionPolicy</name>
+        <description>
+Specifies the reconnection policy.
+For a server-based `V1TCPSource` operator, this parameter specifies whether more connections are allowed after the initial connection terminates.
+For a client-based `V1TCPSource` operator, this parameter specifies whether more connection attempts are made after the initial connection to the server terminates.
+
+The valid values are: `NoRetry`, `InfiniteRetry`, and `BoundedRetry`.
+If this parameter is not specified, it is set to `InfiniteRetry`.
+
+When the parameter value is `NoRetry`, the `V1TCPSource` operator produces a final marker punctuation right away
+after the initial connection is terminated and a window marker punctuation is sent.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>ReconnectionPolicy</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>reconnectionBound</name>
+        <description>
+Specifies the number of successive connections that are attempted for a client-based `V1TCPSource` operator
+or accepted for a server-based `V1TCPSource` operator.
+
+You must specify this parameter when the **reconnectionPolicy** parameter value is `BoundedRetry`; you cannot use it otherwise.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>receiveBufferSize</name>
+        <description>Specifies the kernel receive buffer size for the TCP socket.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>initDelay</name>
+        <description>
+Specifies the number of seconds to delay before starting to produce tuples.
+For more information, see the **initDelay** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `V1TCPSource` operator is configurable with a single output port, which produces tuples read over a TCP connection from a V1.x system.
+The `V1TCPSource` operator outputs a window marker punctuation when a TCP connection terminates.
+The tuple that is generated by the `V1TCPSource` operator must contain attributes of supported SPL types only.
+</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

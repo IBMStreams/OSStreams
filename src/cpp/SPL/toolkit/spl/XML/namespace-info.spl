@@ -1,0 +1,435 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+*
+* + Character encoding of XML
+*
+* If the input is contained in an ustring value, then it is already in Unicode and internal encoding is ignored if it is present.
+* If the input is contained in an rstring or blob value, it is passed to the `XMLParse` operator as raw bytes.
+* If present, the byte order mark (BOM) must match the internal encoding.
+* If present, the internal encoding must match the actual bytes.
+* It is an error to have parts of different XML documents with different encoding within the same input tuple.
+* If there is no internal encoding or BOM, UTF-8 is assumed.
+* If the input is contained in an xml value, the internal encoding is already correct.
+*
+* On output all values from XML attributes or text are extracted as rstring values that contain UTF-8 encoded strings.
+*
+* + Converting XML elements to SPL tuples by using the XMLParse operator
+*
+* The `XMLParse` operator uses two mechanisms to convert incoming XML into tuples.
+* In the *explicit* mechanism, the programmer defines in the operator the mapping from XML entity to SPL attribute.
+* In the *implicit* mechanism, the mapping is derived from the definition of the output stream schema.
+*
+* A tuple definition that corresponds to an XML element has up to three parts:
+* * an attribute of type map<rstring,rstring> called _attrs to hold the XML attribute/value pairs
+* * an attribute of type rstring called _text to hold the text content of the element
+* * zero or more attributes of type tuple or list<tuple> which represent the nested XML elements
+*
+* ++ Explictly mapping the XML elements to SPL attributes
+*
+* When explicitly converting XML elements to SPL attributes, you must specify an output clause for the operator
+* that contains the specification of XML to SPL attribute mapping.
+* The output clause is similar to a normal output clause, but uses custom output functions to specify the
+* XML entity to SPL attribute mapping on a per-attribute basis.
+* These custom output functions use a subset of XPath expressions.
+*
+* # Procedure
+*
+* Run the **spl-schema-from-xml** command to:
+* * compute the tuple schema definition for a given representative sample XML document
+* * create an output clause using XPath functions that match the tuple declaration
+*
+* +++ Custom output functions
+*
+* Custom output functions are provided to allow you to specify the entity/attribute mapping.
+* Each of these functions requires an XPath expression (xPathExpn) that is relative to the trigger expression or to each other.
+* These combined XPath expressions describe a nodeset upon which some action is taken.
+*
+* If an XPath expression fails to match, the output attribute is set by using the default initializer for the type
+* (0 for numeric, empty for strings and lists).
+*
+* If an output expression for an SPL attribute does not reference the XPath, XPathList, or XPathMap expression,
+* then the expression is resolved from the input stream and SPL logic state variables as usual (for example, *x* in the output clause).
+*
+*     output O : a = XPath("a/text()"), b = x + 5;
+*
+* If an SPL attribute in the output stream is not assigned, then it is assigned using a default XPath or XPathList expression
+* that uses the implicit Xpath mechanism.
+*
+* Note: While the typical behavior of an operator is to try to satisfy an unassigned output parameter from an attribute of the same name in an input stream,
+* the `XMLParse` operator tries to satisfy the output attribute from an element of the same name in the XML.
+*
+* # rstring XPath(rstring xPathExpn)
+* `splAttribute = XPath(*xPathExpn*)` is used to extract a scalar value from a nodeset containing a single node.
+*
+* For the following XML (where *q* can contain only one *b*):
+*     <q>
+*        <b>value</b>
+*     </q>
+*
+* The text content of the *b* element is read into the *b* attribute of the SPL tuple:
+*
+*     stream<rstring b> O = XMLParse(...){ param trigger : "/q";
+*
+* Using:
+*
+*     output O : b = XPath ("b/text()");
+*
+* The XPath expression `"b/text()"` is used to get the text content of the `/q/b` element.
+* The assumption of this function is that there is a single node in the nodeset specified by XPath expression `"/q/b"`.
+* If there is more than one node in the nodeset, the value of the last node is be used in the assignment.
+* To extract multiple values, use `XPathList()`.
+*
+* If the type of splAttribute is not rstring, a cast must be used to ensure the correct type:
+*
+*     stream<int32 b> O = XMLParse(...){ param trigger : "/q";
+*     output O : b = (int32) XPath("b/text()") ...
+*
+* # <tuple T> XPath(rstring xPathExpn, T tupleLiteral)
+*
+* `splAttribute = XPath(xPathExpn, tupleLiteral)` is used to extract a nested tuple value from a nodeset containing a single node.
+* This function is necessary to address the nested tuple attributes.
+*
+* For the following XML:
+*
+*     <q>
+*        <a>
+*           <b>value</b>
+*           <c fred="hi"/>
+*      </a>
+*     </q>
+*
+* The text content of the b element is read into the b attribute of the SPL tuple:
+*
+*     stream<tuple <rstring b, rstring c> a> O = XMLParse(...){ param trigger : "/q";
+*
+* Using:
+*
+*     output O : a= XPath ("a", { b = XPath("b/text()", c = XPath("c/@fred") } );
+*
+* The XPath expression `"a"` is used to get the content of the `/q/a` element.
+* In this example, b is set from `"/q/a/b/text()"`, and c from `"/q/a/c/@fred"`.
+* This form allows the `XMLParse` operator to know that the nested tuple is complete when `/q/a` is complete.
+*
+* # list<rstring> XPathList(rstring xPathExpn)
+*
+* `splAttribute = XPathList(xPathExpn)` is used to extract a list of scalars from XML.
+* `xPathExpn` determines the nodeset for this list of values.
+* The nodeset described by the XPath expression contains one or more nodes from which the values are extracted and returned as a list.
+*
+* For the following XML:
+*
+*     <a>
+*        <b>text1</b>
+*        <b>text2</b>
+*     </a>
+*
+* The text content is read into an SPL tuple:
+*
+*     stream<list<rstring> b> O = XMLParse(...) { param trigger : "/a";
+*
+* Using:
+*
+*     output O : b = XPathList ("b/text()");
+*
+* A cast may need to be added to ensure the correct type:
+*
+*     stream<list<int32> b> O = XMLParse(...) { param trigger : "/a";
+*     output O : b = (list<int32>) XPathList ("b/text()");
+*
+* # <any T> list<T> XPathList(rstring xPathExpn, T elements)
+*
+* `splAttribute = XPathList(xPathExpn, elements)` is used to extract a list of objects from XML.
+* In this function, the xPathExpn serves two purposes: it defines a nodeset upon which the expression in elements is applied
+* and it is a sub-trigger.
+* The elements expression applies XPath and XPathList custom output functions on the node set given by `/trigger/xPathExpn`.
+*
+* For the following XML:
+*
+*     <x>
+*        <a>
+*           <b>text1</b>
+*           <b>text2</b>
+*        </a>
+*        <a>
+*           <b>text3</b>
+*        </a>
+*     </x>
+*
+* The text content is read into an SPL list<list<rstring>>:
+*
+*     stream<list<list<rstring>> b> O = XMLParse(...){ param trigger : "/x";
+*
+* Using:
+*
+*     output O : b = XPathList ("a", XPathList("b/text()"));
+*
+* A list of lists is built where there is one outer list entry for each element `a` in `x`
+* and each outer list entry has a list of each `b` value in the containing `x/a`.
+* The `"a"` XPath expression in the outer XPathList defines the set of nodes `/x/a` and triggers an entry in the outer list for each node.
+* The inner expression extracts the values from the nodeset `/x/a/b`.
+* With nested XPath and XPathList functions, the XPath expressions concatenate,
+* giving an absolute XPath expression starting with the expression specified in the **trigger** parameter.
+*
+* In other words, this XPathList function returns a list where each entry in the list contains the value(s) returned by the value expression.
+*
+* If the type of splAttribute is not list<list<rstring>>, a cast must be used to ensure the correct type:
+*
+*     stream<list<list<int32>> b> O = XMLParse(...){ param trigger : "/x";
+*     output O : b = XPathList("a", (list<int32>)XPathList("b/text()")) ...
+*
+* The value expression argument can be a nested tuple initializer which itself contains nested XPath or XPathList functions.
+* For the following XML:
+*
+*     <x>
+*        <a>
+*           <b>text1</b>
+*           <c>text2</c>
+*        </a>
+*        <a>
+*           <b>text3</b>
+*           <c>text2</c>
+*        </a>
+*     </x>
+*
+* The text content is read into an SPL list<tuple<rstring b, rstring c>> a>:
+*
+*     stream<list<tuple<rstring b, rstring c>> a> O = XMLParse(...){ param trigger : "/x";
+*
+* Using:
+*
+*     output O : a = XPathList ("a", { b = XPath ("b/text()"), c = XPath("c/text()" });
+*
+* If the type of splAttribute is list<tuple<rstring b, int32 c>> a>, a cast must be used to ensure the correct type:
+*
+*     stream<list<tuple<rstring b, int32 c>> a> O = XMLParse(...){ param trigger : "/x";
+*     output O : a = XPathList ("a", { b = XPath ("b/text()"),
+*                                      c = (int32) XPath("c/text()" }) ...
+*
+*
+* # map<rstring,rstring> XPathMap(rstring xPathExpn)
+*
+* `splAttribute = XPathMap(xPathExpn)` is used to extract a map of SPL attributes.
+* The type of the SPL attribute must be map<rstring, rstring>. xPathExpn must only reference one or more attributes.
+* These can be \@name, or \@\*. \@\* adds all attributes to the map.
+*
+* For example:
+*
+*     stream<map<rstring,rstring> manyAttrs> O = XMLParse(...) { param trigger: "/x";
+*     output O : manyAttrs = XPathMap ("b/@*|c/@c");
+*
+* manyAttrs is set to the union of all the attributes of /x/b/\@\* and /x/c/\@c.
+*
+* +++ Supported XPath expressions
+*
+* Streams supports data types for SPL attributes using default XPath or XPathList expressions.
+*
+* The supported data types are:
+* * rstring, ustring
+* * int8, int16, int32, int64, uint8, uint16, uint32, uint64
+* * float32, float64
+* * decimal32, decimal64, decimal128
+* * tuple
+* * list<aboveTypes>
+* * list<aboveTypes>\[1\]
+*
+* Note that list<aboveTypes>\[1\] is useful for optional fields.
+*
+* The supported XPath expressions (xPathExpn) are kept very simple to allow a very fast SAX-based operator implementation.
+* The supported XPath expression formats are:
+* * "pathToNode/text()"
+* * "pathToNode/\@attributeName"`
+*
+* The valid forms of *pathToNode* are:
+* * `.` : The current node. You can also use text() or \@attributeName for the current node.
+* * `/absolute/path/expn`: For trigger paths only.
+* * `relative/path/expn`: For non-trigger XPath and XPathList paths.
+* * `*pathToNode*|*pathToNode2*`: Any of the two (or more) *pathToNode* values. A pipe (|) is used in a valid XPath expression to select alternates.
+*
+* XPath predicates are not supported by the `XMLParse` operator.
+*
+* The XPath expression for a trigger must be absolute (that is to say, it must start with a forward slash (/)).
+* All other XPath expressions must not start with a forward slash, and are relative to the enclosing XPath expression.
+* The following are valid examples of an XPath expression using the trigger "/foo/bar":
+*
+*     output O : a = XPath ("x/text()"), b = XPath ("c/@cattr");
+*     output O : a = XPath ("a/x", { b = XPath("text()"),
+*                                    c = XPath("c/@cattr|d/@text") });
+*                                    // /foo/bar/a/x/text() and either
+*                                    // /foo/bar/a/x/c/@cattr or
+*                                    // /foo/bar/a/x/d/@text()
+*
+*
+* The following is an invalid example of an XPath expression:
+*
+*     output O : a = XPath ("/fred/text()");
+*
+*
+* ++ Implicitly deriving the SPL attributes from the XML output stream
+*
+* An implicit output statement is generated by extrapolating the XML elements from the output tuple schema.
+*
+* Converting XML to tuples is complicated by the structure of XML.
+* XML elements can hold XML attributes, a text value, and also nested XML elements.
+* The closest approximation to an XML element is the SPL tuple:
+*
+*     type XMLElement = tuple<map<rstring, rstring> _attrs, rstring _text> ,optionalNestedXMLElements>;
+*
+* The **flatten** parameter of the `XMLParse` operator describes how XML elements are mapped to an SPL tuple.
+* A tuple definition that corresponds to an element has up to three parts.
+* * When `none` is specified, an XML element is matched to an SPL attribute of the
+*   same name that has the type tuple<rstring _text, map<rstring, rstring> _attrs> splAttributeName.
+*   The text of the XML element is assigned to `_text`, and any attributes are assigned to `_attrs.`
+*   If either `_text` or `_attrs` is omitted, the corresponding XML information is ignored.
+*   `_text` and `_attrs` names can be changed with the **textName** and **attributesName** parameters.
+* * When `elements` is specified, an XML element is matched to an SPL attribute with the same name.
+*   The value of the XML element is assigned to the SPL attribute.
+*   If a nested element has nested elements for which the operator is to capture information, the element cannot be flattened.
+* * When `attributes` is specified, an XML attribute from the XML element is matched to an SPL attribute with the same name.
+*   The value of the XML attribute is assigned to the SPL attribute.
+*   Only XML attributes for which there is a corresponding SPL attribute are stored in the tuple.
+*
+* The `_attrs` attribute represents all the `name="value"` XML attributes and `_text` represents the element value itself.
+* This allows conversion to a tuple without too much information loss. In the following XML:
+*
+*     <a b="1" c="vc1">
+*        va1
+*           <d>vd1</d>
+*           <e>ve1a</e>
+*           <e>ve1b</e>
+*     </a>
+*     <a b="2">
+*        va2
+*           <d>vd2</d>
+*           <e>ve2</e>
+*           <f>vf2</f>
+*     </a>
+*
+* This is represented with an SPL tuple:
+*
+*     type aElem = tuple<
+*       map<rstring,rstring> _attrs,
+*       rstring _text,
+*       tuple<rstring _text> d,
+*       list<tuple<rstring _text>> e,
+*       list<tuple<rstring _text>>[1] f
+*     >;
+*
+* In this example, `list<X>` is used to represent 0 or more elements of `X`, and `list<X>\[1\]` is used to represent 0 or 1 X.
+* The `_attrs` attribute is omitted for elements without XML attributes.
+*
+* If the above tuple definition is used in defining the output stream, then the output clause may be omitted.
+* The `XMLParse` operator implies the XML shape based on the output tuple schema. For example:
+*
+*     stream<aElem> O = XMLParse(...) { param trigger : "/a"; }
+*
+* The tuple schema definition is somewhat complex for relatively simple XML.
+* The **spl-schema-from-xml** command is provided to compute the tuple schema definition for a given representative sample XML document.
+*
+* If you do not use the **spl-schema-from-xml** command, you can represent XML attributes as SPL tuple attributes
+* for ease of use by providing an alternative tuple schema representation that automatically associates XML attribute values with tuple scalar values.
+* For example, in the following tuple definition:
+*
+*     type aElem = tuple<
+*       int32 b, list<rstring>[1] c,
+*       rstring _text,
+*       tuple<rstring _text> d,
+*       list<tuple<rstring _text>> e,
+*       list<tuple<rstring _text>>[1] f
+*     >;
+*
+* In this example, the map named `_attrs` is removed and two SPL attributes which are either scalar or list<scalar>\[1\] are added.
+* If there are scalar (or list<scalar>\[1\]) values in a given tuple, then the `XMLParse` operator assigns the value of
+* XML attributes of that name to those SPL attributes.
+* In the example XML above, the b attribute of element a is assigned to SPL attribute b.
+* This optimization is referred to as *flattening*. Notice that implicit type conversion is introduced.
+* In the example, b is given the type int32, so an implicit conversion of XML attribute b is performed.
+* Using this form, the ability to accept any attributes other than b and c is lost.
+*
+* Another flattening optimization is to notice that a tuple<rstring _text> d is not more expressive than rstring d. This allows the following:
+*
+*     type aElem = tuple<
+*       map<rstring,rstring> _attrs,
+*       rstring _text,
+*       rstring d,
+*       list<rstring> e,
+*       list<rstring>[1] f
+*     >;
+*
+* The SPL attributes for elements d, e and f have been flattened to either scalar or list<scalar>.
+* The flattened expression for element d is indistinguishable from an XML attribute named d,
+* so the optimization can only be applied to nested elements or attributes, but not both.
+*
+* For information on parameters that control how the tuple schema is interpreted,
+* see the **flatten**, **textName**, and **attributesName** parameters in the `XMLParse` operator.
+*
+* The output tuple is initialized to a default value (see below) at operator startup and after each tuple is submitted.
+*
+*     type T = tuple<int32 id, tuple<rstring b, list<int32> x, float64 d> a, rstring c>;
+*     stream<rstring xmlData, int32 id> Data = Op() {};
+*     stream<T> OutTuples = XMLParse (Data) {
+*          param xmlInput : xmlData;          // Accept XML from input attribute mlData.
+*                trigger  : "/something/bar"; // Submit tuple to OutTuples when end of top
+*                                             // level /something/bar element seen.
+*                flatten  : elements;         // Any unassigned scalar value should
+*                                             // be assumed to be a nested element
+*                                             // of that name.
+*          output OutTuples:
+*               id = Data.id,                 // set from incoming data
+*               a = { b = XPath("@bdata"), x = (list<int32>)XPathList("foo/text())"),
+*                     d = (float64) XPath ("a/d/text()")};
+*                                            // tuple attributes use XML attribute, field
+*                                            // c defaults to (float64)XPath("c/text()");
+*     }
+*
+* The input XML to `XMLParse` looks like:
+*
+*     <something>
+*          <bar bdata="t">
+*               <foo>1</foo>
+*               <foo>2</foo>
+*               <a>
+*                    <d>1.6</d>
+*               </a>
+*               <c>a string</c>
+*          </bar>
+*          <bar bdata="t2">
+*               <foo>5</foo>
+*               <foo>6</foo>
+*               <a>
+*                    <d>100.6</d>
+*               </a>
+*               <c>another string</c>
+*          </bar>
+*     </something>
+*
+* If `Data.xmlData` contains the above XML and Data.id is 1, the output tuples produced are:
+*
+*     {id = 1, a = { b = "t", x = [1, 2], d = 1.6}, c = "a string" }
+*     {id = 1, a = { b = "t2", x = [5, 6], d = 100.6}, c = "another string" }
+*
+* XML elements and attributes of these types are implicitly converted to the SPL attribute type. Any conversion errors are treated as dictated by the **parsing** parameter value.
+*
+* All other XML data types, for example, timestamp, should be read as rstring/ustring, and then converted to the correct type downstream.
+* For scalar SPL attributes, the attribute is assigned the value of the XML element/attribute when it is seen.
+* For lists, the value of the XML element/attribute is appended to the current value of the attribute.
+* If a given tuple attribute has not been seen in the XML, then the default initializer for the type is used for the value
+* (0 for numeric, empty for strings and lists, and recursively the same for tuples).
+*
+*/
+
+namespace spl.XML;

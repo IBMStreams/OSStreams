@@ -1,0 +1,55 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use FindBin;
+use lib "${FindBin::Bin}";
+use lib "${FindBin::Bin}/../..";
+use lib "${FindBin::Bin}/../../../bin";
+use SPL::Helper;
+use SPL::Msg;
+use File::Basename;
+
+my %opts;
+my @options = ('help|h', 'time|t=i', 'size|s=i', 'file|f=s');
+SPLGetOptionsLong(\&SPL::Msg::SMD_USAGE, \%opts, @options);
+SPLUsage(\&SPL::Msg::SCG_USAGE, 1) unless ($opts{file});
+
+my $gen = $opts{file};
+$gen =~ s/\$/\\\$/g;
+my @cmdargs = (@ARGV);
+my $args;
+foreach my $arg (@cmdargs) {
+ $args .= "\"$arg\" ";
+} chop($args);
+
+my $trunc = "";
+my $pipefail = "";
+if ($opts{size}) {
+   my $spath = dirname($0);
+   $trunc = " | ${spath}/spl-truncate -s $opts{size}";
+   $pipefail = "set -o pipefail;";
+}
+
+# have to pass timeout to ${gen} to use, as it may get into an infinite loop
+$ENV{SPL_MMP_DRIVER_TIMEOUT}=$opts{time} if $opts{time};
+
+my $cmd = "${pipefail} \"${gen}\" ${args} ${trunc}";
+# dependency-scan: ignore the following line
+my $rc = system($cmd);
+exit(1) if ($rc);

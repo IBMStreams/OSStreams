@@ -1,0 +1,442 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use Getopt::Long qw(:config no_ignore_case bundling) ;
+use File::Basename;
+use Cwd qw(abs_path getcwd);
+
+sub usage
+{
+	print "Usage: " . basename($0) . " [--help] [--osname] [--osname_rpm_format] [--osname_long] [--osver] [--arch] [--arch_uname]\n";
+        print "                            [--gccver] [--atver] [--javaver] [--antver]\n";
+        print "                            [--gitrepo] [--gitbranch] [--gitcommit]\n";
+        print "                            [--export filename]\n";
+        print "\n";
+        print "This program is a centralized way of determing the operating system and architecture\n";
+        print "of the machine it's being run on.\n";
+        print "\n";
+        print "If information cannot be determined, no text is printed, and a non-zero return\n";
+        print "code is returned on exit.\n";
+        print "\n";
+        print "Options:\n";
+        print "\n";
+        print "--osname             Print the operating system name (short format) of this machine.\n";
+        print "                       Known supported operating system names:\n";
+        print "                       rhel  - RedHat Enterprise Linux\n";
+        print "                       sles  - SUSE Linux Enterprise\n";
+        print "                       fc    - Fedora Core\n";
+        print "--osname_rpm_format  Print the operating system name (RPM format) of this machine.\n";
+        print "                       Known supported operating system names:\n";
+        print "                       elx    - RedHat Enterprise Linux major version x\n";
+        print "                       slesx  - SUSE Linux Enterprise major version x\n";
+        print "                       fcx    - Fedora Core major version x\n";
+        print "--osname_long        Print the operating system name (long format) of this machine.\n";
+        print "                       (this is the contents of the /etc/xxxx-release file)\n";
+        print "--osver              Print the operating system version (x.x) of this machine.\n";
+        print "--arch               Print the architecture of this machine.  The architecture is\n";
+        print "                       \"normalized\" to a more standard convention.\n";
+        print "                        - x86\n";
+        print "                        - x86_64\n";
+        print "                        - ppc\n";
+        print "                        - ppc64\n";
+        print "--arch_uname         Print the architecture returned directly from the uname command.\n";
+        print "                       The uname -i output is unmodified.\n";
+        print "                        - i386\n";
+        print "                        - x86_64\n";
+        print "                        - ppc\n";
+        print "                        - ppc64\n";
+        print "--gcc-version        Print version number of the GCC compiler installed on the system.\n";
+        print "--at-version         Print the version number of the Advance Toolchain Compiler Runtime.\n";
+        print "                     If no version is printed, system is not using the Advanced Toolchain.\n";
+        print "--javaver            Print version number of the Java SDK installed on the system.\n";
+        print "--javacver           Print version number of the javac compiler installed on the system.\n";
+        print "--antver             Print version number of Apache Ant installed on the system.\n";
+        print "--gitbranch          Print the active git branch.  If the directory being processed is not\n";
+        print "                      a part of a git repository, prints \"NA\".\n";
+        print "--gitcommit          Print the git commit ID of the active git branch.  If the directory being\n";
+        print "                      processed is not a part of a git repository, prints \"NA\".\n";
+        print "\n";
+        print "--export filename    Export all of the platform information to a properties file.\n";
+        print "\n";
+        print "Examples:\n";
+        print "\n";
+        print basename($0) . " --osname\n";
+        print "rhel\n\n";
+        print basename($0) . " --osname_rpm_format\n";
+        print "el6\n\n";
+        print basename($0) . " --osver\n";
+        print "5.3\n\n";
+        print basename($0) . " --arch\n";
+        print "x86_64\n\n";
+        print basename($0) . " --arch_uname\n";
+        print "x86_64\n\n";
+        print basename($0) . " --gccver\n";
+        print "4.1.2\n\n";
+        print basename($0) . " --atver\n";
+        print "4.0-2\n\n";
+        print basename($0) . " --javaver\n";
+        print "1.6.0\n\n";
+        print basename($0) . " --gitrepo\n";
+        print "Streams.build\n\n";
+        print basename($0) . " --gitbranch\n";
+        print "master\n\n";
+        print basename($0) . " --gitcommit\n";
+        print "d28393a9f996594a2018c1a02dc5ffe41be5392d\n\n";
+        print basename($0) . " -- export build.properties\n";
+	exit;
+}
+
+# Options
+my $HELP = 0;
+my $OSNAME = 0;
+my $OSVER = 0;
+my $OSNAME_RPM_FORMAT = 0;
+my $OSNAME_LONG = 0;
+my $ARCH = 0;
+my $ARCH_UNAME = 0;
+my $GCCVER = 0;
+my $ATVER = 0;
+my $JAVAVER = 0;
+my $JAVACVER = 0;
+my $ANTVER = 0;
+my $GITREPO = 0;
+my $GITBRANCH = 0;
+my $GITCOMMIT = 0;
+my $EXPORT;
+
+my $result = GetOptions("h|help"            => \$HELP,
+                        "osname"            => \$OSNAME,
+                        "osname_rpm_format" => \$OSNAME_RPM_FORMAT,
+                        "osname_long"       => \$OSNAME_LONG,
+                        "osver"             => \$OSVER,
+                        "arch"              => \$ARCH,
+                        "arch_uname"        => \$ARCH_UNAME,
+                        "gccver"            => \$GCCVER,
+                        "atver"             => \$ATVER,
+                        "javaver"           => \$JAVAVER,
+                        "javacver"          => \$JAVACVER,
+                        "antver"            => \$ANTVER,
+                        "gitrepo"           => \$GITREPO,
+                        "gitbranch"         => \$GITBRANCH,
+                        "gitcommit"         => \$GITCOMMIT,
+                        "export=s"          => \$EXPORT);
+
+
+if (!$result || $HELP)
+{
+    usage();
+    exit($result ? 0 : 1);
+}
+
+my $exportproperties;
+sub returnProperty($$) {
+    my ($name, $value) = @_;
+
+    if ($EXPORT) {
+        $exportproperties .= "${name}=${value}\n";
+    }
+    else {
+        print "$value\n";
+    }
+}
+
+sub returnError($) {
+    my ($error) = @_;
+
+    print STDERR "$error\n";
+
+    if (!$EXPORT) {
+        return 1;
+    }
+
+    return 0;
+}
+
+############### MAIN ##############
+my $rc = 0;
+
+if ($OSNAME || $OSNAME_RPM_FORMAT || $OSNAME_LONG || $OSVER || $EXPORT)
+{
+    my $osinfo;
+    my $return_osname;
+    my $return_osname_rpm;
+    my $return_osname_long;
+    my $return_osver;
+
+    if (-e "/etc/redhat-release")
+    {
+        $return_osname = "rhel";
+
+        $osinfo = `cat /etc/redhat-release`;
+        chomp($osinfo);
+        if ($osinfo =~ /release (6\.\d)[^(]+\(Santiago\)/)
+        {
+            $return_osname_rpm = "el6";
+            $return_osver = $1;
+        }
+        elsif ($osinfo =~ /release (7\.\d)[^(]+\((?:Maipo|Core)\)/)
+        {
+            $return_osname_rpm = "el7";
+            $return_osver = $1;
+        }
+        else
+        {
+            $rc = returnError("Unsupported RedHat version: $osinfo");
+        }
+    }
+    elsif (-e "/etc/SuSE-release")
+    {
+        $return_osname = "sles";
+
+        $osinfo = `cat /etc/SuSE-release`;
+        chomp($osinfo);
+        if ($osinfo =~ m/SUSE Linux Enterprise Server/)
+        {
+            if ($osinfo =~ m/VERSION = (\d+)/)
+            {
+                $return_osname_rpm = "sles$1";
+                $return_osver = $1;
+            }
+        }
+        else
+        {
+            $rc = returnError("Unsupported SLES version: $osinfo");
+        }
+    }
+    elsif (-e "/etc/fedora-release")
+    {
+        $osinfo = `cat /etc/fedora-release`;
+        chomp($osinfo);
+        $return_osname = "fc";
+
+        if ($osinfo =~ /Fedora release 8 (Werewolf)/)
+        {
+            $return_osname_rpm = "fc";
+            $return_osver = "8.0";
+        }
+        else
+        {
+            $rc = returnError("Unsupported Fedora version: $osinfo");
+        }
+    }
+    elsif (-e "/etc/debian_version")
+    {
+        $osinfo = `cat /etc/os-release`;
+        chomp($osinfo);
+        if ($osinfo =~ m/\nVERSION_ID="(.*?)\./)
+        {
+            $return_osname_rpm = "deb$1";
+            $return_osver = $1;
+        }
+        if ($osinfo =~ m/\nID=(.*)/)
+        {
+           $return_osname = $1;
+        }
+        # $return_osver = `awk -F= '{if (\$1 == \"VERSION_ID\") { gsub(/\"/, \"\", \$2); print \$2}}' /etc/os-release`;
+        # chomp($return_osver);
+        # $return_osname = `awk -F= '{if (\$1 == \"ID\") { gsub(/\"/, \"\", \$2); print \$2}}' /etc/os-release`;
+        # chomp($return_osname);
+
+        if (($return_osver eq "") || ($return_osname eq "")) {
+            $rc = returnError("Unsupported Debian/Ubuntu version: $osinfo");
+        }
+    }
+    elsif (-e "/etc/issue")
+    {
+#         $osinfo = `cat /etc/issue`;
+
+#         if ($osinfo =~ /Debian\D+(\d+\.\d+)/)
+#         {
+#             $return_osver = $1;
+#             $return_osname = "deb";
+#             $return_osname_rpm = "deb";
+#         }
+#         else
+#         {
+#             $rc = returnError("Unsupported OS: $osinfo");
+#         }
+    }
+
+    $return_osname_long = $osinfo;
+
+    if ($OSNAME || $EXPORT)
+    {
+        returnProperty("osname", $return_osname);
+    }
+    if ($OSNAME_RPM_FORMAT || $EXPORT)
+    {
+        returnProperty("os", $return_osname_rpm);
+    }
+    if ($OSNAME_LONG || $EXPORT)
+    {
+        returnProperty("osnamelong", $return_osname_long);
+    }
+    if ($OSVER || $EXPORT)
+    {
+        returnProperty("osver", $return_osver);
+    }
+}
+if ($ARCH || $EXPORT)
+{
+    my $return_arch = `uname -i`;
+    chomp($return_arch);
+    if ($return_arch =~/unknown/)
+    {
+        $return_arch = `uname -m`;
+        chomp($return_arch);
+    }
+
+    # Convert ix86 to x86
+    $return_arch =~ s/i\d86/x86/;
+    returnProperty("arch", $return_arch);
+}
+if ($ARCH_UNAME || $EXPORT)
+{
+    my $return_arch = `uname -i`;
+    chomp($return_arch);
+    if ($return_arch =~/unknown/)
+    {
+        $return_arch = `uname -m`;
+        chomp($return_arch);
+    }
+
+    returnProperty("arch_uname", $return_arch);
+}
+if ($GCCVER || $EXPORT)
+{
+    my $gccver = `gcc -v 2>&1`;
+    if ($gccver =~ m/gcc version (\d+\.\d+\.\d+)/) {
+        returnProperty("gccversion", $1);
+    }
+    else {
+        $rc = returnError("Unsupported GCC or GCC not installed.");
+    }
+}
+if ($ATVER || $EXPORT)
+{
+    my $arch = `uname -m`;
+    chomp($arch);
+    if ($arch =~ /^ppc/) {
+        my $atver = `gcc -v 2>&1`;
+        if ($atver =~ m/Advance-Toolchain-([^)]+)/) {
+            returnProperty("atversion", $1);
+        }
+        else {
+            $rc = returnError("Unsupported AT or AT not installed.");
+        }
+    }
+}
+if ($JAVAVER || $EXPORT)
+{
+    my $javaver = `java -version 2>&1`;
+    if ($javaver =~ m/(\d+\.\d+\.\d+)/) {
+        returnProperty("javaversion", $1);
+    }
+    else {
+        $rc = returnError("Unsupported java or java not installed.");
+    }
+}
+if ($JAVACVER || $EXPORT)
+{
+    my $javacver = `javac -version 2>&1`;
+    if ($javacver =~ m/(\d+\.\d+\.\d+)/) {
+        returnProperty("javacversion", $1);
+    }
+    else {
+        $rc = returnError("Unsupported java or java not installed.");
+    }
+}
+if ($ANTVER || $EXPORT)
+{
+    my $antver = `ant -version 2>&1`;
+    if ($antver =~ m/(\d+\.\d+\.\d+)/) {
+        returnProperty("antversion", $1);
+    }
+    else {
+        $rc = returnError("Unsupported ant or ant not installed.");
+    }
+
+}
+if ($GITREPO || $EXPORT)
+{
+    my $gitrepo = `git config --get remote.origin.url 2>&1`;
+    chomp($gitrepo);
+    if ($gitrepo eq "" || $gitrepo =~  m/fatal: Not a git repository/) {
+        # Check to see if GIT_URL is set (by Jenkins)
+        if ($ENV{GIT_URL}) {
+            $gitrepo = $ENV{GIT_URL};
+        }
+        else {
+            returnProperty("gitrepo", "NA");
+            $gitrepo = undef;
+        }
+    }
+    if (defined $gitrepo) {
+        my $gitrepo2 = `basename $gitrepo .git`;
+        chomp($gitrepo2);
+        returnProperty("gitrepo", $gitrepo2);
+    }
+}
+if ($GITBRANCH || $EXPORT)
+{
+    my $gitbranch = `git branch 2>&1`;
+    chomp($gitbranch);
+    if ($gitbranch =~ m/fatal: Not a git repository/) {
+        # Check to see if GIT_BRANCH is set (by Jenkins)
+        if ($ENV{GIT_BRANCH}) {
+            $gitbranch = $ENV{GIT_BRANCH};
+        }
+        else {
+            returnProperty("gitbranch", "NA");
+            $gitbranch = undef;
+        }
+    }
+    if (defined $gitbranch) {
+        if ($gitbranch =~ m/\*\s+(\S*)/) {
+            $gitbranch = $1;
+        }
+        returnProperty("gitbranch", $gitbranch);
+    }
+}
+if ($GITCOMMIT || $EXPORT)
+{
+    my $gitcommit = `git rev-parse HEAD 2>&1`;
+    chomp($gitcommit);
+    if ($gitcommit =~ m/fatal: Not a git repository/) {
+        # Check to see if GIT_COMMIT is set (by Jenkins)
+        if ($ENV{GIT_COMMIT}) {
+            $gitcommit = $ENV{GIT_COMMIT};
+        }
+        else {
+            returnProperty("gitcommit", "NA");
+            $gitcommit = undef;
+        }
+    }
+    if (defined $gitcommit) {
+        returnProperty("gitcommit", $gitcommit);
+    }
+}
+
+if ($EXPORT) {
+    open (OUTPUT, ">$EXPORT") || die "Unable to open export property file $EXPORT";
+    print OUTPUT $exportproperties;
+    close (OUTPUT);
+}
+
+exit $rc;

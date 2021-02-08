@@ -1,0 +1,115 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use Getopt::Long qw(:config no_ignore_case bundling) ;
+use File::Basename;
+use Cwd qw(abs_path getcwd);
+
+sub usage
+{
+	print "Usage: " . basename($0) . " [--help]\n";
+        print "                            [--scmdir] [--gendir] [--testdir] [--installdir] [--noshipdir] [--pkgconfigdir]\n";
+        print "\n";
+        print "This program is a centralized way of getting generated build path and file information\n";
+        print "for build and test purposes.  Only one \"dir\" option may be specified.\n";
+        print "\n";
+        print "Options:\n";
+        print "\n";
+        print "--wsdir              Print the root 'workspace' directory for this build.\n";
+        print "--gendir             Print the root build directory for this build.\n";
+        print "--testdir            Print the root build test directory for this build.\n";
+        print "--installdir         Print the root install directory for this build.\n";
+        print "--pkgconfigdir       Print the root pkgconfig repo directory for this build.\n";
+}
+
+# Options
+my $HELP = 0;
+my $WSDIR = 0;
+my $SCMDIR = 0;
+my $GENDIR = 0;
+my $TESTDIR = 0;
+my $INSTALLDIR = 0;
+my $PKGCONFIGDIR = 0;
+
+my $result = GetOptions("h|help"       => \$HELP,
+                        "wsdir"        => \$WSDIR,
+                        "scmdir"       => \$SCMDIR,
+                        "gendir"       => \$GENDIR,
+                        "testdir"      => \$TESTDIR,
+                        "installdir"   => \$INSTALLDIR,
+                        "pkgconfigdir" => \$PKGCONFIGDIR);
+
+if (!$result || $HELP || !($WSDIR ||
+                           $SCMDIR ||
+                           $GENDIR ||
+                           $TESTDIR ||
+                           $INSTALLDIR ||
+                           $PKGCONFIGDIR))
+{
+    usage();
+    exit($result ? 0 : 1);
+}
+
+# Determine where the workspace root is
+my $pgm_root = abs_path(dirname($0));
+my $ws_root;
+my $build_root;
+
+if ($pgm_root =~ /^(.*)\/tools/) {
+    $build_root = $1;
+    $ws_root = dirname($build_root);
+} else {
+    usage();
+    exit(1);
+}
+
+# Directories
+if ($WSDIR)
+{
+    print "$ws_root";
+}
+elsif ($SCMDIR)
+{
+    print "$build_root";
+}
+elsif ($GENDIR)
+{
+    print "$build_root/build";
+}
+elsif ($TESTDIR)
+{
+    print "$build_root/build/test";
+}
+elsif ($INSTALLDIR)
+{
+    my $product_info = abs_path(dirname($0)) . "/product-info";
+    my $version = `$product_info --version`;
+    print "$build_root/build/install/Streams/$version";
+}
+elsif ($PKGCONFIGDIR)
+{
+    print "$build_root/build/pkgconfig";
+}
+else
+{
+    print "Unsupported parameter: $ARGV[0]\n";
+    exit 1;
+}
+
+exit 0;

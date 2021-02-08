@@ -1,0 +1,207 @@
+<body>
+Java Operator API for Streams.
+The Java Operator API provides the ability to develop operators
+and functions
+for use in IBM Streams Processing Language (SPL). A Java class
+implementing {@link com.ibm.streams.operator.Operator Operator}
+is invoked in SPL as a Java primitive operator (or the generic
+<code>spl.utility.JavaOp</code> operator).
+<P>
+<A name="operatorjars"></A>
+The Java Operator API is contained in
+<BR>
+{@code $STREAMS_INSTALL/lib/com.ibm.streams.operator.jar}.
+</P>
+<P>
+The Java Operator API requires these jar files:
+<BR>&bull;
+<B>Apache Commons Math 2.2</B>
+<BR>&bull;
+<B>Apache Log4j 1.2.17</B>
+<BR>&bull;
+<B>JSON4J</B>
+<BR>
+The Streams SPL runtime execution environment ensures
+the classes required by {@code com.ibm.streams.operator.jar}
+are loaded for any Java operator or function. The SPL runtime also loads
+the samples jar {@code com.ibm.streams.operator.samples.jar}.
+</P>
+The Java Operator API requires Java Platform, Standard Edition 8.
+When compiling SPL applications ({@code sc}) the setting of the environment variable {@code JAVA_HOME}
+defines the virtual machine to be used when the application is submitted ({@code streamtool submitjob}).
+If {@code JAVA_HOME} is not set then the virtual machine at {@code $STREAMS_INSTALL/java} is used,
+which is IBM SDK Java Technology Edition Version 8.
+<BR>
+The list of supported Java virtual machines is the
+<em>Java requirements and options for Streams</em> section of the Streams product documentation.
+<P>
+</P>
+<P>
+A collection of sample operators, functions and listeners are provided
+<A HREF="../samples/index.html" target="_blank">(javadoc)</A>,
+including source code.
+The source code is available in the jar file
+<BR>
+<code>$STREAMS_INSTALL/lib/com.ibm.streams.operator.samples.jar</code>.
+</P>
+<H4>What's new in IBM Streams 4.2</H4>
+<BR>&bull; Support for {@link com.ibm.streams.operator.state.ConsistentRegionContext#enableNonBlockingCheckpoint() non-blocking checkpoint} in consistent regions.
+<BR>&bull; Support for nested parallel (UDP) regions with access the operator's
+{@link com.ibm.streams.operator.OperatorContext#getLocalChannel() local channel}
+information.
+<BR>&bull;
+{@link com.ibm.streams.operator.ProcessingElement#getApplicationConfiguration(String) Secure Application Configuration}.
+This allows operators to obtain configuration information securely stored at the
+instance or domain level using a logical name, typically used for credentials to access external systems, such as a database.
+<BR>&bull; Access to the application's
+{@link com.ibm.streams.operator.ProcessingElement#getToolkitDirectory(String) toolkit directories}. This allows SPL Java native functions to access their toolkit from within the Streams application bundle.
+<BR>
+<H4>What's new in InfoSphere Streams 4.1</H4>
+<BR>&bull; Integration with IBM's Information Governance Catalog through
+{@link com.ibm.streams.operator.ProcessingElement#setTagData(String, java.util.Map) tag data}.
+<BR>&bull; Access to
+{@link com.ibm.streams.operator.ProcessingElement#getJobGroup() job group}
+and
+{@link com.ibm.streams.operator.ProcessingElement#getApplicationName() application name}.
+<BR>
+<H4>What's new in InfoSphere Streams 4.0</H4>
+<BR>&bull;
+Support for {@link com.ibm.streams.operator.state.CheckpointContext checkpointing} of operator state.
+<BR>&bull;
+Support for {@link com.ibm.streams.operator.state.ConsistentRegionContext consistent regions}  of an SPL application.
+<BR>&bull;
+Support for a {@link com.ibm.streams.operator.control.ControlPlaneContext Job Control Plane}.
+<BR>&bull;
+Java primitive operator parameters now support {@link com.ibm.streams.operator.TupleAttribute attributes}
+and custom literals as parameter types.
+<BR>
+<H4>What's new in InfoSphere Streams 3.2</H4>
+<BR>&bull;
+Annotations to define an class implementing {@link com.ibm.streams.operator.Operator}
+as a SPL Java primitive operator.
+Classes annotated with {@link com.ibm.streams.operator.model.PrimitiveOperator}
+are indexed as primitive operators during toolkit indexing ({@code spl-make-toolkit}).
+<BR>&bull;
+Annotation to define a static method as a SPL native function.
+Methods annotated with {@link com.ibm.streams.function.model.Function} are
+indexed as native functions during toolkit indexing ({@code spl-make-toolkit}).
+<BR>&bull;
+Methods to provide context when the operator is invoked in a parallel region
+(See documentation for the {@code @parallel} SPL annotation).
+Context includes the operator's
+{@link com.ibm.streams.operator.OperatorContext#getChannel() channel number} and
+{@link com.ibm.streams.operator.OperatorContext#getLogicalName() logical name},
+and the {@link com.ibm.streams.operator.OperatorContext#getMaxChannels() maximum number}
+of channels in the parallel region. Identical methods are added to
+{@link com.ibm.streams.operator.management.OperatorContextMXBean OperatorContextMXBean}.
+<BR>&bull;
+Utility methods to invoke actions
+at points in an operator's life cycle, see {@link com.ibm.streams.operator.management.OperatorLifeCycle}.
+<BR>&bull;
+Ability to {@link com.ibm.streams.operator.OperatorContext#addClassLibraries(String[]) add class libraries}
+to the operator's class loader at runtime.
+<BR>&bull;
+Methods to create {@link com.ibm.streams.operator.StreamSchema StreamSchema} instances that are
+based upon an existing schema by
+{@link com.ibm.streams.operator.StreamSchema#extendBySchemas(StreamSchema...) extending}
+them with additional attributes, or by
+{@link com.ibm.streams.operator.StreamSchema#remove(String...) removing} attributes.
+These methods may be used within the Java mock SPL runtime framework to generate
+output port schemas based upon input schemas.
+<BR>&bull;
+Access to the reference of operator instances within a Java test graph using
+{@link com.ibm.streams.flow.javaprimitives.JavaTestableGraph#getOperatorInstance(com.ibm.streams.flow.declare.OperatorInvocation) getOperatorInstance()}.
+<BR>
+<H4>What's new in InfoSphere Streams 3.1</H4>
+<BR>&bull;
+A Java mock SPL runtime framework to support unit testing of
+Java classes that implement {@link com.ibm.streams.operator.Operator Operator}.
+The API for the mock framework is contained in packages under the
+{@code com.ibm.streams.flow} name space. An empty
+{@link com.ibm.streams.flow.declare.OperatorGraph operator graph}
+is obtained using
+{@link com.ibm.streams.flow.declare.OperatorGraphFactory OperatorGraphFactory}.
+Adding an operator to the graph returns an
+{@link com.ibm.streams.flow.declare.OperatorInvocation OperatorInvocation}
+which then allows the invocation of the operator to be declared, such
+as its parameters and input and output ports.
+A declared graph is tested using
+{@link com.ibm.streams.flow.javaprimitives.JavaOperatorTester JavaOperatorTester}
+<BR>&bull;
+Simplified initialization for custom metrics using the
+{@link com.ibm.streams.operator.model.CustomMetric @CustomMetric}
+annotation, including optional automatic registration of a
+{@link com.ibm.streams.operator.management.MetricMXBean MetricMXBean}.
+<BR>&bull;
+Additional methods to submit tuples:
+{@link com.ibm.streams.operator.StreamingOutput#submitAsTuple(Object...)},
+{@link com.ibm.streams.operator.StreamingOutput#submitListAsTuple(java.util.List)}
+and
+{@link com.ibm.streams.operator.StreamingOutput#submitMapAsTuple(java.util.Map)}.
+<BR>&bull;
+Methods to avoid operators performing background work that is not
+visible to the SPL Java runtime from being completed:
+{@link com.ibm.streams.operator.AbstractOperator#createAvoidCompletionThread(com.ibm.streams.operator.OperatorContext)},
+{@link com.ibm.streams.operator.AbstractOperator#createAvoidCompletionThread()} and
+{@link com.ibm.streams.operator.AbstractOperator#createAvoidCompletionThreadIfNoInputs()}
+<BR>&bull;
+SPL types
+{@code list<uint8>}, {@code list<uint16>},
+{@code list<uint32>} and {@code list<uint64>} supported by
+{@link com.ibm.streams.operator.Tuple#getBuffer(int)}.
+<BR>&bull;
+Typed {@link com.ibm.streams.operator.Tuple} getter methods
+{@link com.ibm.streams.operator.Tuple#getObject(int, Class)}
+and
+{@link com.ibm.streams.operator.Tuple#getBuffer(int, Class)}.
+<BR>&bull;
+Upgrade to Apache Commons Math 2.2
+<BR>
+<H4>What's new in InfoSphere Streams 3.0</H4>
+<BR>&bull;
+SPL compile time operator invocation context checking by annotating
+public static methods in the operator's class or super-class with
+{@link com.ibm.streams.operator.OperatorContext.ContextCheck @ContextCheck}.
+<BR>&bull;
+Simplified initialization by automatic setting of operator parameter values through Java
+bean setter methods by annotating the setter method with
+{@link com.ibm.streams.operator.model.Parameter @Parameter}.
+<BR>&bull;
+Support for encoding of tuples using
+{@link com.ibm.streams.operator.encoding.JSONEncoding JSON} and
+{@link com.ibm.streams.operator.StreamSchema#newNativeBinaryEncoding() SPL native encoding}.
+<BR>&bull;
+Integration with Java platform logging (java.util.logging) and Apache Log4j to support SPL log and trace facilities
+<BR>&bull;
+Support for SPL types
+{@link com.ibm.streams.operator.Type.MetaType#XML xml} and
+{@link com.ibm.streams.operator.Type.MetaType#ENUM enum}
+in Java operators
+<BR>&bull;
+Simplified nested tuple handling for
+{@link com.ibm.streams.operator.OutputTuple} using
+{@link com.ibm.streams.operator.OutputTuple#setTuple(int, com.ibm.streams.operator.Tuple)}
+and
+{@link com.ibm.streams.operator.OutputTuple#assignTuple(int, com.ibm.streams.operator.Tuple)}.
+<BR>&bull;
+Registration of JMX MXBeans for
+{@link com.ibm.streams.operator.management.ProcessingElementMXBean processing element},
+{@link com.ibm.streams.operator.management.OperatorContextMXBean operator context} and
+{@link com.ibm.streams.operator.management.MetricMXBean metrics}
+in the PE's platform MBean Server to allow integration
+with JMX facilities, such as threshold notifications
+for operator metrics.
+<BR>&bull;
+Operator to PE port mapping:
+{@link com.ibm.streams.operator.StreamingData#getPEPortNumber()} and
+{@link com.ibm.streams.operator.StreamingData#isConnectedToPEPort()}.
+<BR>&bull;
+Additional methods on {@link com.ibm.streams.operator.ProcessingElement}:
+{@link com.ibm.streams.operator.ProcessingElement#getApplicationDirectory()},
+{@link com.ibm.streams.operator.ProcessingElement#getApplicationScope()},
+{@link com.ibm.streams.operator.ProcessingElement#getInstanceId()},
+{@link com.ibm.streams.operator.ProcessingElement#getRelaunchCount()},
+{@link com.ibm.streams.operator.ProcessingElement#isOptimized()} and
+{@link com.ibm.streams.operator.ProcessingElement#setLoggerAspects(String, String...)}.
+</P>
+</body>

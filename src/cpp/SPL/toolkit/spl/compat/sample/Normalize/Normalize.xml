@@ -1,0 +1,58 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description>Convert a tuple with lists to a sequence of tuples with individual list elements</description>
+      <customOutputFunctions>
+        <customOutputFunction>
+          <name>NormalizationAggregation</name>
+          <function>
+            <description>Return attribute unchanged</description>
+            <prototype><![CDATA[ <any T> T AsIs      (T v     ) ]]></prototype>
+          </function>
+          <function>
+            <description>Split list attribute into elements</description>
+            <prototype><![CDATA[ <any T> T Normalized(list<T> v)]]></prototype>
+          </function>
+          <function>
+            <description>Split list attribute into elements</description>
+            <prototype><![CDATA[ <any T>[N] T Normalized(list<T>[N] v)]]></prototype>
+          </function>
+        </customOutputFunction>
+      </customOutputFunctions>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <outputFunctions>
+          <default>AsIs</default>
+          <type>NormalizationAggregation</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

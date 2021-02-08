@@ -1,0 +1,627 @@
+<?xml version="1.0"?>
+<AstNodes
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/AstNodes AstNode.xsd">
+
+  <AstNode name="opInvokeBody" tokenType="OPINVOKEBODY" noAstNamespace="true"/>
+  <AstNode name="portInputs" tokenType="PORTINPUTS" noAstNamespace="true"/>
+  <AstNode name="compositeBody" tokenType="COMPOSITEBODY" noAstNamespace="true"/>
+  <AstNode name="compositePort" tokenType="COMPOSITEPORT" noAstNamespace="true"/>
+
+  <AstNode name="ampAmpT" tokenType="AMP_AMP" spelling="&amp;&amp;"/>
+  <AstNode name="ampEqT" tokenType="AMP_EQ" spelling="&amp;="/>
+  <AstNode name="ampT" tokenType="AMP" spelling="&amp;"/>
+  <AstNode name="attributeT" tokenType="ATTRIBUTE" spelling="attribute"/>
+  <AstNode name="bangT" tokenType="BANG" spelling="!"/>
+  <AstNode name="barBarT" tokenType="BAR_BAR" spelling="||"/>
+  <AstNode name="barEqT" tokenType="BAR_EQ" spelling="|="/>
+  <AstNode name="barT" tokenType="BAR" spelling="|"/>
+  <AstNode name="blobT" tokenType="BLOB" spelling="blob"/>
+  <AstNode name="booleanT" tokenType="BOOLEAN" spelling="boolean"/>
+  <AstNode name="breakT" tokenType="BREAK" spelling="break"/>
+  <AstNode name="complex32T" tokenType="COMPLEX32" spelling="complex32"/>
+  <AstNode name="complex64T" tokenType="COMPLEX64" spelling="complex64"/>
+  <AstNode name="optionalT" tokenType="OPTIONAL" spelling="optional"/>
+  <AstNode name="compositeT" tokenType="COMPOSITE" spelling="composite"/>
+  <AstNode name="continueT" tokenType="CONTINUE" spelling="continue"/>
+  <AstNode name="decimal128T" tokenType="DECIMAL128" spelling="decimal128"/>
+  <AstNode name="decimal32T" tokenType="DECIMAL32" spelling="decimal32"/>
+  <AstNode name="decimal64T" tokenType="DECIMAL64" spelling="decimal64"/>
+  <AstNode name="dotAmpT" tokenType="DOT_AMP" spelling=".&amp;"/>
+  <AstNode name="dotBarT" tokenType="DOT_BAR" spelling=".|"/>
+  <AstNode name="dotEqEqT" tokenType="DOT_EQ_EQ" spelling=".=="/>
+  <AstNode name="dotGeqT" tokenType="DOT_GEQ" spelling=".$gt;="/>
+  <AstNode name="dotGreaterT" tokenType="DOT_GREATER" spelling=".&gt;"/>
+  <AstNode name="dotHatT" tokenType="DOT_HAT" spelling=".^"/>
+  <AstNode name="dotLShiftT" tokenType="DOT_LSHIFT" spelling=".&lt;&lt;"/>
+  <AstNode name="dotLeqT" tokenType="DOT_LEQ" spelling=".&lt;="/>
+  <AstNode name="dotLessT" tokenType="DOT_LESS" spelling=".&lt;"/>
+  <AstNode name="dotMinusT" tokenType="DOT_MINUS" spelling=".-"/>
+  <AstNode name="dotModT" tokenType="DOT_MOD" spelling=".%"/>
+
+  <AstNode name="dotNeqT" tokenType="DOT_NEQ" spelling=".!="/>
+  <AstNode name="dotPlusT" tokenType="DOT_PLUS" spelling=".+"/>
+  <AstNode name="dotRShiftT" tokenType="DOT_RSHIFT" spelling=".&gt;&gt;"/>
+  <AstNode name="dotSlashT" tokenType="DOT_SLASH" spelling="./"/>
+  <AstNode name="dotStarT" tokenType="DOT_STAR" spelling=".*"/>
+  <AstNode name="enumT" tokenType="ENUM" spelling="enum"/>
+  <AstNode name="errorT" tokenType="ANTLR3_TOKEN_INVALID" spelling="error" start="false" noStart="true"/>
+
+  <AstNode name="eqEqT" tokenType="EQ_EQ" spelling="=="/>
+  <AstNode name="eqT" tokenType="EQ" spelling="="/>
+  <AstNode name="expressionT" tokenType="EXPRESSION" spelling="expression"/>
+  <AstNode name="falseLiteralT" tokenType="FALSE_LITERAL" spelling="false"/>
+  <AstNode name="float32T" tokenType="FLOAT32" spelling="float32"/>
+  <AstNode name="float64T" tokenType="FLOAT64" spelling="float64"/>
+
+  <AstNode name="functionT" tokenType="FUNCTION" spelling="function"/>
+  <AstNode name="geqT" tokenType="GEQ" spelling="&gt;="/>
+  <AstNode name="greaterT" tokenType="GREATER" spelling="&gt;"/>
+  <AstNode name="hatEqT" tokenType="HAT_EQ" spelling="^="/>
+  <AstNode name="hatT" tokenType="HAT" spelling="^"/>
+
+  <AstNode name="inT" tokenType="IN" spelling="in"/>
+  <AstNode name="int16T" tokenType="INT16" spelling="int16"/>
+  <AstNode name="int32T" tokenType="INT32" spelling="int32"/>
+  <AstNode name="int64T" tokenType="INT64" spelling="int64"/>
+  <AstNode name="int8T" tokenType="INT8" spelling="int8"/>
+
+  <AstNode name="lShiftEqT" tokenType="LSHIFT_EQ" spelling="&lt;&lt;="/>
+  <AstNode name="lShiftT" tokenType="LSHIFT" spelling="&lt;&lt;"/>
+  <AstNode name="leqT" tokenType="LEQ" spelling="&lt;="/>
+  <AstNode name="lessT" tokenType="LESS" spelling="&lt;"/>
+
+  <AstNode name="listT" tokenType="LIST" spelling="list"/>
+  <AstNode name="mapT" tokenType="MAP" spelling="map"/>
+  <AstNode name="minusEqT" tokenType="MINUS_EQ" spelling="-="/>
+  <AstNode name="minusMinusT" tokenType="MINUS_MINUS" spelling="--"/>
+  <AstNode name="minusT" tokenType="MINUS" spelling="-"/>
+
+  <AstNode name="modEqT" tokenType="MOD_EQ" spelling="%="/>
+  <AstNode name="modT" tokenType="MOD" spelling="%"/>
+  <AstNode name="mutableT" tokenType="MUTABLE" spelling="mutable"/>
+  <AstNode name="neqT" tokenType="NEQ" spelling="!="/>
+
+  <AstNode name="noneT" tokenType="NONE" spelling="none" public="true" start="false" noStart="true"/>
+  <AstNode name="operatorT" tokenType="OPERATOR" spelling="operator"/>
+  <AstNode name="plusEqT" tokenType="PLUS_EQ" spelling="+="/>
+  <AstNode name="plusPlusT" tokenType="PLUS_PLUS" spelling="++"/>
+  <AstNode name="plusT" tokenType="PLUS" spelling="+"/>
+  <AstNode name="publicT" tokenType="PUBLIC" spelling="public"/>
+  <AstNode name="qmarkT" tokenType="QMARK" spelling="?"/>
+  <AstNode name="qmarkQmarkT" tokenType="QMARK_QMARK" spelling="??"/>
+  <AstNode name="rCurlyT" tokenType="RCURLY" spelling="}"/>
+  <AstNode name="rShiftEqT" tokenType="RSHIFT_EQ" spelling="&gt;&gt;="/>
+  <AstNode name="pountdT" tokenType="POUND" spelling="#"/>
+  <AstNode name="rShiftT" tokenType="RSHIFT" spelling="&gt;&gt;"/>
+  <AstNode name="semiT" tokenType="SEMI" spelling=";"/>
+
+  <AstNode name="setT" tokenType="SET" spelling="set"/>
+  <AstNode name="slashT" tokenType="SLASH" spelling="/"/>
+  <AstNode name="slashEqT" tokenType="SLASH_EQ" spelling="/="/>
+  <AstNode name="starT" tokenType="STAR" spelling="*"/>
+  <AstNode name="starEqT" tokenType="STAR_EQ" spelling="*="/>
+  <AstNode name="statefulT" tokenType="STATEFUL" spelling="stateful"/>
+  <AstNode name="staticT" tokenType="STATIC" spelling="static"/>
+  <AstNode name="ustringT" tokenType="USTRING" spelling="ustring"/>
+
+  <AstNode name="nullLiteralT" tokenType="NULL_LITERAL" useStartToken="true"/>
+  <AstNode name="stringLiteralT" tokenType="STRING_LITERAL" useStartToken="true" text="true"/>
+
+  <AstNode name="tildeT" tokenType="TILDE" spelling="~"/>
+  <AstNode name="timestampT" tokenType="TIMESTAMP" spelling="timestamp"/>
+  <AstNode name="trueLiteralT" tokenType="TRUE_LITERAL" spelling="true"/>
+  <AstNode name="tupleT" tokenType="TUPLE" spelling="tuple"/>
+  <AstNode name="typeT" tokenType="TYPE" spelling="type"/>
+  <AstNode name="uint8T" tokenType="UINT8" spelling="uint8"/>
+  <AstNode name="uint16T" tokenType="UINT16" spelling="uint16"/>
+  <AstNode name="uint32T" tokenType="UINT32" spelling="uint32"/>
+  <AstNode name="uint64T" tokenType="UINT64" spelling="uint64"/>
+  <AstNode name="unaryMinusT" tokenType="UNARY_MINUS" spelling="-"/>
+  <AstNode name="useWildcardT" tokenType="USE_WILDCARD" spelling="*"/>
+  <AstNode name="voidT" tokenType="VOID" spelling="void"/>
+  <AstNode name="floatLiteralT" tokenType="FLOAT_LITERAL" useStartToken="true" text="true"/>
+  <AstNode name="intLiteralT" tokenType="INT_LITERAL" useStartToken="true" text="true"/>
+  <AstNode name="xmlLiteralT" tokenType="XML_LITERAL" useStartToken="true"/>
+  <AstNode name="idT" tokenType="ID" useStartToken="true" text="true"/>
+  <AstNode name="hexLiteralT" tokenType="HEX_LITERAL" useStartToken="true" text="true"/>
+  <AstNode name="mlCommentT" tokenType="ML_COMMENT" useStartToken="true"/>
+
+  <AstNode name="parenthesizedExpr" tokenType="PARENTHESIZEDEXPR">
+    <Child name="expr"/>
+  </AstNode>
+
+  <AstNode name="localDecl" tokenType="LOCALDECL">
+    <Child name="modifiers"/>
+    <Child name="type"/>
+    <Child name="localDeclItem" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="callExpr" tokenType="CALLEXPR">
+    <Child name="target"/>
+    <Child name="actual" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="compilationUnit" tokenType="COMPILATIONUNIT" noStart="true">
+    <Child name="splDoc"/>
+    <Child name="splNamespace"/>
+    <Child name="useDirectives"/>
+    <Child name="definition" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="splNamespace" tokenType="SPLNAMESPACE" noStart="true">
+    <Child name="splDoc"/>
+    <Child name="name" optional="true"/>
+  </AstNode>
+
+  <AstNode name="namespaceName" tokenType="NAMESPACENAME">
+    <Child name="body"/>
+  </AstNode>
+
+  <AstNode name="useDirectives" tokenType="USEDIRECTIVES" noStart="true">
+    <Child name="useDirective" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="useDirective" tokenType="USE">
+    <Child name="namespaceName"/>
+    <Child name="useDirectiveTail"/>
+  </AstNode>
+
+  <AstNode name="useDirectiveTail" tokenType="USEDIRECTIVETAIL">
+    <Child name="idOrStar"/>
+  </AstNode>
+
+  <AstNode name="compositeDef" tokenType="COMPOSITEDEF">
+    <Child name="compositeHead"/>
+    <Child name="compositeBody"/>
+    <Child name="end"/>
+  </AstNode>
+
+  <AstNode name="compositeHead" tokenType="COMPOSITEHEAD" public="true">
+    <Child name="splDoc"/>
+    <Child name="annotations"/>
+    <Child name="modifiers"/>
+    <Child name="compositeT"/>
+    <Child name="id"/>
+    <Child name="compositeOut"/>
+    <Child name="compositeIn"/>
+  </AstNode>
+
+  <AstNode name="splDoc" tokenType="SPLDOC" public="true" noStart="true">
+    <Child name="comment" optional="true"/>
+  </AstNode>
+
+  <AstNode name="compositeIn" tokenType="COMPOSITEIN" public="true">
+    <Child name="compositePort" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="compositeOut" tokenType="COMPOSITEOUT" public="true">
+    <Child name="compositePort" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="formalClause" tokenType="FORMALCLAUSE" spelling="param">
+    <Child name="compositeFormal" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="typeClause" tokenType="TYPECLAUSE" spelling="type" noStart="true">
+    <Child name="typeDef" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="graphClause" tokenType="GRAPH" spelling="graph">
+    <Child name="opInvoke" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="configClause" tokenType="CONFIG" spelling="config">
+    <Child name="config" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="compositeFormal" tokenType="COMPOSITEFORMAL">
+    <Child name="expressionMode"/>
+    <Child name="id"/>
+    <Child name="compositeFormalInit"/>
+  </AstNode>
+
+  <AstNode name="compositeFormalInit" tokenType="COMPOSITEFORMALINIT" spelling="COMPOSITEFORMALINIT">
+    <Child name="opActual" optional="true"/>
+  </AstNode>
+
+  <AstNode name="opActualExprs" tokenType="OPACTUALEXPRS" noStart="true">
+    <Child name="expr" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="opActualName" tokenType="OPACTUALNAME">
+    <Child name="name"/>
+  </AstNode>
+
+  <AstNode name="opActualType" tokenType="OPACTUALTYPE" noStart="true">
+    <Child name="type"/>
+  </AstNode>
+
+  <AstNode name="config" tokenType="CONFIGITEM">
+    <Child name="id"/>
+    <Child name="expr" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="opInvoke" tokenType="OPINVOKE">
+    <Child name="head"/>
+    <Child name="body"/>
+    <Child name="end"/>
+  </AstNode>
+
+  <AstNode name="opInvokeHead" tokenType="OPINVOKEHEAD">
+    <Child name="splDoc"/>
+    <Child name="annotations"/>
+    <Child name="outputs"/>
+    <Child name="alias"/>
+    <Child name="opName"/>
+    <Child name="inputs"/>
+  </AstNode>
+
+  <AstNode name="opOutputs" tokenType="OPOUTPUTS">
+    <Child name="output" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="opOutput" tokenType="OPOUTPUT">
+    <Child name="streamType"/>
+    <Child name="id"/>
+    <Child name="alias" optional="true"/>
+  </AstNode>
+
+  <AstNode name="streamType" tokenType="STREAM">
+    <Child name="tupleBody"/>
+  </AstNode>
+
+  <AstNode name="as" tokenType="AS" spelling="as">
+    <Child name="id"/>
+  </AstNode>
+
+  <AstNode name="opInputs" tokenType="OPINPUTS">
+    <Child name="portInputs" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="logic" tokenType="LOGIC">
+    <Child name="opInvokeLogic" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="window" tokenType="WINDOW" spelling="window">
+    <Child name="opInvokeWindow" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="actualClause" tokenType="ACTUALCLAUSE" spelling="param">
+    <Child name="opInvokeActual" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="outputClause" tokenType="OUTPUTCLAUSE" spelling="output">
+    <Child name="opInvokeOutput" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="opInvokeLogicState" tokenType="STATE" spelling="state">
+    <Child name="stmt"/>
+  </AstNode>
+
+  <AstNode name="opInvokeLogicOnTuple" tokenType="ONTUPLE" spelling="onTuple">
+    <Child name="id"/>
+    <Child name="stmt"/>
+  </AstNode>
+
+  <AstNode name="opInvokeLogicOnPunct" tokenType="ONPUNCT" spelling="onPunct">
+    <Child name="id"/>
+    <Child name="stmt"/>
+  </AstNode>
+
+<!--
+  // STREAMS_SPL_EVENTTIME_CUSTOM_SUPPORT
+  <AstNode name="opInvokeLogicOnWatermark" tokenType="ONWATERMARK" spelling="onWatermark">
+    <Child name="id"/>
+    <Child name="stmt"/>
+  </AstNode>
+-->
+
+  <AstNode name="opInvokeLogicOnProcess" tokenType="ONPROCESS" spelling="onProcess">
+    <Child name="stmt"/>
+  </AstNode>
+
+  <AstNode name="opInvokeWindow" tokenType="OPINVOKEWINDOW">
+    <Child name="id"/>
+    <Child name="expr" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="opInvokeActual" tokenType="OPINVOKEACTUAL">
+    <Child name="id"/>
+    <Child name="opActual"/>
+  </AstNode>
+
+  <AstNode name="opInvokeOutput" tokenType="OPINVOKEOUTPUT">
+    <Child name="id"/>
+    <Child name="expr" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="functionDef" tokenType="FUNCTIONDEF">
+    <Child name="head"/>
+    <Child name="body"/>
+  </AstNode>
+
+  <AstNode name="functionHead" tokenType="FUNCTIONHEAD">
+    <Child name="splDoc"/>
+    <Child name="modifiers"/>
+    <Child name="type"/>
+    <Child name="id"/>
+    <Child name="functionFormal" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="functionFormal" tokenType="FUNCTIONFORMAL">
+    <Child name="modifiers"/>
+    <Child name="type"/>
+    <Child name="id"/>
+  </AstNode>
+
+  <!--AstNode name="localDecl" tokenType="LOCALDECL">
+    <Child name="modifiers"/>
+    <Child name="type"/>
+    <Child name="localDeclItem" repeat="true"/>
+  </AstNode-->
+
+  <AstNode name="localDeclItem" tokenType="LOCALDECLITEM">
+    <Child name="id"/>
+    <Child name="expr_q"/>
+  </AstNode>
+
+  <AstNode name="blockStmt" tokenType="BLOCKSTMT">
+    <Child name="stmt" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="blockStmtNoScope" tokenType="BLOCKSTMTNOSCOPE">
+    <Child name="stmt" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="exprStmt" tokenType="EXPRSTMT">
+    <Child name="expr"/>
+  </AstNode>
+
+  <AstNode name="ifStmt" tokenType="IF">
+    <Child name="expr"/>
+    <Child name="stmt"/>
+    <Child name="elseClause" optional="true"/>
+  </AstNode>
+
+  <AstNode name="elseClause" tokenType="ELSE">
+    <Child name="stmt"/>
+  </AstNode>
+
+  <AstNode name="forStmt" tokenType="FOR">
+    <Child name="forInit"/>
+    <Child name="stmt"/>
+  </AstNode>
+
+  <AstNode name="forInit" tokenType="FORINIT">
+    <Child name="modifiers"/>
+    <Child name="type"/>
+    <Child name="id"/>
+    <Child name="expr"/>
+  </AstNode>
+
+  <AstNode name="whileStmt" tokenType="WHILE">
+    <Child name="expr"/>
+    <Child name="stmt"/>
+  </AstNode>
+
+  <AstNode name="returnStmt" tokenType="RETURN" spelling="return">
+    <Child name="expr" optional="true"/>
+  </AstNode>
+
+  <AstNode name="mapping" tokenType="COLON">
+    <Child name="fromExpr"/>
+    <Child name="toExpr"/>
+  </AstNode>
+
+  <AstNode name="attributeExpr" tokenType="DOT" spelling=".">
+    <Child name="base"/>
+    <Child name="id"/>
+  </AstNode>
+
+  <AstNode name="castExpr" tokenType="CASTEXPR">
+    <Child name="type"/>
+    <Child name="expr"/>
+  </AstNode>
+
+  <!--AstNode name="callExpr" tokenType="CALLEXPR">
+    <Child name="target"/>
+    <Child name="actual" repeat="true"/>
+  </AstNode-->
+
+  <AstNode name="conditionalExpr" tokenType="CONDITIONAL_EXPR">
+    <Child name="condExpr"/>
+    <Child name="thenExpr"/>
+    <Child name="elseExpr"/>
+  </AstNode>
+
+  <AstNode name="isPresentExpr" tokenType="ISPRESENT_EXPR">
+    <Child name="lhs"/>
+  </AstNode>
+
+  <AstNode name="unwrapExpr" tokenType="UNWRAP_EXPR">
+    <Child name="lhs"/>
+  </AstNode>
+
+  <AstNode name="unwrapOrElseExpr" tokenType="UNWRAP_OR_ELSE_EXPR">
+    <Child name="lhs"/>
+    <Child name="rhs"/>
+  </AstNode>
+
+  <AstNode name="postfixExpr" tokenType="POSTFIXEXPR">
+    <Child name="expr"/>
+    <Child name="postfixOp"/>
+  </AstNode>
+
+  <AstNode name="prefixExpr" tokenType="PREFIXEXPR">
+    <Child name="prefixOp"/>
+    <Child name="expr"/>
+  </AstNode>
+
+  <!-- The qualifierExpr and qualifiedName are being used interchangably at least in AstPrinter line 412 -->
+  <AstNode name="qualifierExpr" tokenType="COLON_COLON" spelling="::">
+    <Child name="namespaceName"/>
+    <Child name="id"/>
+  </AstNode>
+
+  <AstNode name="subscriptExpr" tokenType="SUBSCRIPTEXPR">
+    <Child name="expr"/>
+    <Child name="subscript"/>
+  </AstNode>
+
+  <AstNode name="subscriptSlice" tokenType="SLICE" spelling=":">
+    <Child name="lower"/>
+    <Child name="upper"/>
+  </AstNode>
+
+  <AstNode name="listLiteral" tokenType="LISTLITERAL" noStart="true">
+    <Child name="expr" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="emptyCurlyLiteralT" tokenType="CURLYLITERAL" spelling="{}">
+    <!--Child name="exprOrMapping" repeat="true"/-->
+  </AstNode>
+
+  <AstNode name="mapLiteral" tokenType="MAPLITERAL" noStart="true">
+    <Child name="mapping" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="setLiteral" tokenType="SETLITERAL" noStart="true">
+    <Child name="expr" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="tupleLiteral" tokenType="TUPLELITERAL" noStart="true">
+    <Child name="attributeAssign" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="attributeAssign" tokenType="ATTRIBUTEASSIGN">
+    <Child name="id"/>
+    <Child name="expr"/>
+  </AstNode>
+
+  <AstNode name="typeDef" tokenType="DEFTYPE" public="true">
+    <Child name="splDoc"/>
+    <Child name="modifiers"/>
+    <Child name="id"/>
+    <Child name="typeDefTail"/>
+    <Child name="semi"/>
+  </AstNode>
+
+  <AstNode name="expressionMode" tokenType="EXPRESSIONMODE">
+    <Child name="name"/>
+    <Child name="typeArgs" optional="true"/>
+  </AstNode>
+
+  <AstNode name="typeName" tokenType="TYPENAME">
+    <Child name="contents"/>
+  </AstNode>
+
+  <AstNode name="enumType" tokenType="ENUMTYPE" public="true" spelling="enum">
+    <Child name="id" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="xmlType" tokenType="XML" spelling="xml">
+    <Child name="schema" optional="true"/>
+  </AstNode>
+
+  <AstNode name="listType" tokenType="LISTTYPE" spelling="list">
+    <Child name="typeArgs"/>
+    <Child name="typeDims" optional="true"/>
+  </AstNode>
+
+  <AstNode name="mapType" tokenType="MAPTYPE" spelling="map">
+    <Child name="typeArgs"/>
+    <Child name="typeDims" optional="true"/>
+  </AstNode>
+
+  <AstNode name="setType" tokenType="SETTYPE" spelling="set">
+    <Child name="typeArgs"/>
+    <Child name="typeDims" optional="true"/>
+  </AstNode>
+
+  <AstNode name="primitiveType" tokenType="PRIMITIVETYPE">
+    <Child name="name"/>
+  </AstNode>
+
+  <AstNode name="rstringType" tokenType="RSTRING" spelling="rstring">
+    <Child name="typeDims" optional="true"/>
+  </AstNode>
+
+  <AstNode name="tupleType" tokenType="TUPLETYPE">
+    <Child name="tupleBody"/>
+  </AstNode>
+
+  <AstNode name="tupleAttrib" tokenType="TUPLEATTRIB">
+    <Child name="attributeDecl" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="tupleExtend" tokenType="TUPLEEXTEND">
+    <Child name="tupleExtendee" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="optionalType" tokenType="OPTIONALTYPE">
+    <Child name="type"/>
+  </AstNode>
+
+  <AstNode name="attributeDecl" tokenType="ATTRIBUTEDECL">
+    <Child name="type"/>
+    <Child name="id"/>
+  </AstNode>
+
+  <AstNode name="typeArgs" tokenType="TYPEARGS">
+    <Child name="type" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="typeDims" tokenType="TYPEDIMS">
+    <Child name="expr"/>
+  </AstNode>
+
+  <AstNode name="modifiers" tokenType="MODIFIERS">
+    <Child name="modifier" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="functionPrototype" tokenType="FUNCTIONPROTOTYPE">
+    <Child name="typeFormals"/>
+    <Child name="boundsFormals"/>
+    <Child name="modifiers"/>
+    <Child name="type"/>
+    <Child name="id"/>
+    <Child name="protoFormals"/>
+  </AstNode>
+
+  <AstNode name="typeFormals" tokenType="TYPEFORMALS">
+    <Child name="typeFormal" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="typeFormal" tokenType="TYPEFORMAL">
+    <Child name="typeFormalConstraint"/>
+    <Child name="id"/>
+  </AstNode>
+
+  <AstNode name="boundsFormals" tokenType="BOUNDSFORMALS">
+    <Child name="boundsFormal" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="protoFormals" tokenType="PROTOFORMALS">
+    <Child name="protoFormal" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="protoFormal" tokenType="PROTOFORMAL">
+    <Child name="modifiers"/>
+    <Child name="type"/>
+    <Child name="id" optional="true"/>
+  </AstNode>
+
+  <AstNode name="annotations" tokenType="ANNOTATIONS">
+    <Child name="annotation" repeat="true"/>
+  </AstNode>
+
+  <AstNode name="annotation" tokenType="ANNOTATION">
+    <Child name="id"/>
+    <Child name="tupleLiteral" optional="true"/>
+  </AstNode>
+
+  <AstNode name="annotationT" tokenType="ANNOTATIONT" start="false" noStart="true"/>
+
+
+</AstNodes>

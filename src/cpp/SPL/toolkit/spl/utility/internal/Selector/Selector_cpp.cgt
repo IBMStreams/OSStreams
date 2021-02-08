@@ -1,0 +1,87 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    SPL::CodeGen::implementationPrologue($model);
+
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+%>
+
+MY_OPERATOR::MY_OPERATOR()
+   : _selected (false)
+   , _portIndex(0)
+   , _portMutex()
+{
+}
+
+// Tuple processing for non-mutating ports
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+    AutoPortMutex apm(_portMutex, *this);
+
+    if (!_selected) {
+       _selected = true;
+       _portIndex = port;
+       SPLAPPTRC(L_DEBUG, "Selected port " << _portIndex, SPL_OPER_DBG);
+    }
+
+    if (_selected && _portIndex == port) {
+       submit(tuple, 0);
+    }
+}
+
+// Punctuation processing
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+    AutoPortMutex apm(_portMutex, *this);
+
+    if (!_selected) {
+      _selected = true;
+      _portIndex = port;
+    }
+
+    if (_selected && _portIndex == port) {
+        if(punct==Punctuation::WindowMarker || punct==Punctuation::FinalMarker || punct==Punctuation::WatermarkMarker) {
+            submit (punct, 0);
+        }
+    }
+}
+
+// Watermark processing
+void MY_OPERATOR::processWatermark(Punctuation const & wm, uint32_t port)
+{
+    process(wm, port);
+}
+
+<%if ($isInConsistentRegion) {%>
+
+void MY_OPERATOR::reset(Checkpoint & id) {
+    deselect();
+}
+
+void MY_OPERATOR::resetToInitialState() {
+    deselect();
+}
+
+void MY_OPERATOR::deselect() {
+    AutoPortMutex apm(_portMutex, *this);
+    _selected = false;
+    SPLAPPTRC(L_DEBUG, "Port deselected", SPL_OPER_DBG);
+}
+
+<%} # end of consistent region support %>
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

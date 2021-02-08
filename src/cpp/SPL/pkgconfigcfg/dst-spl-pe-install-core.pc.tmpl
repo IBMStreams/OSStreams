@@ -1,0 +1,10 @@
+prefix=${distinst}
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+impllibdir=${exec_prefix}/system/impl/lib
+
+Name: spl-pe-install-core
+Version: 1
+Description: necessary packages for PE-building (using installation)
+Libs: -L${libdir} -lstreams-spl-runtime -lstreams-apputils -L${impllibdir} -Wl,-rpath-link,${libdir} -Wl,-rpath-link,${impllibdir}
+Cflags: -isystem${prefix}/include -isystem${prefix}/system/impl/include

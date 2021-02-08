@@ -1,0 +1,158 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.adapter$Export.html">
+The `Export` operator sends a stream from the current application,
+making it available to `Import` operators of applications that are running in the same streaming middleware instance.
+
+The `Export` operator does not send tuples to the exported stream inside stand-alone SPL applications. The tuples are ignored.
+
+The `Export` operator does not allow a `config` clause to be specified.
+
+# Checkpointed data
+
+The `Export` operator does not support checkpointing.
+
+# Behavior in a consistent region
+
+The `Export` operator is not supported in a consistent region.
+
+# Checkpointing behavior in an autonomous region
+
+The `Export` operator does not allow `config checkpoint` clause to be specified.
+
+# Examples
+
+This example uses the `Export` operator.
+
+    composite Main {
+      graph
+        stream&lt;int32 i&gt; TechSectorBargains = Beacon() { }
+        stream&lt;int32 i&gt; HealthCareSectorBargains = Beacon() { }
+        () as ExportOp1 = Export(TechSectorBargains) {
+          param properties : { kind="bargains", category="tech",
+                               tickers=["IBM", "GOOG", "MSFT"] };
+        }
+        () as ExportOp2 = Export(HealthCareSectorBargains) {
+          param streamId : "someStreamName";
+        }
+    }
+
+</description>
+      <iconUri size="16">export_16.gif</iconUri>
+      <iconUri size="32">export_32.gif</iconUri>
+      <customLiterals>
+        <enumeration>
+          <name>CongestionPolicyType</name>
+          <value>dropConnection</value>
+          <value>wait</value>
+        </enumeration>
+      </customLiterals>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <allowCustomLogic>false</allowCustomLogic>
+      <codeTemplates>
+        <codeTemplate name="Export with Properties">
+          <description>Export with Properties</description>
+          <template>() as ${opInstanceName} = Export(${inputStream})   {
+            param
+                properties: {${paramExpression}};
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="Export with Stream ID">
+          <description>Export with Stream ID</description>
+          <template>() as ${opInstanceName} = Export(${inputStream})   {
+            param
+                streamId : ${exportedStreamName};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>congestionPolicy</name>
+        <description>
+Specifies the congestion policy of the stream that is exported.
+If this parameter is set to `dropConnection`, then the connection is dropped when a downstream importer is not keeping up.
+In this case, the `nBrokenConnections` metric indicates the connection drop count at the output port.
+If many receivers are connected to the same output port, you can't distinguish which connection drops because of a slow receiver since the `nBrokenConnections` metric is cumulative for all outbound connections.
+When the parameter value is `wait`, the output port causes back pressure when congested.
+The default mode is `wait`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>CongestionPolicyType</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>properties</name>
+        <description>
+Specifies a tuple literal that gives name-value pairs.
+The supported attribute types are int64, float64, rstring, list&lt;int64&gt;, list&lt;float64&gt;, and list&lt;rstring&gt;.
+
+If the application has user-defined parallelism and the `Export` operator is replicated in a parallel region,
+you can use the `getChannel()`, `getMaxChannels()`, `getLocalChannel()` and `getLocalMaxChannels()` SPL built-in functions in this parameter.
+The functions are evaluated when the job is submitted.
+
+You can update the properties at run time by using either Java or C++ primitive operators.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+      </parameter>
+      <parameter>
+        <name>streamId</name>
+        <description>
+Specifies the external name of the stream that is exported.
+Only one of **streamId** or **properties** can be specified on an `Export` operator.
+
+If neither **properties** nor **streamId** is specified, the `Export` operator exports the stream by properties, with empty properties.
+
+If the application has user-defined parallelism and the `Export` operator is replicated in a parallel region,
+you can use the `getChannel()`, `getMaxChannels()`, `getLocalChannel()` and `getLocalMaxChannels()` SPL built-in functions in this parameter.
+The functions are evaluated when the job is submitted.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>allowFilter</name>
+        <description>
+If this parameter is set to `true` or not present, then `Import` operators with a filter expression that connect to this `Export` operator
+pass the filter expression to the `Export` operator to use.
+
+If this parameter is set to `false`, then `Import` operators with a filter expression and whose subscriptions match the `Export` operator
+fail to match the `Export` operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Export` operator has a single input port, which produces tuples from the exported stream.
+The `Export` operator does not allow custom port logic to be specified in its invocations.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

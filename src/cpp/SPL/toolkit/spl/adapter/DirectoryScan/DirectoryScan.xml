@@ -1,0 +1,382 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.adapter$DirectoryScan.html">
+The `DirectoryScan` operator watches a directory, and generates file names on the output, one for each file that is found in the directory.
+The absolute path name of the file is generated.
+The file name is only generated the first time that the file is seen during a directory scan until it is re-created.
+The change time (`ctime`) is used to detect if a file was re-created.
+Output clause and custom output functions can be used to specify additional information about a file.
+Subdirectories and all non-regular files that are found in the directory are ignored during the scan.
+
+**Note**: Because the change time of the file is used to detect if a file was re-created,
+it is possible that large files are still being written when a directory is being scanned.
+In this case, the same file name can be generated multiple times, if the time between scans is less than the time to write the file.
+To avoid this situation, write the file into a different directory on the same file system as the directory that is being scanned,
+and then rename to the target directory when complete.
+If the files are on the same file system, `/bin/mv` does this.
+If a regular expression pattern is being used to match only certain files,
+creating the new files under a name that fails to match the pattern, and then renaming, also works.
+
+Before you submit the file name to the output stream, the `DirectoryScan` operator can optionally move processed files
+to a different directory by using the **moveToDirectory** parameter. If the **moveToDirectory** parameter is specified,
+the file (or symbolic link) is moved to the **moveToDirectory** directory before the output tuple is generated.
+
+When **moveToDirectory** is specified, it is valid to have multiple `DirectoryScan` operators that are reading the same directory.
+The `DirectoryScan` operator ensures that each file is submitted by only one operator by creating a temporary `.rename` subdirectory
+in the **directory** and **moveToDirectory** directories.
+
+# Checkpointed data
+
+When the `DirectoryScan` operator is checkpointed in a consistent region, the list of files processed (or ignored) and the file change time (`ctime`) of each file when it was processed, and logic state variables (if present) are saved in checkpoint.
+When the `DirectoryScan` operator is checkpointed in an autonomous region, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `DirectoryScan` operator can be the start operator or an operator within the reachability graph of a consistent region.
+When the trigger is `operatorDriven`, drain processing is triggered after each submitted tuple.
+The persisted state includes the list of files processed (or ignored), and the file change time (`ctime`) of each file when it was processed.
+Logic state variables (if present) are also automatically checkpointed and resetted.
+
+If the **sleepTime** parameter is specified, the elapsed time since the last scan is not part of the checkpoint state of the operator.
+If the `DirectoryScan` operator is reset without a processing element (PE) restart, the time since last scan is not updated.
+If the reset is due to a PE restart, the next scan is performed when the PE is restarted and the **initDelay** (if any) is complete.
+
+**Tip**: Use the `DirectoryScan` operator as the start of a consistent region when used with a `FileSource` operator.
+It is recommended for the `DirectoryScan` and the `FileSource` operators to be fused and without threaded ports when in a consistent region.
+
+# Checkpointing behavior in an autonomous region
+
+When the `DirectoryScan` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its internal state to its initial state, and restores logic state variables (if present) from the last checkpoint.
+
+When the `DirectoryScan` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Exceptions
+
+The `DirectoryScan` operator throws an exception in the following cases:
+* The **directory** or **moveToDirectory** does not exist.
+* The **directory** or **moveToDirectory** is not a directory.
+* The **pattern** is not a valid regular expression.
+* The `.rename` directories cannot be created when **moveToDirectory** is specified.
+
+# Examples
+
+These examples use the `DirectoryScan` operator.
+
+    composite Main {
+      graph
+        // DirectoryScan operator with a relative directory argument
+        stream&lt;rstring name&gt; Dir1 = DirectoryScan()
+        {
+          param
+            directory : "People.dir";
+            initDelay: 10.0;
+        }
+        // DirectoryScan operator with an absolute file argument and a file name pattern
+        stream&lt;rstring name&gt; Dir2 = DirectoryScan()
+        {
+          param
+            directory : "/tmp/work";
+            pattern : "^work.*";
+        }
+        // use a FileSource operator to process the file names
+        stream&lt;rstring line&gt; Beat6 = FileSource(Dir2)
+        {
+          param // note: param file is not specified
+            format : line;
+            deleteFile : true; // delete the file when processing is finished
+        }
+        // Use DirectoryScan operator to move files to a different directory.
+        // Move the scanned files to the /tmp/active directory. Generate a tuple containing
+        // the original filename in /tmp/work (sourceFile), and the moved filename
+        // in /tmp/active (movedFile).
+        // Generate the size of the file (fileSize).
+        stream&lt;rstring sourceFile, rstring movedFile, uint64 fileSize&gt; Dir3 = DirectoryScan()
+        {
+          param
+            directory : "/tmp/work";
+            moveToDirectory : "/tmp/active";
+            output Dir3 : sourceFile = FilePath(), movedFile = DestinationFilePath(),
+                          fileSize = Size();
+        }
+    }
+
+</description>
+      <iconUri size="16">directoryScan_16.gif</iconUri>
+      <iconUri size="32">directoryScan_32.gif</iconUri>
+      <metrics>
+        <metric>
+          <name>nScans</name>
+          <description>The number of times the directory has been scanned for files.</description>
+          <kind>Counter</kind>
+        </metric>
+      </metrics>
+      <customLiterals>
+        <enumeration>
+          <name>SortByType</name>
+          <value>date</value>
+          <value>name</value>
+        </enumeration>
+        <enumeration>
+          <name>SortOrder</name>
+          <value>ascending</value>
+          <value>descending</value>
+        </enumeration>
+      </customLiterals>
+      <customOutputFunctions>
+        <customOutputFunction>
+          <name>DirectoryScanFunctions</name>
+          <function>
+            <description>Returns the argument unchanged.</description>
+            <prototype><![CDATA[<any T> T AsIs(T)]]></prototype>
+          </function>
+          <function>
+            <description>Returns the relative pathname to the file in the source directory.</description>
+            <prototype><![CDATA[rstring FilePath()]]></prototype>
+          </function>
+          <function>
+            <description>Returns the absolute pathname to the file in the source directory.</description>
+            <prototype><![CDATA[rstring FullPath()]]></prototype>
+          </function>
+          <function>
+            <description>Returns the basename of the file.</description>
+            <prototype><![CDATA[rstring FileName()]]></prototype>
+          </function>
+          <function>
+            <description>Returns the pathname to the source directory.</description>
+            <prototype><![CDATA[rstring Directory()]]></prototype>
+          </function>
+          <function>
+            <description>Returns the pathname to the destination directory that contains the file.</description>
+            <prototype><![CDATA[rstring DestinationDirectory()]]></prototype>
+          </function>
+          <function>
+            <description>Returns the relative pathname to the file in the destination directory.</description>
+            <prototype><![CDATA[rstring DestinationFilePath()]]></prototype>
+          </function>
+          <function>
+            <description>Returns the absolute pathname to the file in the destination directory.</description>
+            <prototype><![CDATA[rstring DestinationFullPath()]]></prototype>
+          </function>
+          <function>
+            <description>Returns the size of the file in bytes.</description>
+            <prototype><![CDATA[uint64 Size()]]></prototype>
+          </function>
+          <function>
+            <description>
+Returns the access time (`atime`) of the file in seconds since the epoch.
+**Note**: The `atime` field is set from the original file in the source directory.
+</description>
+            <prototype><![CDATA[uint64 Atime()]]></prototype>
+          </function>
+          <function>
+            <description>
+Returns the change time (`ctime`) of the file in seconds since the epoch.
+**Note**: The `ctime` field is set from the original file in the source directory.
+</description>
+            <prototype><![CDATA[uint64 Ctime()]]></prototype>
+          </function>
+          <function>
+            <description>
+Returns the modification time (`mtime`) of the file in seconds since the epoch.
+**Note**: The `mtime` field is set from the original file in the source directory.
+</description>
+            <prototype><![CDATA[uint64 Mtime()]]></prototype>
+          </function>
+        </customOutputFunction>
+      </customOutputFunctions>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:lib>boost_filesystem</cmn:lib>
+            <cmn:lib>boost_system</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="DirectoryScan">
+          <description>Basic DirectoryScan template</description>
+          <template>stream&lt;rstring name&gt; ${outputStream} = DirectoryScan()   {
+            param
+                directory: "${directoryToScan}";
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="DirectoryScan with FileSource">
+          <description>DirectoryScan with FileSource</description>
+          <template>stream&lt;rstring name&gt; ${outputStream} = DirectoryScan()   {
+            param
+                directory: "${directoryToScan}";
+        }
+
+        stream&lt;${schema}&gt; ${fileSourceStream} = FileSource(${outputStream})   {
+            param
+                ${cursor}
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>directory</name>
+        <description>
+Specifies the name of the directory to be scanned.
+In a consistent region, do not include more than one instance of a `DirectoryScan` operator that is configured with the same **directory** parameter.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>pattern</name>
+        <description>
+Instructs the `DirectoryScan` operator to ignore file names that do not match the regular expression pattern,
+using the same matching method as [regexMatch(rstring, rstring)].
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sleepTime</name>
+        <description>
+Specifies the minimal time between scans of the directory, in seconds.
+If this parameter is not specified, the default is 5.0 seconds.
+If the time difference between the start of the last scan and the current time is less than **sleepTime** seconds,
+the `DirectoryScan` operator sleeps until the time since the last scan is **sleepTime** seconds.
+If more than **sleepTime** seconds already passed, the next scan begins immediately.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>initDelay</name>
+        <description>
+Specifies the number of seconds that the `DirectoryScan` operator delays before it starts to produce tuples.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sortBy</name>
+        <description>
+Determines the order in which file names are generated during a single scan of the directory
+when there are multiple valid files at the same time.
+The valid values are `date` and `name`.
+If the **sortBy** parameter is not specified, the default sort order is set to `date`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>SortByType</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>order</name>
+        <description>
+Controls how the **sortBy** parameter sorts the files.
+The valid values are `ascending` and `descending`.
+If the **order** parameter is not specified, the default value is set to `ascending`.
+
+If **sortBy** is set to `date`, the file with the oldest change time (`ctime`) is generated first for ascending order.
+If **sortBy** is set to `name`, the file name that is lexically smallest is generated first for ascending order.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>SortOrder</type>
+      </parameter>
+      <parameter>
+        <name>moveToDirectory</name>
+        <description>
+Specifies the name of the directory to which files are moved before the output tuple is generated.
+
+If the **moveFileToDirectory** parameter is specified for an operator in a consistent region,
+the output tuple contains the file name before the file is moved.
+The file is moved after the file name is submitted and a new consistent state is successfully established.
+Write operators that consume the output tuples from the `DirectoryScan` operator before they establish the new consistent state.
+This parameter is not supported in periodic consistent regions.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>ignoreDotFiles</name>
+        <description>
+Specifies whether the `DirectoryScan` operator ignores files with a leading period (.) in the directory.
+By default, the value is set to `false` and files with a leading period are processed.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>ignoreExistingFilesAtStartup</name>
+        <description>
+Specifies whether the `DirectoryScan` operator ignores pre-existing files in the directory.
+By default, the value is set to `false` and all files are processed as usual.
+If set to `true`, any files present in the directory are marked as already processed, and not submitted.
+
+If **initDelay** is specified, this check is done before the `DirectoryScan` operator delays.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `DirectoryScan` operator is configurable with a single output port, which produces tuples that contain the names of the scanned files.
+The output schema for `DirectoryScan` operator is a tuple.
+The generated tuple is populated by using the output clause.
+If there is no output clause, or an attribute in the tuple is not assigned by using an output clause, then the attribute must be of type rstring.
+</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <outputFunctions>
+          <default>AsIs</default>
+          <type>DirectoryScanFunctions</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Free</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

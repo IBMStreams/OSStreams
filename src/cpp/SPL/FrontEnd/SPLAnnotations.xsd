@@ -1,0 +1,126 @@
+<?xml version="1.0"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/annotations"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/annotations"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+
+  <!-- Root element containing the model -->
+  <xs:element name="annotations" type="annotationsType"/>
+
+  <xs:complexType name="annotationsType">
+    <xs:sequence>
+      <xs:element name="annotation" type="annotationType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="annotationType">
+    <xs:sequence>
+      <xs:element name="key" type="keyType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="maxOccurs" type="xs:token" use="required"/>
+    <xs:attribute name="internal" type="xs:boolean" use="optional"/>
+    <xs:attribute name="macroName" type="xs:string" use="optional"/>
+    <xs:attribute name="propagateToInstanceModel" type="xs:boolean" use="optional"/>
+    <xs:attribute name="standaloneSupported" type="xs:boolean" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="keyType">
+    <xs:sequence>
+      <xs:element name="valueType" type="valueTypeType"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="required" type="xs:boolean" use="required"/>
+    <xs:attribute name="default" type="xs:string" use="optional"/>
+    <xs:attribute name="macroName" type="xs:string" use="optional"/>
+    <xs:attribute name="codeGenDependsOnValue" type="xs:boolean" use="optional"/>
+    <xs:attribute name="submissionTimeValueAllowed" type="xs:boolean" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="valueTypeType">
+    <xs:choice>
+      <xs:group ref="typeTypes"/>
+    </xs:choice>
+  </xs:complexType>
+
+  <xs:group name="typeTypes">
+    <xs:choice>
+      <xs:group ref="primitiveTypes"/>
+      <xs:group ref="compositeTypes"/>
+    </xs:choice>
+  </xs:group>
+
+  <xs:group name="compositeTypes">
+    <xs:choice>
+      <xs:element name="list" type="listType"/>
+      <xs:element name="tuple" type="tupleType"/>
+    </xs:choice>
+  </xs:group>
+
+  <xs:complexType name="listType">
+    <xs:choice>
+      <xs:group ref="primitiveTypes"/>
+      <xs:group ref="compositeTypes"/>
+    </xs:choice>
+  </xs:complexType>
+
+  <xs:complexType name="tupleType">
+    <xs:sequence>
+      <xs:element name="attribute" type="attributeType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="attributeType">
+    <xs:choice>
+      <xs:group ref="typeTypes"/>
+    </xs:choice>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="required" type="xs:boolean" use="required"/>
+  </xs:complexType>
+
+  <xs:group name="primitiveTypes">
+    <xs:choice>
+      <xs:element name="rstring" type="rstringType"/>
+      <xs:element name="int32" type="int32Type"/>
+      <xs:element name="uint32" type="uint32Type"/>
+      <xs:element name="float64" type="float64Type"/>
+      <xs:element name="enum" type="enumType"/>
+      <xs:element name="boolean" type="booleanType"/>
+    </xs:choice>
+  </xs:group>
+
+  <xs:complexType name="rstringType">
+  </xs:complexType>
+
+  <xs:complexType name="int32Type">
+  </xs:complexType>
+
+  <xs:complexType name="uint32Type">
+  </xs:complexType>
+
+  <xs:complexType name="float64Type">
+  </xs:complexType>
+
+  <xs:complexType name="booleanType">
+  </xs:complexType>
+
+  <xs:complexType name="enumType">
+    <xs:sequence>
+      <xs:element name="enumerator" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="values" type="enumValuesType" use="optional"/>
+  </xs:complexType>
+
+  <xs:simpleType name="enumValuesType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="inputPortNames"/>
+      <xs:enumeration value="outputPortNames"/>
+      <xs:enumeration value="inputPortAttributes"/>
+      <xs:enumeration value="outputPortAttributes"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+</xs:schema>

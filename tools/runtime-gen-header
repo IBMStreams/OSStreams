@@ -1,0 +1,158 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use warnings;
+use XML::Simple;
+use Data::Dumper;
+use Getopt::Std;
+use File::Temp qw(tempfile);
+
+sub badUsage($)
+{
+   my ($rc) = @_;
+   print "Usage: gen-header [-h] -i infile.xlf -t outfile.h\n";
+   print "-h: Print this help information\n";
+   print "-i filename: filename is the xml file containing the message definitions\n";
+   print "-o filename: the specific header we want to generate.  One of NAMMessages, RuntimeCommonMessages, RuntimeMessages, SAMMessages, UTILSMessages, SRMMessages, AASMessages, SCHMessages, HCMessages, PECMessages (can be preceeded by a path)\n";
+   exit($rc);
+}
+
+my %opts;
+getopts('hi:o:', \%opts);
+
+badUsage(0) if ($opts{'h'});
+badUsage(1) unless ($opts{'i'});
+badUsage(1) unless ($opts{'o'});
+my $outfile = $opts{'o'};
+$outfile =~ /(.*\/)*(.*)\.h/;
+my $type = $2;
+# badUsage(1) unless ($type eq "CompilerError" || $type eq "CompilerMessage" ||
+#                     $type eq "FrontEndErrors" || $type eq "RuntimeMessage" ||
+#                     $type eq "OptimizerError");
+badUsage(1) unless ($type eq "NAMMessages" || $type eq "RuntimeCommonMessages" ||
+                    $type eq "RuntimeMessages" || $type eq "SAMMessages" ||
+                    $type eq "UTILSMessages" || $type eq "SRMMessages" ||
+                    $type eq "AASMessages" || $type eq "SCHMessages" ||
+                    $type eq "HCMessages" || $type eq "PECMessages");
+
+my $xml = new XML::Simple;
+my $data = $xml->XMLin($opts{'i'}, KeepRoot => 1, KeyAttr => [], ForceArray => ['group', 'trans-unit']);
+# print Dumper($data);
+
+my $guard = "";
+my $severity = "";
+my $resnamec = "";
+
+if ($type eq "NAMMessages") {
+   $guard = "NAM_MESSAGES_H";
+   $severity = "[E|W|I|T]";
+   $resnamec = "CDISR0[0-4]";
+} elsif ($type eq "RuntimeCommonMessages") {
+   $guard = "RUNTIME_COMMON_MESSAGES_H";
+   $severity = "[E|W|I|T]";
+   $resnamec = "CDISR0[5-9]";
+} elsif ($type eq "RuntimeMessages") {
+   $guard = "RUNTIME_MESSAGES_H";
+   $severity = "[E|W|I|T]";
+   $resnamec = "CDISR[0-9][0-9]";
+} elsif ($type eq "SAMMessages") {
+   $guard = "SAM_MESSAGES_H";
+   $severity = "[E|W|I|T]";
+   $resnamec = "CDISR1[0-4]";
+} elsif ($type eq "UTILSMessages") {
+   $guard = "UTILS_MESSAGES_H";
+   $severity = "[E|W|I|T]";
+   $resnamec = "CDISR1[5-9]";
+} elsif ($type eq "SRMMessages") {
+   $guard = "SRM_MESSAGES_H";
+   $severity = "[E|W|I|T]";
+   $resnamec = "CDISR2[0-4]";
+} elsif ($type eq "AASMessages") {
+   $guard = "AAS_MESSAGES_H";
+   $severity = "[E|W|I|T]";
+   $resnamec = "CDISR2[5-9]";
+} elsif ($type eq "SCHMessages") {
+   $guard = "SCH_MESSAGES_H";
+   $severity = "[E|W|I|T|D]";
+   $resnamec = "CDISR3[0-4]";
+} elsif ($type eq "HCMessages") {
+   $guard = "HC_MESSAGES_H";
+   $severity = "[E|W|I|T|D]";
+   $resnamec = "CDISR3[5-9]";
+} elsif ($type eq "PECMessages") {
+   $guard = "PEC_MESSAGES_H";
+   $severity = "[E|W|I|T|D]";
+   $resnamec = "CDISR4[0-4]";
+}
+else {
+   exit(1);
+}
+
+my ($fhTemp, $filename) = tempfile(UNLINK => 1, SUFFIX => ".h");
+
+print $fhTemp "// This is a generated header.  Any modifications will be lost.\n";
+print $fhTemp "// Add your messages to messages/StreamsRuntimeMessages.xlf\n\n";
+print $fhTemp "#ifndef $guard\n";
+print $fhTemp "#define $guard\n\n";
+
+my $returncode = 0;
+my %msgIds;
+my %extraDatas;
+
+foreach my $group (@{$data->{'xliff'}->{'file'}->{'body'}->{'group'}}) {
+  print "group id-- $group->{'id'}\n";
+   if ($group->{'id'} ne "StreamsRuntimeMessages") { next; }
+   foreach my $message (@{$group->{'trans-unit'}}) {
+     # print Dumper($message);
+      my $resName = $message->{'resname'};
+
+      my @ids = split(' ',$resName);
+      if ($#ids > 0 ) { print "Message id \"$resName\" is malformed\n"; $returncode = 1; next;}
+
+      my $msgId = $ids[0];
+
+      if (length($msgId) != 10) { print "Message id \"$resName\" is invalid -- must be 10 characters long\n"; $returncode = 1; next; }
+      if (!(substr($msgId, 9, 1) =~ /$severity/)) { next; }
+      if (!(substr($msgId, 0, 7) =~ /$resnamec/)) { next; }
+
+      # track the msgId and ensure it does not occur again
+      if (defined($msgIds{$msgId})) { print "Message id \"$msgId\" is a duplicate value\n"; $returncode = 1; next; }
+      $msgIds{$msgId} = 1;
+
+      my $extraDatum = $message->{'extraData'};
+      # SMD if (!($extraDatum =~ /^($prefix)/)) { next; }
+
+      # track the extraData and ensure there are no duplicates
+      if (defined($extraDatas{$extraDatum})) { print "Extra data \"$extraDatum\" is a duplicate value\n"; $returncode = 1; next; }
+      $extraDatas{$extraDatum} = 1;
+
+      my $messageText = $message->{'source'}->{'content'};
+      print "res--$msgId extra--$extraDatum text--$messageText\n";
+
+      print $fhTemp "    // $messageText \n";
+      print $fhTemp "#define $extraDatum \"$msgId\" \n";
+   }
+}
+if ($returncode) { die("Errors detected while generating header file"); }
+print $fhTemp "\n#endif // $guard \n";
+close ($fhTemp);
+
+my $cmd = "cp $filename $outfile";
+system("chmod +r $filename");
+if (system($cmd) != 0) { die "Could not copy file\n"; }

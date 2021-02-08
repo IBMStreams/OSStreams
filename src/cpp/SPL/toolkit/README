@@ -1,0 +1,5 @@
+The SPL Standard Toolkit provides standard operators, types and builtin
+functions for SPL programs.   It is shipped with the SPL compiler.
+
+For details, please refer to the SPL Standard Toolkit Reference shipped with
+the IBM Streams system for details on the operators in the toolkit.

@@ -1,0 +1,240 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.relational$Sort.html">
+The `Sort` operator is used to order tuples that are based on user-specified ordering expressions and window configurations.
+
+# Checkpointed data
+
+When the `Sort` operator is checkpointed, the contents of its window is saved in checkpoint.
+The window is checkpointed incrementally to reduce checkpoint size and latency.
+Logic state variables (if present) are also included in checkpoint.
+
+# Behavior in a consistent region
+
+A `Sort` operator can be used in a consistent region, but it cannot be the start of the region.
+In a consistent region, a `Sort` operator stores its state when a checkpoint is taken.
+When the region is reset, the operator restores the state from the checkpoint.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Sort` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Sort` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Windowing
+
+The `Sort` operator supports the following window configurations:
+
+    tumbling, (count | delta | time | punctuation)-based eviction (, partitioned (, partitionEvictionSpec)? )?
+
+    sliding, count-based eviction, count-based trigger of 1 (, partitioned (, partitionEvictionSpec)? )?
+
+For the tumbling variants, tuples are sorted when the window gets full and are output immediately.
+A window marker punctuation is output at the end.
+
+For the sliding variants, tuples are always kept in sorted order.
+When the window gets full, every new tuple causes the first one in the sorted order to be removed from the window and output.
+This type of sort is referred to as *progressive sort*.
+
+For the partitioned variants, the window specification applies to individual subwindows identified by the **partitionBy** parameter.
+
+For the tumbling variants, the final punctuation marker does not flush the window (so as not to break invariants on the output).
+For the sliding variants (progressive), the final punctuation marker does flush the window.
+
+When a tumbling, punctuation-based window with no tuples in it receives a window marker punctuation,
+just a window marker punctuation is output.
+
+# Assignments
+
+The `Sort` operator does not allow assignments to output attributes.
+The output tuple attributes are automatically forwarded from the input ones.
+
+# Examples
+
+This example uses the `Sort` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring name, uint32 age, uint64 salary&gt; Beat = Beacon() {}
+        // count based window
+        stream&lt;Beat&gt; Sorted0 = Sort(Beat)
+        {
+          window
+            Beat : tumbling, count(10);
+          param
+            sortBy : name, (float64)salary/(float64)age;
+        }
+        // count based partitioned window
+        stream&lt;Beat&gt; Sorted1 = Sort(Beat)
+        {
+          window
+            Beat : tumbling, count(10), partitioned;
+          param
+            partitionBy : name;
+            sortBy      : (float64)salary/(float64)age;
+        }
+        // count based window, with sort order
+        stream&lt;Beat&gt; Sorted2 = Sort(Beat)
+        {
+          window
+            Beat : tumbling, count(10);
+          param
+            sortBy : name, (float64)salary/(float64)age;
+            order  : descending;
+        }
+        // count based window, with sort order for each sortBy expression
+        stream&lt;Beat&gt; Sorted3 = Sort(Beat)
+        {
+          window
+            Beat : tumbling, count(10);
+          param
+            sortBy : name, (float64)salary/(float64)age;
+            order  : ascending, descending;
+        }
+        // punctuation based window
+        stream&lt;Beat&gt; Sorted4 = Sort(Beat)
+        {
+          window
+            Beat : tumbling, punct();
+          param
+            sortBy : name, (float64)salary/(float64)age;
+        }
+        // time based window
+        stream&lt;Beat&gt; Sorted5 = Sort(Beat)
+        {
+          window
+            Beat : tumbling, time(10);
+          param
+            sortBy : name, (float64)salary/(float64)age;
+        }
+        // delta based window
+        stream&lt;uint32 id, uint32 age, uint64 salary&gt; BeatId = Beacon() {}
+        stream&lt;BeatId&gt; Sorted6 = Sort(BeatId)
+        {
+          window
+            BeatId : tumbling, delta(id, 10u);
+          param
+            sortBy : (float64)salary/(float64)age;
+        }
+        // progressive sort
+        stream&lt;Beat&gt; Sorted = Sort(Beat)
+        {
+          window
+            Beat : sliding, count(10);
+          param
+            sortBy : name, (float64)salary/(float64)age;
+        }
+    }
+
+</description>
+      <iconUri size="16">sort_16.gif</iconUri>
+      <iconUri size="32">sort_32.gif</iconUri>
+      <metrics>
+        <metric>
+          <name>nCurrentPartitions</name>
+          <description>Returns the number of partitions in the current window.</description>
+          <kind>Gauge</kind>
+        </metric>
+      </metrics>
+      <customLiterals>
+        <enumeration>
+          <name>SortOrder</name>
+          <value>ascending</value>
+          <value>descending</value>
+        </enumeration>
+      </customLiterals>
+      <providesSingleThreadedContext>WindowEvictionBound</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Sort">
+          <description>Basic Sort template</description>
+          <template>stream&lt;${schema}&gt; ${streamName} = Sort(${inputStream}) {
+            window
+                ${inputStream}: ${windowMode};
+            param
+                sortBy : ${sortExpression}
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>sortBy</name>
+        <description>
+Specifies one or more expressions to be used for sorting the tuples. The sort is performed in lexicographical manner in ascending order.
+That is, the first expression is used first for the comparison and in the case of equality the second expression is considered, and so on.
+The default sort order of ascending implies that the output stream produces tuples in non-decreasing order.
+The sort order can be changed by using the **order** parameter.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+      </parameter>
+      <parameter>
+        <name>order</name>
+        <description>
+Specifies either the global sort order, or the sort order for the individual expressions that appear in the **sortBy** parameter.
+The valid values are `ascending` and `descending`.
+When a single value is specified for the **order** parameter, it determines the global sort order.
+When multiple values are specified, then the number of values must match the number of **sortBy** expressions.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>SortOrder</type>
+      </parameter>
+      <parameter>
+        <name>partitionBy</name>
+        <description>
+Specifies one or more expressions to be used for partitioning the input tuples into subwindows,
+where all window and parameter configurations apply to the subwindows, independently.
+This parameter is only valid for a `Sort` operator that is configured with a partitioned window.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Sort` operator is configurable with a single input port, which ingests tuples to be sorted.
+The `Sort` operator processes window punctuation markers when configured with a punctuation-based window.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>Windowed</windowingMode>
+        <windowPunctuationInputMode>WindowBound</windowPunctuationInputMode>
+        <windowExpressionMode>AttributeFree</windowExpressionMode>
+        <rewriteAllowedForWindowExpression>true</rewriteAllowedForWindowExpression>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Sort` operator is configurable with a single output port, which produces sorted tuples.
+The `Sort` operator generates a punctuation after each batch of sorted tuples it outputs.
+The `Sort` operator requires that the stream type for the output port matches the stream type for the input port.
+</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

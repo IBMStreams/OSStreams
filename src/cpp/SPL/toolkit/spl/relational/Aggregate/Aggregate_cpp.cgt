@@ -1,0 +1,796 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use AggregateCommon;
+    AggregateCommon::verify($model);
+    my $inputPort = $model->getInputPortAt(0);
+    my $outputPort = $model->getOutputPortAt(0);
+    my $inTupleName = $inputPort->getCppTupleName();
+    my $inTupleType = $inputPort->getCppTupleType();
+    my $outTupleType = $outputPort->getCppTupleType();
+    my $groupByParam = $model->getParameterByName("groupBy");
+    my $aggregateIncompleteWindows = $model->getParameterByName("aggregateIncompleteWindows");
+    my $aggregateEvictedPartitions = $model->getParameterByName("aggregateEvictedPartitions");
+    my $groupByArgs = SPL::CodeGen::getParameterCppInitializer ($groupByParam);
+    my $partitionByParam = $model->getParameterByName("partitionBy");
+    my $hasEventTimeContext = SPL::CodeGen::hasEventTimeContext($model);
+
+    if ($partitionByParam) {
+      for (my $i = 0;$i < $partitionByParam->getNumberOfValues();$i++) {
+        AggregateCommon::checkSideEffects($partitionByParam->getValueAt($i));
+      }
+    }
+
+    my $partitionByInitializer = SPL::CodeGen::getParameterCppInitializer($partitionByParam);
+    my $window = $inputPort->getWindow();
+    # can't optimize if we are partitioned or grouped if we use 'Custom'
+    # TODO when to enable this
+    my $optimizeTumbling =  $window->isTumbling() &&
+                            !(($groupByParam || $partitionByParam) && AggregateCommon::hasCustom($outputPort));
+
+    ## BEGIN: projection change
+    ## only perform tuple projection if it is sliding and does not have a Custom output
+    my $isProjOptimized = !$window->isTumbling() &&
+        !AggregateCommon::hasCustom($outputPort) &&
+        !$window->isTimeInterval();
+
+    my %exprDB;
+    my @allExprs;
+    my @allTypes;
+
+    if ($isProjOptimized) {
+      my %allExprs = AggregateCommon::collectExprs($model);
+      my ($exprs_ref, $types_ref) = AggregateCommon::numberExprs(\%allExprs);
+      @allExprs  = @$exprs_ref;
+      @allTypes = @$types_ref;
+
+      for (my $i=0;$i<scalar(@allExprs);$i++) {
+        my $expr = $allExprs[$i];
+        $exprDB{$expr} = { type => $allTypes[$i],
+          name => "field$i" };
+      }
+      $groupByArgs = AggregateCommon::translateExprs ("projTuple", \%exprDB, AggregateCommon::getCppParams($groupByParam));
+    }
+    ## END: projection change
+    my $windowTupleType = $optimizeTumbling ? "IPort0Type" :
+                         ($isProjOptimized ? "ProjectedTupleType*" : "IPort0Type*");
+    if ($window->isTimeInterval()) {
+      $windowTupleType =~ s/\*$//; # remove trailing * if present
+      $windowTupleType = "std::tr1::shared_ptr<" . $windowTupleType . "> ";
+    }
+
+    my $windowDataIterator = $optimizeTumbling ? "*it" : "**it";
+
+    ## renaming getters as part of the tuple projection model
+    my ($getterEvict, $getterTrig) = AggregateCommon::getWindowCppInitializer($model, \%exprDB) if ($isProjOptimized);
+
+    my $windowCppInitializer = ($isProjOptimized) ?
+         SPL::CodeGen::getPartitionedWindowCppInitializer($window, $windowTupleType, "LRU", $getterEvict, $getterTrig) :
+         SPL::CodeGen::getPartitionedWindowCppInitializer($window, $windowTupleType, "LRU");
+
+    my $isPunctWindow = ($window->isTumbling() and ($window->getEvictionPolicyType() ==
+                                                    $SPL::Operator::Instance::Window::PUNCT));
+    my $tumblingStructName = "Tumbling\$" .  $model->getContext()->getClass();
+    $tumblingStructName =~ s/::/\$/g;
+    my $fqTumblingStructName = "";
+    $fqTumblingStructName .= "MY_OPERATOR::" if (!$groupByParam);
+    $fqTumblingStructName .= ${tumblingStructName};
+
+    # do we need to generate a loop?
+    my $needLoop = 0;
+    if (!$optimizeTumbling) {
+        for (my $i = 0; $i < $outputPort->getNumberOfAttributes(); $i++) {
+            my $attr = $outputPort->getAttributeAt($i);
+            if ($attr->hasAssignmentWithOutputFunction()) {
+                if (!scalarAggregate ($attr)) {
+                    $needLoop = 1;
+                    last;
+                }
+            }
+        }
+    }
+
+    for (my $i = 0; $i < $outputPort->getNumberOfAttributes(); $i++) {
+        my $attr = $outputPort->getAttributeAt($i);
+        if ($attr->hasAssignmentWithOutputFunction()) {
+            my $fcnName = $attr->getAssignmentOutputFunctionName();
+            my $attrType = $attr->getSPLType();
+            if (($fcnName eq 'Count' || $fcnName eq 'CountGroups' || $fcnName eq 'CountAll' || $fcnName eq 'CountDistinct' || $fcnName eq 'MinCount' || $fcnName eq 'MaxCount') && $attrType ne 'int32') {
+                SPL::CodeGen::exitln (SPL::Msg::STDTK_ATTRIBUTE_TYPE_MISMATCH_WITH_OUTPUT_FUNCTION ($attr->getName(), $attrType,
+                    $fcnName, 'int32'), $outputPort->getSourceLocation());
+            } elsif (($fcnName eq 'CountByGroup' || $fcnName eq 'CountByDistinct') && $attrType ne 'list<int32>') {
+                SPL::CodeGen::exitln (SPL::Msg::STDTK_ATTRIBUTE_TYPE_MISMATCH_WITH_OUTPUT_FUNCTION ($attr->getName(), $attrType,
+                    $fcnName, 'list<int32>'), $outputPort->getSourceLocation());
+            }
+        }
+    }
+
+    $aggregateIncompleteWindows =
+        $aggregateIncompleteWindows ?
+            $aggregateIncompleteWindows->getValueAt(0)->getSPLExpression() : "false";
+    $aggregateEvictedPartitions =
+        $aggregateEvictedPartitions ?
+            $aggregateEvictedPartitions->getValueAt(0)->getSPLExpression() : "false";
+
+    my $mapDataType = $groupByParam ? "GroupMapDataType" : "WindowType::DataType";
+    my $grouped =  $groupByParam ? "GroupMapType" : "bool";
+    my $groupTypeName;
+    my $fqGroupTypeName;
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <SPL/Toolkit/<%=$optimizeTumbling ? "Tumbling" : ""%>Aggregate.h>
+<%print "#include <SPL/Runtime/Window/TumblingWindowSummarizer.h>\n" if $optimizeTumbling;%>
+#include <SPL/Runtime/Operator/OperatorMetrics.h>
+<%if ($isInConsistentRegion || $ckptKind ne "none") {%>
+#include <SPL/Toolkit/Serialization.h>
+#include <SPL/Runtime/Operator/State/Checkpoint.h><%}%>
+<%if ($groupByParam) {%>#include <memory><%}%>
+
+<%generateOptimizedTumblingClass();%>
+
+MY_OPERATOR::MY_OPERATOR()
+  : MY_BASE_OPERATOR(), _window(<%=$windowCppInitializer%>),
+  _partitionCount(getContext().getMetrics().getCustomMetricByName("nCurrentPartitions")) <%if ($isInConsistentRegion) {%>,
+  _crContext(static_cast<ConsistentRegionContext *>(getContext().getOptionalContext(CONSISTENT_REGION)))<%}%>
+{
+<%if($window->isTumbling()){%>
+    _window.registerBeforeWindowFlushHandler(this);
+    <%if($optimizeTumbling){%>_window.registerWindowSummarizer<<%=$fqTumblingStructName%>>();<%}%>
+    <%if($isPunctWindow){%>_window.registerOnEmptyWindowPunctEvent(this);<%}%>
+    <%if ($aggregateEvictedPartitions eq "true") {%>_window.registerOnWindowPartitionEviction(this);<%}%>
+<%} elsif ($window->isTimeInterval()) {%>
+    _window.registerBeforeWindowCloseHandler(this);
+    _window.registerOnWindowInitialFullHandler(this);
+    _window.registerOnWindowTriggerHandler(this);
+<%} else {%>
+    _window.registerOnWindowTriggerHandler(this);
+    <%if ($aggregateIncompleteWindows eq "false") {%>_window.registerOnWindowInitialFullHandler(this);<%}%>
+    _window.registerBeforeTupleEvictionHandler(this);
+<%}%>
+    <%if($window->hasPartitionEvictionPolicy()) {%>_window.registerOnWindowPartitionEviction(this);<%}%>
+    _partitionCount.setValueNoLock(0);
+}
+
+MY_OPERATOR::~MY_OPERATOR()
+{
+    // Delete any remaining tuples in the window
+     _window.deleteWindowObjects();
+}
+
+void MY_OPERATOR::drain()
+{
+    SPLAPPTRC(L_DEBUG, "Before draining window", SPL_OPER_DBG);
+    _window.drain();
+}
+
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    SPLAPPTRC(L_TRACE, "Before checkpoint window is: " << _window.toString(), SPL_OPER_DBG);
+    _window.checkpoint(ckpt);
+<%if (!$window->isTumbling() && $aggregateIncompleteWindows eq "false") {%>
+    SPLAPPTRC(L_DEBUG, "Before checkpoint the size of _windowFull is: " << _windowFull.size(), SPL_OPER_DBG);
+    ckpt << static_cast<uint64_t>(_windowFull.size());
+    for (std::tr1::unordered_set<WindowEventType::PartitionType>::const_iterator it = _windowFull.begin();
+            it != _windowFull.end(); ++it) {
+        ckpt << *it;
+    }
+<%}%>
+}
+
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    _window.reset(ckpt);
+    SPLAPPTRC(L_TRACE, "After reset window is: " << _window.toString(), SPL_OPER_DBG);
+<%if (!$window->isTumbling() && $aggregateIncompleteWindows eq "false") {%>
+    _windowFull.clear();
+    for (uint64_t partitionCount = ckpt.getUInt64(); partitionCount > 0; --partitionCount) {
+        PartitionType partition;
+        ckpt >> partition;
+        _windowFull.insert(partition);
+    }
+    SPLAPPTRC(L_DEBUG, "After reset the size of _windowFull is: " << _windowFull.size(), SPL_OPER_DBG);
+<%}%>
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    AutoMutex am(_mutex);
+
+    SPLAPPTRC(L_DEBUG, "Resetting window to initial state", SPL_OPER_DBG);
+    _window.resetToInitialState();
+<%if (!$window->isTumbling() && $aggregateIncompleteWindows eq "false") {%>
+    SPLAPPTRC(L_DEBUG, "Resetting _windowFull partitions set to initial state", SPL_OPER_DBG);
+    _windowFull.clear();
+<%}%>
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+<%if ($isInConsistentRegion || $ckptKind ne "none") {%>
+    AutoMutex am(_mutex);
+<% } else {%>
+    AutoPortMutex apm(_mutex, *this);
+<% } %>
+    IPort0Type const & <%=$inTupleName%> = static_cast<IPort0Type const &>(tuple);
+
+<% my $partitionClause = $partitionByParam ? ", partition" : ""; %>
+<% print "PartitionByType partition($partitionByInitializer);\n" if ($partitionByParam);
+if ($optimizeTumbling) { %>
+    _window.insert(SPL::Creator<WindowType::TupleType>::create(<%=$inTupleName%>)<%=$partitionClause%>);
+<%} else {
+  if ($isProjOptimized) { %>
+    ProjectedTupleType *projected = NULL;
+    <% if (scalar(@allExprs) > 0) { %>projected = new ProjectedTupleType(<%=join(",\n        ", @allExprs)%>);<%}%>
+    _window.insert(SPL::Creator<WindowType::TupleType>::create(projected)<%=$partitionClause%>);<% }
+  else { %>
+     _window.insert(SPL::Creator<WindowType::TupleType>::create(<%=$inTupleName%>) <%=$partitionClause%>);
+  <%}%>
+<%}%>
+    _partitionCount.setValueNoLock(_window.getWindowStorage().size());
+}
+
+<%if($isPunctWindow){%>
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+<%if ($isInConsistentRegion || $ckptKind ne "none") {%>
+    AutoMutex am(_mutex);
+<% } else {%>
+    AutoPortMutex apm(_mutex, *this);
+<% } %>
+    if(punct==Punctuation::WindowMarker)
+        _window.insert(punct);
+}
+
+void MY_OPERATOR::onEmptyWindowPunctEvent(WindowEventType::WindowType & window)
+{
+    submit(Punctuation::WindowMarker, 0);
+}
+<%}%>
+<%if ($window->isTimeInterval()) {%>
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port) {
+}
+<%}%>
+void MY_OPERATOR::<%print $window->isTumbling() ? "beforeWindowFlushEvent" : "onWindowTriggerEvent";%>(
+        WindowEventType::WindowType & window,
+        WindowEventType::PartitionType const & partition)
+{
+  SPLAPPTRC(L_DEBUG, window.toString() << " partition " << partition, SPL_OPER_DBG);
+    aggregatePartition(window, partition);
+}
+
+void MY_OPERATOR::aggregatePartition(
+        WindowEventType::WindowType & window,
+        WindowEventType::PartitionType const & partition)
+{
+    <%if($optimizeTumbling){%>
+        WindowType& twindow = static_cast<WindowType&>(window);
+        <%=$fqTumblingStructName%>& summarizer =
+            *static_cast<<%=$fqTumblingStructName%>*>(twindow.getSummarizer(partition));
+    <%}%>
+
+<%if (!$window->isTumbling() && $aggregateIncompleteWindows eq "false") {%>
+    if (_windowFull.find(partition) == _windowFull.end()) {
+        SPLAPPTRC(L_DEBUG, "_windowFull.find(partition) can't find", SPL_OPER_DBG);
+        return;
+    }
+<%}%>
+
+    <%if($optimizeTumbling){%>
+        if (summarizer._count == 0) {
+    <%} else {%>
+        WindowType::DataType & data = window.getWindowData(partition);
+        if (data.size() == 0) {
+    <%}%>
+            submit(Punctuation::WindowMarker, 0);
+            return;
+        }
+
+<%if ($groupByParam) { # do we have to make groups within a window?%>
+    <%if ($optimizeTumbling) {%>
+        <%=$fqTumblingStructName%>::MapType::iterator it;
+        for (it = summarizer._map.begin(); it != summarizer._map.end(); it++) {
+            <%=$groupTypeName%>& data = *it->second;
+    <%} else {%>
+      <%
+        my $groupMapDataType = ($isProjOptimized) ? "ProjectedTupleType" : "IPort0Type";
+        my $groupMapDataPtrType = ($window->isTimeInterval()) ? "std::tr1::shared_ptr<$groupMapDataType const>" : "$groupMapDataType const *";
+      %>
+        typedef std::vector<<%=$groupMapDataPtrType%> > GroupMapDataType;
+        typedef std::tr1::unordered_map<GroupByType, GroupMapDataType> GroupMapType;
+        GroupMapType _groupMap;
+        // Walk the data, adding to the right groups
+        WindowType::DataType::const_iterator it;
+        for (it = data.begin(); it != data.end(); it++) {
+          <% if ($isProjOptimized) { %>
+            <%=$groupMapDataType%> const & projTuple = Referencer<<%=$groupMapDataPtrType%> >::dereference(*it);
+          <% } else { %>
+            IPort0Type const & <%=$inTupleName%> = Referencer<<%=$groupMapDataPtrType%> >::dereference(*it);
+          <% } %>
+            GroupByType key(<%=$groupByArgs%>);
+            GroupMapType::iterator git = _groupMap.find (key);
+            if (git == _groupMap.end())
+                git = _groupMap.insert (GroupMapType::value_type (key,
+                                                    GroupMapDataType())).first;
+            git->second.push_back (*it);
+        }
+
+        // Now walk the groups
+        GroupMapType::const_iterator git;
+        for (git = _groupMap.begin(); git != _groupMap.end(); git++) {
+            const GroupMapDataType & data = git->second;
+    <%}%>
+<%}%>
+
+    <%if (!$optimizeTumbling) {
+        my $bcntStmts = "";
+        for (my $i = 0; $i < $outputPort->getNumberOfAttributes(); $i++) {
+            my $attr = $outputPort->getAttributeAt($i);
+            next if !$attr->hasAssignmentWithOutputFunction();
+            my $agg = $attr->getAssignmentOutputFunctionName();
+            if ($agg eq 'Custom') { # special handling for custom%>
+                <%=$attr->getAssignmentOutputFunctionParameterValueAt(0)->getCppExpression()%>;
+                <%next;
+            }
+            my $attrName = $attr->getName();
+            my $attrType = $attr->getCppType();
+            my $attrVar = "$agg\$$attrName";
+            my $attrDecl = "SPL::Aggregate::$agg< $attrVar";
+            my $cppType = $attr->getCppType();
+            my $paramValues = $attr->getAssignmentOutputFunctionParameterValues();
+            my $hasExpn = defined ($paramValues->[0]) ? 1 : 0;
+            my $cppElementType;
+            my $cppExpn;
+            if ($hasExpn) {
+              my @lexprs;
+              $cppElementType = $paramValues->[0]->getCppType();
+              push(@lexprs, $paramValues->[0]->getCppExpression());
+              if (scalar(@{$paramValues}) == 2) {
+                $cppElementType .= ", " . $paramValues->[1]->getCppType();
+                push(@lexprs, $paramValues->[1]->getCppExpression());
+              }
+              $cppExpn = ($isProjOptimized) ? AggregateCommon::translateExprs("projTuple", \%exprDB, \@lexprs) : join(", ", @lexprs);
+            }
+            my $ctorArgs = $groupByParam ? "window, data, _groupMap" : "window, data, false";
+            my $elementType = $hasExpn ? "$cppElementType, " : "";
+            my $recordType = $isProjOptimized ? "ProjectedTupleType" : "IPort0Type";%>
+
+            SPL::Aggregate::<%=$agg%><WindowEventType::WindowType,
+                                  <%=$mapDataType%>, <%=$cppType%>,
+                                  <%=$recordType%>, <%=$elementType%><%=$grouped%>> <%=$attrVar%>(<%=$ctorArgs%>);
+            <%my $dcolArg = findMatchingCollectDistinct ($agg, $outputPort, $i);
+            if (defined ($dcolArg)) {
+                $bcntStmts .= "$attrVar.setCollectDistinct ($dcolArg);\n";
+            }
+            if (defined($cppExpn)) {%>
+                if (<%=$attrVar%>.needsSeedValue()) {
+                    <%if ($isProjOptimized) { %>
+                    ProjectedTupleType const & projTuple = *<%=$attrVar%>.getSeedRecord();
+                    <%} else {%>
+                    IPort0Type const & <%=$inTupleName%> = *<%=$attrVar%>.getSeedRecord();
+                    <%}%>
+                    <%=$attrVar%>.setSeedValue (<%=$cppExpn%>);
+                }
+            <%}%>
+        <%}%>
+        <%=$bcntStmts%>
+    <%}%>
+    <%if ($needLoop) {%>
+        <%=$mapDataType%>::const_iterator it;
+        for (it = data.begin(); it != data.end(); it++) {
+          <%if ($isProjOptimized) { %>
+            ProjectedTupleType const & projTuple = <%=$windowDataIterator%>;
+          <%} else { %>
+            IPort0Type const & <%=$inTupleName%> = <%=$windowDataIterator%>;
+          <%}%>
+            <%for (my $i = 0; $i < $outputPort->getNumberOfAttributes(); $i++) {
+                my $attr = $outputPort->getAttributeAt($i);
+                next if !$attr->hasAssignmentWithOutputFunction();
+                my $agg = $attr->getAssignmentOutputFunctionName();
+                next if scalarAggregate($attr);
+                if ($agg eq 'Custom') { # special handling for custom%>
+                    <%=$attr->getAssignmentOutputFunctionParameterValueAt(1)->getCppExpression()%>;
+                    <%next;
+                }
+                my $attrName = $attr->getName();
+                my $attrVar = "$agg\$$attrName";
+                my $paramValues = $attr->getAssignmentOutputFunctionParameterValues();
+                my $hasExpn = defined ($paramValues->[0]);
+                my $cppExpn;
+                if ($hasExpn) {
+                  my @lexprs;
+                  push(@lexprs, $paramValues->[0]->getCppExpression());
+                  if (scalar(@{$paramValues}) == 2) {
+                    push(@lexprs, $paramValues->[1]->getCppExpression());
+                  }
+                  $cppExpn = ($isProjOptimized) ? AggregateCommon::translateExprs("projTuple", \%exprDB, \@lexprs) : join(", ", @lexprs);
+                }%>
+                <%=$attrVar%>.process(<%=$cppExpn%>);
+            <%}%>
+          }
+    <%}%>
+
+        // Populate the tuple
+        <%if (!$optimizeTumbling) {%>
+          <%if ($isProjOptimized) { %>
+            ProjectedTupleType const & projTuple = **data.rbegin();
+          <%} else { %>
+            IPort0Type const & <%=$inTupleName%> = **data.rbegin();
+          <%}%>
+        <%}%>
+        <%my $init = getOutputTupleCppInitializerWithOutputFunctions($outputPort,
+                $optimizeTumbling ? ($groupByParam ? "data." : "summarizer.") : undef);%>
+        <%=$outTupleType%> otuple(<%=$init%>);
+        submit (otuple, 0);
+<%if ($groupByParam) {%>
+    }
+<%}%>
+
+<%if ($window->isTumbling() && !$optimizeTumbling) {%>
+     // clean up the ones we used
+    for(uint32_t i=0, iu=data.size(); i<iu; ++i) {
+        delete data[i];
+    }
+    _partitionCount.setValueNoLock (0);
+<%}%>
+    submit(Punctuation::WindowMarker, 0);
+}
+
+<%if($window->hasPartitionEvictionPolicy() or ($window->isTumbling() and $aggregateEvictedPartitions eq "true")) {%>
+void MY_OPERATOR::onWindowPartitionEviction(WindowEventType::WindowType & window,
+                                            WindowEventType::PartitionIterator const& begin,
+                                            WindowEventType::PartitionIterator const& end)
+{
+    <%if ($window->isTumbling() and $aggregateEvictedPartitions eq "true") {%>
+        for(PartitionIterator it = begin; it != end; ++it) {
+	    aggregatePartition (window, it.partition());
+	}
+    <%}%>
+
+    <%if ($window->hasPartitionEvictionPolicy() and !$optimizeTumbling) {%>
+    // We have a window being evicted.   Clean up
+    WindowEventType::PartitionIterator it;
+    for (it = begin; it != end; it++) {
+        <%if (!($window->isTumbling() and $aggregateEvictedPartitions eq "true")) {%>
+        // delete the tuples
+        WindowEventType::PartitionType const & partition = it.partition();
+        WindowType::DataType & data = window.getWindowData(partition);
+        for(uint32_t i=0, iu=data.size(); i<iu; ++i) {
+            delete data[i];
+	}
+        <%}%>
+
+        <%if(!$window->isTumbling() && $aggregateIncompleteWindows eq "false") {%>
+            _windowFull.erase (partition);
+        <%}%>
+    }
+    <%}%>
+}
+<%}%>
+
+<%if($window->isTimeInterval()){%>
+void MY_OPERATOR::beforeWindowFlushEvent(WindowEventType::WindowType & window,
+                                           WindowEventType::PartitionType const & partition)
+{
+    SPLAPPTRC(L_DEBUG, window.toString() << " partition " << partition, SPL_OPER_DBG);
+}
+<%}
+if(!$window->isTumbling()){%>
+    <%if($aggregateIncompleteWindows eq "false") {%>
+    void MY_OPERATOR::onWindowInitialFullEvent(WindowEventType::WindowType & window,
+                                               WindowEventType::PartitionType const & partition)
+    {
+        _windowFull.insert (partition);
+    }
+    <%}%>
+
+    <%if (!$window->isTimeInterval()) {%>
+    void MY_OPERATOR::beforeTupleEvictionEvent(WindowEventType::WindowType & window,
+                                               WindowEventType::TupleType & tuple,
+                                               WindowEventType::PartitionType const & partition)
+    {
+        delete tuple;
+        _partitionCount.setValueNoLock (_window.getWindowStorage().size());
+    }
+    <%}%>
+<%}%>
+
+<%SPL::CodeGen::implementationEpilogue($model);%>
+<%
+sub scalarAggregate ($)
+{
+    my ($attr) = @_;
+    my $agg = $attr->getAssignmentOutputFunctionName();
+    return 1 if $agg eq "Any" ||  $agg eq "First" || $agg eq "Last";
+    return 0 if $agg eq "Custom";
+    my $paramValues = $attr->getAssignmentOutputFunctionParameterValues();
+    return defined ($paramValues->[0]) ? 0 : 1;
+}
+
+sub findMatchingCollectDistinct ($$$)
+{
+    my ($agg, $outputPort, $index) = @_;
+    return undef if $agg ne "CountByDistinct";
+    my $myAttr = $outputPort->getAttributeAt($index);
+    my $paramValues = $myAttr->getAssignmentOutputFunctionParameterValues();
+    my $splExpn = $paramValues->[0]->getCppExpression();
+    for (my $i = 0; $i < $outputPort->getNumberOfAttributes(); $i++) {
+        my $attr = $outputPort->getAttributeAt($i);
+        next if !$attr->hasAssignmentWithOutputFunction();
+        my $a = $attr->getAssignmentOutputFunctionName();
+        next if $a ne "CollectDistinct";
+        return "CollectDistinct\$" . $attr->getName()
+            if $splExpn eq $attr->getAssignmentOutputFunctionParameterValues()->[0]->getCppExpression()
+    }
+    return undef;
+}
+
+sub generateOptimizedTumblingClass()
+{
+    return if !$optimizeTumbling;
+
+    my $BaseType = " SPL::TumblingWindowSummarizer<MY\$OP::IPort0Type,MY\$OP::PartitionByType>";
+    print "#define MY\$OP MY_OPERATOR_SCOPE::MY_OPERATOR\n";
+
+    # Begin print TumblingAggregate helper class
+    if ($groupByParam) {
+        $groupTypeName = "${tumblingStructName}\$G";
+        $fqGroupTypeName = "MY_OPERATOR::" . $groupTypeName;
+        print "struct $fqGroupTypeName {\n";
+    } else {
+        print "struct $fqTumblingStructName :\n\tpublic ${BaseType} {\n";
+    }
+    print "    MY\$OP& _oper;\n";
+    print "    uint64_t _count;\n";
+
+    # For (each output attribute) {
+    #   if attribute has assignment wih output fn {
+    #     print attribute declaration
+    #     $ctor += custom output expression init
+    #     $insert += onTupleInsertionEvent() function definition
+    #     $onCheckpoint += onCheckpointEvent() function definition
+    #     $onReset += onResetEvent() function definition
+    #   }
+    # }
+    my $ctor = "    _count = 0;\n";
+    my $insert = "";
+    my $onCheckpoint = "";
+    my $onReset = "";
+    for (my $i = 0; $i < $outputPort->getNumberOfAttributes(); $i++) {
+        my $attr = $outputPort->getAttributeAt($i);
+        next if !$attr->hasAssignmentWithOutputFunction();
+        my $agg = $attr->getAssignmentOutputFunctionName();
+        next if $groupByParam &&
+                ($agg eq 'CountGroups' || $agg eq 'CountAll' || $agg eq 'CountByGroup');
+
+        # For Custom output functions:
+        # - the init()function is invoked in the Summarizer's constructor
+        # - the process() function is invoked in onTupleInsertionEvent()
+        # - checkpoint and reset of Custom output function contexts is taken care by
+        #   the state variable serialization code.
+        if ($agg eq 'Custom') {
+            $ctor .= "\t". SPL::CodeGen::prefixLiteralsAndStatesInCppExpressions(
+                            $attr->getAssignmentOutputFunctionParameterValueAt(0)->getCppExpression(),
+                            "_oper.");
+            $ctor .= ";\n";
+            $insert .= "\t". SPL::CodeGen::prefixLiteralsAndStatesInCppExpressions(
+                            $attr->getAssignmentOutputFunctionParameterValueAt(1)->getCppExpression(),
+                            "_oper.");
+            $insert .= ";\n";
+            next;
+        }
+        my $attrName = $attr->getName();
+        my $attrType = $attr->getCppType();
+        my $attrVar = "$agg\$$attrName";
+        my $cppType = $attr->getCppType();
+
+        # Print attribute declaration
+        my $attrDecl = "SPL::TumblingAggregate::$agg<";
+        my $paramValues = $attr->getAssignmentOutputFunctionParameterValues();
+        my $numArgs = scalar (@$paramValues);
+        $attrDecl .= $paramValues->[0]->getCppType() . ", " if $numArgs > 0;
+        $attrDecl .= "$attrType >";
+        print "    $attrDecl $agg\$$attrName;\n";
+
+        $insert .= "        $agg\$$attrName.tupleInserted(";
+        if ($numArgs == 0) {
+            $insert .= ");\n";
+        } elsif ($numArgs == 1) {
+            $insert .=  SPL::CodeGen::prefixLiteralsAndStatesInCppExpressions($paramValues->[0]->getCppExpression(), "_oper.") . ");\n";
+        } else {
+            $insert .=  SPL::CodeGen::prefixLiteralsAndStatesInCppExpressions($paramValues->[0]->getCppExpression(), "_oper.") . ", " .
+                        SPL::CodeGen::prefixLiteralsAndStatesInCppExpressions($paramValues->[1]->getCppExpression(), "_oper.") . ");\n";
+        }
+        if ($isInConsistentRegion || $ckptKind ne "none") {
+
+            $onCheckpoint .= "        SPL::Serialization::save(ckpt, $agg\$$attrName);\n";
+            $onReset      .= "        SPL::Serialization::load(ckpt, $agg\$$attrName);\n";
+        }
+        my $dcolArg = findMatchingCollectDistinct ($agg, $outputPort, $i);
+        $ctor .= "    $attrVar.setCollectDistinct ($dcolArg);\n" if $dcolArg;
+    }
+    print "\n";
+
+    # Print constructor
+    if ($groupByParam) {
+        print "    $groupTypeName (MY\$OP& oper) : _oper(oper) {\n$ctor    }\n";
+    } else {
+        print "    $tumblingStructName (SPL::Operator& oper)\n";
+        print "        : _oper(static_cast<MY\$OP&>(oper)) {\n$ctor    }\n";
+    }
+
+    # Print onTupleInsertionEvent
+    print "\n";
+    print "    void onTupleInsertionEvent(MY\$OP::IPort0Type const& tuple) {\n";
+    print "        _count++;\n";
+    print "        MY\$OP::IPort0Type const & $inTupleName = static_cast<MY\$OP::IPort0Type const>(tuple);\n";
+    print $insert, "    }\n";
+
+    if ($isInConsistentRegion || $ckptKind ne "none") {
+
+        # Print onCheckpointEvent
+        print "\n";
+        print "    void onCheckpointEvent(SPL::Checkpoint & ckpt) const {\n";
+        print "        SPLAPPTRC(L_DEBUG, \"Checkpointing summarizer count \" << _count, SPL_OPER_DBG);\n";
+        print "        ckpt << _count;\n";
+        print $onCheckpoint;
+        print "        SPLAPPTRC(L_DEBUG, \"Exit onCheckpointEvent\", SPL_OPER_DBG);\n";
+        print "    }\n";
+
+        # Print onResetEvent
+        print "\n";
+        print "    void onResetEvent(SPL::Checkpoint & ckpt) {\n";
+        print "        SPLAPPTRC(L_DEBUG, \"Enter onResetEvent\", SPL_OPER_DBG);\n";
+        print "        ckpt >> _count;\n";
+        print $onReset;
+        print "        SPLAPPTRC(L_DEBUG, \"Summarizer count reset to \" << _count, SPL_OPER_DBG);\n";
+        print "    }\n";
+    }
+    # End print TumblingAggregate helper class
+    print "};\n";
+
+    #
+    # Print summarizer structure for operators with 'groupBy' parameters
+    #
+    if ($groupByParam) {
+        # now we need the real summarizer
+        my $keyArgs = SPL::CodeGen::prefixLiteralsAndStatesInCppExpressions($groupByArgs, "_oper.");
+        print "
+struct $tumblingStructName : public $BaseType {
+    typedef std::tr1::unordered_map<MY\$OP::GroupByType,$fqGroupTypeName*> MapType;
+    MapType _map;
+    uint64_t _count;
+    MY\$OP& _oper;
+    $tumblingStructName (SPL::Operator& oper)
+        : _oper(static_cast<MY\$OP&>(oper)) { _count = 0; }
+    ~$tumblingStructName () { clearPartitions(); }
+
+    void onTupleInsertionEvent(MY\$OP::IPort0Type const& tuple) {
+        _count++;
+        MY\$OP::IPort0Type const & $inTupleName = tuple;
+        MY\$OP::GroupByType key($keyArgs);
+        MapType::iterator it = _map.find(key);
+        if (it == _map.end()) {
+            std::auto_ptr<$fqGroupTypeName> p(new $fqGroupTypeName(_oper));
+            p->onTupleInsertionEvent(tuple);
+            _map.insert(std::make_pair(key, p.release())); // nothrow
+        }
+        else {
+            it->second->onTupleInsertionEvent(tuple);
+        }
+    }\n";
+
+    if ($isInConsistentRegion || $ckptKind ne "none") {
+    print "
+    void onCheckpointEvent(SPL::Checkpoint & ckpt) const {
+        ckpt << _count;
+        ckpt << static_cast<uint64_t>(_map.size());
+        for (MapType::const_iterator it = _map.begin(); it != _map.end(); it++) {
+            ckpt << it->first;
+            it->second->onCheckpointEvent(ckpt);
+        }
+        SPLAPPTRC(L_DEBUG, \"Checkpointed summarizer count \" << _count <<
+                \" and \" << _map.size() << \" groupBy partitions\", SPL_OPER_DBG);
+    }
+
+    void onResetEvent(SPL::Checkpoint & ckpt) {
+        clearPartitions();
+        ckpt >> _count;
+        for (uint64_t partitionCount = ckpt.getUInt64(); partitionCount > 0; --partitionCount) {
+            MY\$OP::GroupByType key; ckpt >> key;
+            // Allocate and load the partition
+            std::auto_ptr<$fqGroupTypeName> p(new $fqGroupTypeName(_oper));
+            p->onResetEvent(ckpt);
+            _map.insert(std::make_pair(key, p.release())).second; // nothrow
+        }
+        SPLAPPTRC(L_DEBUG, \"Summarizer count reset to \" << _count <<
+                \" and map reset to \" << _map.size() << \" groupBy partitions\", SPL_OPER_DBG);
+    }\n";
+    }
+
+    # Print the end of real summarizer structure
+    print "\n    private:
+    void clearPartitions() {
+        for (MapType::iterator it = _map.begin(); it != _map.end(); it++) {
+            delete it->second;
+        }
+        _map.clear();
+    }
+};\n";
+
+    print "
+static SPL::list<SPL::int32> CountByGroup(${fqTumblingStructName}::MapType& map)
+{
+    SPL::list<SPL::int32> res;
+    res.reserve (map.size());
+    for (${fqTumblingStructName}::MapType::const_iterator it = map.begin(); it != map.end(); it++)
+        res.push_back (it->second->_count);
+    return res;
+}
+";
+    } # endif ($groupByParam)
+}
+
+sub getOutputTupleCppInitializerWithOutputFunctions($;$)
+{
+    my ($outputPort, $outputFunctionPrefix) = @_;
+    $outputFunctionPrefix = "" if !$outputFunctionPrefix;
+    my $numAttrs = $outputPort->getNumberOfAttributes();
+    my $assignments = "";
+    for (my $i = 0; $i < $numAttrs; ++$i) {
+        my $attr = $outputPort->getAttributeAt($i);
+        if ($attr->hasAssignmentWithOutputFunction()) {
+            my $fcn = $attr->getAssignmentOutputFunctionName();
+            if ($fcn eq 'Custom') {
+                # we have to call the result function (3rd argument)
+                $assignments .=
+                    $attr->getAssignmentOutputFunctionParameterValueAt(2)->getCppExpression();
+            } elsif ($optimizeTumbling && $groupByParam &&
+                    ($fcn eq 'CountGroups' || $fcn eq 'CountAll' || $fcn eq 'CountByGroup')) {
+                # tricky special cases
+                if ($fcn eq 'CountGroups') {
+                    $assignments .= 'SPL::int32(summarizer._map.size())';
+                } elsif ($fcn eq 'CountAll') {
+                    $assignments .= 'SPL::int32(summarizer._count)';
+                } else {
+                    $assignments .= 'CountByGroup(summarizer._map)';
+                }
+            } else {
+                $assignments .= $outputFunctionPrefix . $fcn . '$' . $attr->getName() . '()';
+            }
+        } else {
+            my $exp = $attr->getAssignmentValue();
+            if ($exp) {
+              my @lexpr; push(@lexpr, $exp);
+              my $translated = AggregateCommon::translateExprs("projTuple", \%exprDB, \@lexpr);
+              $assignments .= ensureValue ($attr->getSPLType(), $translated);
+            }
+        }
+        $assignments .= ", " if $i < $numAttrs-1;
+    }
+    return $assignments;
+}
+
+%>

@@ -1,0 +1,11 @@
+# -*- shell-script -*-
+
+prefix=${distinst}
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+
+Name: pe-distillery
+Version: 1
+Description: PE-building necessary packages (using installation tarball)
+Libs: -L${libdir} -lstreams-apputils
+Cflags: -I${prefix}/include

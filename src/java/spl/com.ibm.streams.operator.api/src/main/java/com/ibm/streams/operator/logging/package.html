@@ -1,0 +1,90 @@
+<body>
+SPL trace and logging for the Java Operator API using the Java&#8482; 2 platform's core logging facilities.
+<H2>SPL Log Facility - com.ibm.streams.operator.log Logger</H2>
+<P>
+The SPL log facility is for application <em>logging</em>, where logging is defined as
+the recording of serviceability information pertaining to application or operator events.
+The purpose of logging is to provide an administrator with enough information
+to do problem determination for items they can potentially control.
+In general, very few events are logged in the normal running scenario of an application or operator.
+Events pertinent to the failure or partial failure of application runtime scenarios should be logged.
+<BR>
+The SPL log facility maps to the target use
+<em>problem diagnosis by end users and system administrators</em>
+described by {@code java.util.Logging}.
+</P>
+<P>
+The {@code java.util.logging.Logger} named {@code com.ibm.streams.operator.log} delivers
+log messages to the SPL log facility. {@link com.ibm.streams.operator.logging.LogLevel} provides Java values for SPL log levels
+and also describes the mapping between standard Java {@code java.util.logging.Level} values
+and SPL log levels.
+<BR>
+This {@code Logger} accepts any {@code Level} but any log messages at a level
+below {@link com.ibm.streams.operator.logging.LogLevel#INFO} (equals to {@code Level.CONFIG}) are sent to the SPL trace facility.
+It is recommended however that for code clarity, tracing within an operator does not use this
+{@code Logger} but instead uses one that maps to the SPL trace facility.
+</P>
+<P>
+Operators may create their own loggers that are children of the {@code com.ibm.streams.operator.log}
+{@code Logger} by creating one in a child name space, such as
+{@code com.ibm.streams.operator.log.com.example.operators.myoperator}.
+</P>
+<H2>SPL Trace Facility - Root Logger</H2>
+<P>
+The SPL trace facility is for application <em>tracing</em>, where tracing is defined as
+the recording of application or operator internal events and data.
+The purpose of tracing is to allow SPL application or operator developers to debug their applications
+or operators.
+The SPL trace facility maps to the target use
+<em>problem diagnosis by field service engineers</em>,
+<em>problem diagnosis by the development organization</em> and
+<em>problem diagnosis by developers</em>
+described by {@code java.util.Logging}.
+</P>
+<P>
+The root {@code java.util.logging.Logger} for the core logging facility
+delivers messages to the SPL trace facility, and thus any child {@code Logger}
+will also deliver messages to the SPL trace facility. This means that any anonymous {@code Logger}
+and any named {@code Logger} <b>not</b> in the {@code com.ibm.streams.operator.log} name space
+will deliver messages to the SPL trace facility.
+</P>
+<P>
+When running in a Streams&reg; distributed or standalone
+application the root {@code java.util.logging.Logger} has a {@code java.util.logging.Handler}
+that sends messages to the SPL trace facility.
+The level of the handler and root logger are set to the SPL tracing level of the
+processing element and are dynamically updated when the trace level is updated.
+The trace level for a processing element may be updated from the command line using:
+<BR>
+<code>streamtool updatepe -i <I>instanceId</I> --pes <I>peId</I> --config tracing=<I>level</I></code>
+</P>
+<P>
+{@link com.ibm.streams.operator.logging.TraceLevel} provides Java values for SPL trace levels
+and also describes the mapping between standard Java {@code java.util.logging.Level} values
+and SPL trace levels.
+</P>
+<H2>Logger Levels</H2>
+<P>
+Setting the level of any {@code Logger} using {@code Logger.setLevel()} does not
+change the SPL log or trace level. Such a change only affects that specific logger,
+typically this would be used to provide a subset of the current SPL trace level for
+specific components, while providing detailed trace for others at the current SPL trace level.
+<BR>
+Operator implementations must not change the level of either the root or
+{@code com.ibm.streams.operator.log} loggers.
+</P>
+<H2>Message Formatting</H2>
+<P>
+The root and {@code com.ibm.streams.operator.log} {@code Logger} use a plain formatter that
+formats the message using {@code java.util.logging.Formatter.formatMessage()}. The resultant
+message is passed directly to the SPL log or trace facility (using UTF-8 encoding) where
+additional formatting (e.g. adding a time stamp) is added before it is written out.
+</P>
+<H2>Message Localization</H2>
+<P>
+An operator or library called by an operator may create a {@code Logger} with a {@code ResourceBundle}
+to be used for localizing messages. Typically the resource bundles (message files) will be in the
+jar files containing the operator or library classes.
+</P>
+@since InfoSphere&reg; Streams Version 3.0
+</body>

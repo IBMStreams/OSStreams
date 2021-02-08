@@ -1,0 +1,18 @@
+<testCase name="runChainLink01" standalone="false" distributed="true" type="System" dataDir="data" xmlns="http://www.ibm.com/xmlns/prod/streams/spl/td2TestCase">
+  <author>Howard Nasgaard</author>
+  <date>2016-01-06</date>
+  <description>Does something</description>
+  <categories>
+    <category>Limits</category>
+  </categories>
+  <steps>
+    <splCompile mainComposite="limits::Main" extraArgs="3 4 4 500" dataDir="data">
+      <compileTimeValue name="dataDirHostTag">`dataDirHostTag`</compileTimeValue>
+    </splCompile>
+    <runJob numResources="1" sab="output/limits.Main.sab">
+      <steps>
+        <waitForLines numLines="1" file="chainLink_results" inDataDir="true" timeout="300"/>
+      </steps>
+    </runJob>
+  </steps>
+</testCase>

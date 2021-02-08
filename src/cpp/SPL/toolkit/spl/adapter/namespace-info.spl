@@ -1,0 +1,83 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
++ Schema checking for TCP operators using the confirmWireFormat parameter
+
+Use the **confirmWireFormat** parameter on `TCPSource` and `TCPSink` operators to confirm that the transmitted data is compatible.
+When the parameter value is `true`, information about the expected data is sent by the operator with the **role** parameter set to `server`.
+The operator with the **role** parameter set to `client` compares the information to what it expects, and returns a yes or no answer.
+The transmitted data is defined in the `etc/xsd/SPL/wireFormatMode.xsd` and `etc/xsd/SPL/tupleTypeModel.xsd` files
+and describes the format, encoding, compression, and tuple schema for the data.
+
+# Wire format description
+
+The following table defines the data that is sent when the **confirmWireFormat** parameter value is `true`
+and the **role** parameter value is `server`.
+
+--- Server: send information
+------------------------------------------------------------------------------------------------------------------------------
+| Location and type             | Description                                                                                 |
+|===============================|=============================================================================================|
+| 8 byte (network byte order)   | Magic number 0x6D6B6F72616E6461ULL                                                          |
+|-----------------------------------------------------------------------------------------------------------------------------|
+| 4 byte (network byte order)   | Length of a string to follow that contains the wire format description.                     |
+|-----------------------------------------------------------------------------------------------------------------------------|
+| UTF-8 encoded bytes           | A string that describes the wire format description in XML using the `wireFormatModel.xsd`. |
+------------------------------------------------------------------------------------------------------------------------------
+
+# Response
+
+The following table defines the data that is expected when the **confirmWireFormat** parameter value is `true`
+and the **role** parameter value is `server`, or the data that is sent
+when the **confirmWireFormat** parameter value is `true` and the **role** parameter value is `client`.
+
+--- Client: reply with response
+------------------------------------------------------------------------------------------------------------------------------------
+| Location and type             | Description                                                                                       |
+|===============================|===================================================================================================|
+| 8 byte (network byte order)   | Magic number 0x6D6B6F72616E6461ULL                                                                |
+|-----------------------------------------------------------------------------------------------------------------------------------|
+| 1 byte                        | The response: 0x00 (compatible), 0x01 (incompatible) or 0x02 (compatible and drop connection).    |
+|-----------------------------------------------------------------------------------------------------------------------------------|
+| 4 byte (network byte order)   | Length of the following UTF-8 response message (or 0 if there is no message).                     |
+|-----------------------------------------------------------------------------------------------------------------------------------|
+| UTF-8 encoded bytes           | A string that contains the message that is logged on the server side when a response is received. |
+------------------------------------------------------------------------------------------------------------------------------------
+
+
+If the answer is `0x00`, the response message is logged as `L_INFO`.
+If the answer is `0x01` or `0x02`, the response message is logged as `L_ERROR`.
+
+# Interaction with the reconnectionPolicy parameter
+
+If an operator with a **role** parameter value of `server` and a **confirmWireFormat** parameter value of `true`
+receives a `0x01` (incompatible) or `0x02` (compatible and drop connection) answer in the response
+or there was an error in the protocol, the entire connection attempt is ignored and it is not considered a connection.
+The **reconnectionPolicy** parameter does not apply.
+
+If an operator with a **role** parameter value of `client` and a **confirmWireFormat** parameter value of `true`
+receives a `0x01` (incompatible) or `0x02` (compatible and drop connection) answer in the response
+or there was an error in the protocol, the connection attempt fails
+and the **reconnectionPolicy** parameter is used to control the ensuing behavior.
+Each failed attempt is one connection and counts towards the **reconnectionBound** parameter.
+
+If an operator with a **role** parameter value of `client` has a **reconnectionPolicy** parameter value of `InfiniteRetry`
+and the schemas are incompatible, it continues to try to re-establish the connection.
+
+*/
+
+namespace spl.adapter;

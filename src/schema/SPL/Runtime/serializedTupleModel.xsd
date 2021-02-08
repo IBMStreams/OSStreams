@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/tuple"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/tuple"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<!-- The 'serialized tuple' model.  -->
+<xs:element name="tuple" type="tupleType"/>
+
+<!-- The tuple type.  -->
+<xs:complexType name="tupleType">
+  <xs:sequence>
+    <!-- The attributes in the tuple.  -->
+    <xs:element name="attr" type="attributeType" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- The attribute type.  -->
+<xs:complexType name="attributeType" mixed="true">
+  <xs:choice minOccurs="0">
+    <!-- A list of values -->
+    <xs:element name="list" type="listOrSetType"/>
+    <!-- A set of values -->
+    <xs:element name="set" type="listOrSetType"/>
+    <!-- A map of values -->
+    <xs:element name="map" type="mapType"/>
+    <!-- A tuple -->
+    <xs:element name="tuple" type="tupleType"/>
+  </xs:choice>
+  <xs:attribute name="name" type="xs:token" use="required"/>
+  <!-- type must be present if element is not present -->
+  <xs:attribute name="type" type="xs:string"/>
+</xs:complexType>
+
+<!-- The listOrSet type.  -->
+<xs:complexType name="listOrSetType">
+  <xs:choice minOccurs="0" maxOccurs="unbounded">
+    <!-- a simple value -->
+    <xs:element name="value" type="valueType"/>
+    <!-- A list of values -->
+    <xs:element name="list" type="listOrSetType"/>
+    <!-- A set of values -->
+    <xs:element name="set" type="listOrSetType"/>
+    <!-- A map of values -->
+    <xs:element name="map" type="mapType"/>
+    <!-- A tuple -->
+    <xs:element name="tuple" type="tupleType"/>
+  </xs:choice>
+  <!-- elementType must be present if value is scalar -->
+  <xs:attribute name="elementType" type="xs:string"/>
+</xs:complexType>
+
+<!-- The map type.  -->
+<xs:complexType name="mapType">
+  <xs:sequence minOccurs="0" maxOccurs="unbounded">
+    <!-- The values in the list or set. -->
+    <xs:sequence>
+      <!-- The key -->
+      <xs:element name="key" type="valueType"/>
+      <!-- The value associated with the key -->
+      <xs:element name="value" type="valueType"/>
+    </xs:sequence>
+  </xs:sequence>
+  <!-- keyType must be present if value is scalar -->
+  <xs:attribute name="keyType" type="xs:string"/>
+  <!-- valueType must be present if value is scalar -->
+  <xs:attribute name="valueType" type="xs:string"/>
+</xs:complexType>
+
+<!-- One data value.  -->
+<xs:complexType name="valueType" mixed="true">
+  <xs:choice minOccurs="0">
+    <!-- A list of values -->
+    <xs:element name="list" type="listOrSetType"/>
+    <!-- A set of values -->
+    <xs:element name="set" type="listOrSetType"/>
+    <!-- A map of values -->
+    <xs:element name="map" type="mapType"/>
+    <!-- A tuple -->
+    <xs:element name="tuple" type="tupleType"/>
+  </xs:choice>
+</xs:complexType>
+
+</xs:schema>

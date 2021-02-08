@@ -1,0 +1,218 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use DeDuplicateCommon;
+    DeDuplicateCommon::verify($model);
+    my $inputPort = $model->getInputPortAt(0);
+    my $outputPort = $model->getOutputPortAt(0);
+    my $inputName = $inputPort->getCppTupleName();
+    my $key = $model->getParameterByName("key");
+    my $keyArgs = $key ? SPL::CodeGen::getParameterCppInitializer ($key) : $inputName;
+    my $count = $model->getParameterByName("count");
+    my $deltaAttribute = $model->getParameterByName("deltaAttribute");
+    my $delta = $model->getParameterByName("delta");
+    my $resetOnDuplicate = $model->getParameterByName("resetOnDuplicate");
+    my $timeOut = $model->getParameterByName("timeOut");
+    my $flushOnPunctuation = $model->getParameterByName("flushOnPunctuation");
+
+    $resetOnDuplicate =
+        $resetOnDuplicate ? $resetOnDuplicate->getValueAt(0)->getSPLExpression() : "true";
+    $flushOnPunctuation = $flushOnPunctuation ? $flushOnPunctuation->getValueAt(0)->getSPLExpression() : "false";
+    $delta = $delta->getValueAt(0)->getCppExpression() if $delta;
+    $count = $count->getValueAt(0)->getCppExpression() if $count;
+    my $deltaType = $deltaAttribute ? $deltaAttribute->getValueAt(0)->getCppType() : undef;
+    $deltaAttribute = $deltaAttribute->getValueAt(0)->getCppExpression() if $deltaAttribute;
+    $timeOut = $timeOut ? $timeOut->getValueAt(0)->getCppExpression() : 600;
+    my $doTime = !($count || $delta);
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+
+    # If any of the types in the key are capbable of having NaN (not-a-number)
+    # as a value, we need to do some special handling.
+    my $doNanTest = 0;
+    my @splKeyTypes;
+    if (defined $key) {
+      for (my $i = 0; $i < $key->getNumberOfValues(); ++$i) {
+        my $value = $key->getValueAt($i);
+        my $splType = $value->getSPLType();
+        push @splKeyTypes, $splType;
+      }
+    }
+    else {
+      @splKeyTypes = $inputPort->getAttributes();
+    }
+    $doNanTest = DeDuplicateCommon::hasNanType(@splKeyTypes);
+
+    #print STDERR "Do NaN Test: $doNanTest\n";
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+MY_OPERATOR::MY_OPERATOR()
+:
+        <% if ($doTime) {%>
+            _diff (<%=$timeOut%>)
+        <%} elsif ($count) {%>
+            _diff(<%=$count%>), _nTuples(0)
+        <%} else {%>
+            _diff(<%=$delta%>)
+        <%}%>
+{
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+<%if ($isInConsistentRegion || $ckptKind ne "none") {%>
+    AutoMutex am(_mutex);
+<% } else {%>
+    AutoPortMutex apm(_mutex, *this);
+<% } %>
+
+    const IPort0Type& <%=$inputName%> = static_cast<const IPort0Type&>(tuple);
+
+    // Check to see if this tuple has been seen recently - create the key
+    <% if ($doTime) {%>
+        double newVal = SPL::Functions::Time::getTimestampInSecs();
+    <%} elsif ($count) {%>
+        int64_t newVal = _nTuples++;
+    <%} else {%>
+        const <%=$deltaType%> newVal = <%=$deltaAttribute%>;
+    <%}%>
+    ListDataType newValue(KeyType(<%=$keyArgs%>), newVal);
+    <% if ($doNanTest) {%>
+      // This test will fail if the key contains any NaN value.
+      // See defect 30408.
+      if (newValue._key == newValue._key) {
+    <%}%>
+    TupleMapType::iterator it = _map.find(newValue._key);
+    if (it != _map.end()) {
+        // We found an old one - Is it still valid?
+        if ((newVal - it->second->_value) > _diff) {
+            // long enough ago....
+            <%SPL::CodeGen::emitSubmitOutputTuple($outputPort, $inputPort);%>
+            _list.push_front(newValue);
+            _list.erase(it->second);
+            it->second = _list.begin();  // restart the counter
+        } else {
+            <%if ($resetOnDuplicate eq 'true') {%>
+                // else suppress this one and reset the value
+                _list.push_front(newValue);
+                _list.erase(it->second);
+                it->second = _list.begin();
+            <%}%>
+            <%if ($model->getNumberOfOutputPorts() == 2) {%>
+                submit (tuple, 1);
+            <%}%>
+        }
+    } else {
+        // Haven't seen this one
+        <%SPL::CodeGen::emitSubmitOutputTuple($outputPort, $inputPort);%>
+        _list.push_front(newValue);
+        _map.insert(make_pair(newValue._key, _list.begin()));
+    }
+
+    // Keep the map a reasonable size by cleaning up elements that have expired
+    while (!_list.empty()) {
+        ListDataType & oldest = *_list.rbegin();
+        // Look at the list to see if we should remove it
+        if ((newVal - oldest._value) <= _diff)
+            break; // list is ordered, no need to continue
+        // Remove from the map and the list
+        TupleMapType::iterator it = _map.find(oldest._key);
+        assert(it != _map.end());
+        _map.erase(it);
+        _list.pop_back();
+    }
+
+    <% if ($doNanTest) {%>
+      } else {
+        // The key apparently contains a NaN.  We cannot dedup this, so
+        // just send it through.
+        <%SPL::CodeGen::emitSubmitOutputTuple($outputPort, $inputPort);%>
+      }
+    <%}%>
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+    <%if ($flushOnPunctuation eq "true") {%>
+        // Forget everything
+<%if ($isInConsistentRegion || $ckptKind ne "none") {%>
+        AutoMutex am(_mutex);
+<% } else {%>
+        AutoPortMutex apm(_mutex, *this);
+<% } %>
+
+        _list.clear();
+        _map.clear();
+    <%}%>
+    forwardWindowPunctuation(punct);
+}
+
+void MY_OPERATOR::resetCommon()
+{
+    _list.clear();
+    _map.clear();
+    <%if ($count) {%>
+        _nTuples = 0;
+    <%}%>
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    AutoMutex am(_mutex);
+    resetCommon();
+}
+
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    <%if ($count) {%>
+        ckpt << _nTuples;
+    <%}%>
+    uint32_t listSize = _list.size();
+    ckpt << listSize;
+
+    for (TupleListType::reverse_iterator rit = _list.rbegin();
+         rit != _list.rend(); rit++) {
+        ListDataType & item = *rit;
+        item.checkpoint(ckpt);
+    }
+}
+
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    resetCommon();
+
+    <%if ($count) {%>
+        ckpt >> _nTuples;
+    <%}%>
+    uint32_t listSize = 0;
+    ckpt >> listSize;
+
+    ListDataType item;
+    for (uint32_t i = 0; i < listSize; i++) {
+        item.reset(ckpt);
+        _list.push_front(item);
+        _map.insert(make_pair(item._key, _list.begin()));
+    }
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

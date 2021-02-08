@@ -1,0 +1,204 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context verificationModule="verify">
+      <iconUri size="16">http://www.somewhere.com/operatorIconFile/fred.jpg</iconUri>
+      <iconUri size="32">http://www.somewhere.com/operatorIconFile/fred2.jpg</iconUri>
+      <metrics>
+        <metric>
+          <name>Fred</name>
+          <description>This is the fred value</description>
+          <kind>Counter</kind>
+        </metric>
+      </metrics>
+      <customLiterals>
+        <enumeration>
+          <name>FileFormat</name>
+          <value>csvFormat</value>
+          <value>compressed</value>
+          <value>xmlFormat</value>
+        </enumeration>
+        <enumeration>
+          <name>DelayFormat</name>
+          <value>initDelay</value>
+          <value>meanDelay</value>
+          <value>noDelay</value>
+        </enumeration>
+      </customLiterals>
+      <customOutputFunctions>
+        <customOutputFunction>
+          <name>RelationalAggregation</name>
+          <function pseudoFunction="true">
+            <description>Compute the Minimum</description>
+            <prototype>Min</prototype>
+          </function>
+          <function>
+            <description>Compute the Maximum</description>
+            <prototype>Max</prototype>
+          </function>
+          <function>
+            <prototype>Sum</prototype>
+          </function>
+          <function>
+            <prototype>Avg</prototype>
+          </function>
+        </customOutputFunction>
+        <customOutputFunction>
+          <name>DSPAggregation</name>
+          <function>
+            <description>Compute the Convolution</description>
+            <prototype>Convolve</prototype>
+          </function>
+          <function>
+            <prototype>FFT</prototype>
+          </function>
+        </customOutputFunction>
+      </customOutputFunctions>
+      <libraryDependencies>
+        <library>
+          <cmn:description docHref="file://something" sampleUri="ftp://This is a sample.file">Tecla Library</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>tecla</cmn:lib>
+            <cmn:libPath>@JAVA_HOME@/tecla/libs</cmn:libPath>
+            <cmn:includePath>@JAVA_HOME@/tecla/include</cmn:includePath>
+            <cmn:command>teclaGenCmd</cmn:command>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>WindowPartitionEvictionBound</providesSingleThreadedContext>
+      <incrementalCompilationStrategy>SourceDependent</incrementalCompilationStrategy>
+      <allowCustomLogic>false</allowCustomLogic>
+      <codeTemplates>
+        <codeTemplate name="template1">
+          <description>This is the first template</description>
+          <template>This is the ${template}.</template>
+        </codeTemplate>
+        <codeTemplate name="template without description">
+          <template>This is the second ${template}.</template>
+        </codeTemplate>
+      </codeTemplates>
+      <splExpressionTree param="true" output="false" cppCode="true"/>
+    </context>
+    <parameters>
+      <description>This adds a description for the parameters as a whole.</description>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>uri</name>
+        <optional>false</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+        <customOutputFunction>RelationalAggregation</customOutputFunction>
+      </parameter>
+      <parameter>
+        <name>format</name>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>FileFormat</type>
+      </parameter>
+      <parameter>
+        <name>matchLeft</name>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <portScope>
+          <port>0</port>
+        </portScope>
+      </parameter>
+      <parameter>
+        <name>matchRight</name>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <portScope>
+          <port>1</port>
+        </portScope>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>First 2 ports</description>
+        <windowingDescription>The window behavior for these ports</windowingDescription>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>Windowed</windowingMode>
+        <windowPunctuationInputMode>WindowBound</windowPunctuationInputMode>
+        <controlPort>false</controlPort>
+        <windowExpressionMode>AttributeFree</windowExpressionMode>
+        <rewriteAllowedForWindowExpression>false</rewriteAllowedForWindowExpression>
+        <cardinality>2</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+      <inputPortSet>
+        <description>Third Port</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>true</optional>
+      </inputPortSet>
+      <inputPortOpenSet>
+        <description>Fourth and following</description>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <windowingMode>OptionallyWindowed</windowingMode>
+        <windowPunctuationInputMode>Expecting</windowPunctuationInputMode>
+        <controlPort>true</controlPort>
+      </inputPortOpenSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>Some port</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <finalPunctuationPortScope>
+          <port>1</port>
+        </finalPunctuationPortScope>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <outputAssignmentPortScope>
+          <port>0</port>
+        </outputAssignmentPortScope>
+        <allowNestedCustomOutputFunctions>true</allowNestedCustomOutputFunctions>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+      <outputPortSet>
+        <description>Another port</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <outputFunctions>
+          <default>FFT</default>
+          <type>DSPAggregation</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Free</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <allowNestedCustomOutputFunctions>false</allowNestedCustomOutputFunctions>
+        <cardinality>1</cardinality>
+        <optional>true</optional>
+      </outputPortSet>
+      <outputPortOpenSet>
+        <description>Some open port</description>
+        <expressionMode>Attribute</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <outputFunctions>
+          <default>Min</default>
+          <type>RelationalAggregation</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Free</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <allowNestedCustomOutputFunctions>true</allowNestedCustomOutputFunctions>
+      </outputPortOpenSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

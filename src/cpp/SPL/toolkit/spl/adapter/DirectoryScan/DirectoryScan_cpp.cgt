@@ -1,0 +1,610 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use DirectoryScanCommon;
+    DirectoryScanCommon::verify($model);
+    my $outputPort = $model->getOutputPortAt(0);
+    my $directory =  $model->getParameterByName("directory");
+    my $pattern = $model->getParameterByName("pattern");
+    my $sleepTime = $model->getParameterByName("sleepTime");
+    my $initDelay = $model->getParameterByName("initDelay");
+    my $sortBy = $model->getParameterByName("sortBy");
+    my $order = $model->getParameterByName("order");
+    my $moveToDirectory = $model->getParameterByName("moveToDirectory");
+    my $ignoreDotFiles = $model->getParameterByName("ignoreDotFiles");
+    my $ignoreExistingFilesAtStartup = $model->getParameterByName("ignoreExistingFilesAtStartup");
+
+    # Apply defaults
+    $sleepTime = $sleepTime ? $sleepTime->getValueAt(0)->getCppExpression() : 5;
+
+    # convert to C++ expressions
+    $directory = $directory->getValueAt(0)->getCppExpression();
+    $initDelay = $initDelay->getValueAt(0)->getCppExpression() if $initDelay;
+    $pattern = $pattern->getValueAt(0)->getCppExpression() if $pattern;
+    $sortBy = $sortBy ? $sortBy->getValueAt(0)->getSPLExpression() : "date";
+    $order = $order ? $order->getValueAt(0)->getSPLExpression() : "ascending";
+    $moveToDirectory = $moveToDirectory->getValueAt(0)->getCppExpression() if $moveToDirectory;
+    $ignoreDotFiles = $ignoreDotFiles->getValueAt(0)->getCppExpression() if $ignoreDotFiles;
+    $ignoreExistingFilesAtStartup = ($ignoreExistingFilesAtStartup) ? $ignoreExistingFilesAtStartup->getValueAt(0)->getCppExpression() : 0;
+    my $compareOp = $order eq "ascending" ? "<" : ">";
+
+    # do we need to extra information
+    my $needStatInfo = 0;
+    my $needAbsolutePath = 0;
+    my $needAbsoluteDestinationPath = 0;
+    for (my $i = 0; $i < $outputPort->getNumberOfAttributes(); $i++) {
+        my $attr = $outputPort->getAttributeAt($i);
+        if ($attr->hasAssignmentWithOutputFunction()) {
+            my $of = $attr->getAssignmentOutputFunctionName();
+            if ($of eq "Size" || $of =~ /[MA]time$/) {
+                $needStatInfo = 1;
+            } elsif ($of eq "FullPath") {
+                $needAbsolutePath = 1;
+            } elsif ($of eq "DestinationFullPath") {
+                $needAbsoluteDestinationPath = 1;
+            }
+        }
+    }
+    #consistent region support
+    my $crContext = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $isInConsistentRegion = $crContext ? 1 : 0;
+    my $isTrigger = $crContext ? $crContext->isTriggerOperator() : 0;
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <boost/filesystem/path.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/exception.hpp>
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Runtime/Utility/LogTraceMessage.h>
+#include <SPL/Runtime/Operator/OperatorMetrics.h>
+#include <SPL/Toolkit/RuntimeException.h>
+#include <SPL/Toolkit/Utility.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+using namespace std;
+using namespace SPL;
+
+typedef pair<string, timespec> FileInfo;
+
+inline
+bool operator < (const timespec& lhs, timespec const & rhs) {
+  if (lhs.tv_sec == rhs.tv_sec)
+    return lhs.tv_nsec < rhs.tv_nsec;
+  return lhs.tv_sec < rhs.tv_sec;
+}
+
+inline
+bool operator > (const timespec& lhs, timespec const & rhs) {
+  return rhs < lhs;
+}
+
+inline
+SPL::ByteBuffer<Checkpoint> & operator >> (SPL::ByteBuffer<Checkpoint> & ckpt, timespec & value) {
+  ckpt >> value.tv_sec;
+  ckpt >> value.tv_nsec;
+  return ckpt;
+}
+
+inline
+SPL::ByteBuffer<Checkpoint> & operator << (SPL::ByteBuffer<Checkpoint> & ckpt, timespec const & value) {
+  ckpt << value.tv_sec;
+  ckpt << value.tv_nsec;
+  return ckpt;
+}
+
+static bool sortFunction (const FileInfo& left, const FileInfo& right)
+{
+    <%if ($sortBy eq "date") {%>
+        return left.second <%=$compareOp%> right.second;
+    <%} else {%>
+        return left.first <%=$compareOp%> right.first;
+    <%}%>
+}
+
+MY_OPERATOR::MY_OPERATOR()
+: MY_BASE_OPERATOR(),
+  _numDirectoryScans (getContext().getMetrics().getCustomMetricByName("nScans"))
+<%if ($isInConsistentRegion) {%>
+  ,_crContext()
+  ,_reset(false)
+<%}%>
+{
+    _numDirectoryScans.setValueNoLock(0);
+<%if ($isInConsistentRegion) {%>
+    _crContext = static_cast<ConsistentRegionContext *>
+            (getContext().getOptionalContext(CONSISTENT_REGION));
+<%}%>
+    SPLAPPTRC(L_DEBUG, "Register tag data for governance", SPL_OPER_DBG);
+    std::map<string,string> props;
+    props["inputOperatorType"]="DirectoryScan";
+    props["srcName"]=<%=$directory%>;
+    props["srcType"]="data_file_folder";
+    props["registerType"] = "input";
+    setTagData("OperatorIGC", props);
+}
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads (1);
+}
+
+#define CLEAN_INTERVAL 10
+
+    namespace bf = boost::filesystem;
+static void ensureRenameDir (const bf::path& dir)
+{
+    if (bf::exists (dir)) {
+        if (!bf::is_directory(dir))
+            SPLTRACEMSGANDTHROW(SPLRuntimeDirectoryScanOperator, L_ERROR, SPL_APPLICATION_RUNTIME_NOT_DIR(dir.string()), SPL_FUNC_DBG);
+    } else {
+        try {
+            bf::create_directory (dir);
+        } catch (...) {
+            SPLTRACEMSGANDTHROW (SPLRuntimeDirectoryScanOperator, L_ERROR, SPL_APPLICATION_RUNTIME_DIR_NOT_EXIST(dir.string()), SPL_FUNC_DBG);
+        }
+    }
+}
+
+void MY_OPERATOR::initializeFileCreationTimes()
+{
+    // Figure out input directory and open it
+    string directoryName = <%=$directory%>;
+    bf::path dir = directoryName;
+    if (!dir.is_absolute()) {
+        dir = getPE().getDataDirectory();
+        if (directoryName != ".") {
+            dir /= directoryName;
+        }
+    }
+
+    const ProcessingElement& pe = getPE();
+    bf::directory_iterator end_itr; // default construction yields past-the-end
+    _fileCreationTimes.clear();
+    if (<%=$ignoreExistingFilesAtStartup%>) {
+        // Ignore any existing files at startup time
+        for (bf::directory_iterator itr(dir); itr != end_itr; ++itr) {
+            if (bf::is_directory(*itr)) {
+                continue;
+            }
+            string component = itr->path().filename().string();
+            SPLAPPTRC(L_DEBUG, "Ignoring file '" << component << '\'', SPL_OPER_DBG);
+            rstring file = itr->path().string();
+            // Have we seen this file before?
+            struct stat fInfo;
+            if (::stat (file.c_str(), &fInfo) < 0) {
+                SPLAPPTRC(L_DEBUG, "'stat' of  file '" << file << "' failed: " << RuntimeUtility::getErrorNoStr(), SPL_OPER_DBG);
+                continue;
+            }
+            if (S_ISREG(fInfo.st_mode)) {
+                _fileCreationTimes.insert (FileInfo (file, fInfo.st_ctim));
+            }
+        }
+    }
+}
+
+void MY_OPERATOR::process(uint32_t)
+{
+    SPLAPPTRC(L_DEBUG, "DirectoryScan startup...", SPL_OPER_DBG);
+    double lastScanStartTime;
+    double scanWaitTime = <%=$sleepTime%>;
+
+    // Figure out input directory and open it
+    string directoryName = <%=$directory%>;
+    bf::path dir = directoryName;
+    if (!dir.is_absolute()) {
+        // getDataDirectory will throw an exception if there is no data directory
+        dir = getPE().getDataDirectory();
+        if (directoryName != ".") {
+            dir /= directoryName;
+        }
+    }
+    SPLAPPTRC(L_DEBUG, "Using '" << dir.string() << "' as the directory...", SPL_OPER_DBG);
+
+    const ProcessingElement& pe = getPE();
+    bf::directory_iterator end_itr; // default construction yields past-the-end
+<%if ($isInConsistentRegion) {%>
+    {
+      SPLAPPTRC(L_TRACE, "Getting initial ConsistentRegionPermit", SPL_OPER_DBG);
+      ConsistentRegionPermit crp(_crContext);
+      SPLAPPTRC(L_TRACE, "Getting initial AutoMutex", SPL_OPER_DBG);
+
+      AutoMutex am(_mutex);
+      if (!_reset) {
+<%}%>
+
+      SPLAPPTRC(L_TRACE, "Initializing file creation time map", SPL_OPER_DBG);
+      initializeFileCreationTimes();
+<%if ($isInConsistentRegion) {%>
+      }
+    }
+<%}%>
+
+    <%if ($initDelay) {%>
+        pe.blockUntilShutdownRequest(<%=$initDelay%>);
+    <%}%>
+    if (!bf::exists(dir))
+        SPLTRACEMSGANDTHROW(SPLRuntimeDirectoryScanOperator, L_ERROR, SPL_APPLICATION_RUNTIME_DIR_NOT_EXIST(directoryName), SPL_FUNC_DBG);
+    if (!bf::is_directory(dir))
+        SPLTRACEMSGANDTHROW(SPLRuntimeDirectoryScanOperator, L_ERROR, SPL_APPLICATION_RUNTIME_NOT_DIR(directoryName), SPL_FUNC_DBG);
+
+    <%if ($moveToDirectory) {%>
+        bf::path moveToDir(<%=$moveToDirectory%>);
+        if (!moveToDir.is_absolute()) {
+            // getDataDirectory will throw an exception if there is no data directory
+            moveToDir = getPE().getDataDirectory();
+	    string relativeDir = string(<%=$moveToDirectory%>);
+            if (relativeDir != ".") {
+                moveToDir /= relativeDir;
+            }
+        }
+        AtomicRenamer renamer(getPE(), moveToDir);
+	<%if (!$isInConsistentRegion) {%>
+        bf::path localRenameDir = dir / ".rename";
+        ensureRenameDir(localRenameDir);
+	<%}%>
+    <%}%>
+
+<%if ($pattern) {%>
+    string pattern = <%=$pattern%>;
+<%}%>
+    uint32_t timeToClean = CLEAN_INTERVAL;
+<%if ($needAbsolutePath) {%>
+    bf::path absPath = cleanPath(dir);
+<%}%>
+<%if ($needAbsoluteDestinationPath) {%>
+    <%if ($moveToDirectory) {%>
+        bf::path absDestPath = cleanPath(renamer.toDir());
+    <%} else {%>
+        bf::path absDestPath = cleanPath(dir);
+    <%}%>
+<%}%>
+    while (!pe.getShutdownRequested()) {
+      SPLAPPTRC(L_TRACE, "Entered main loop", SPL_OPER_DBG);
+      vector<FileInfo> foundFiles;
+<%if ($isInConsistentRegion) {%>
+      {
+        SPLAPPTRC(L_TRACE, "Getting scan AutoMutex", SPL_OPER_DBG);
+	AutoMutex am(_mutex);
+<%}%>
+        lastScanStartTime = Functions::Time::getTimestampInSecs();
+
+        SPLAPPTRC(L_TRACE, "Entering directory loop", SPL_OPER_DBG);
+        for (bf::directory_iterator itr(dir); itr != end_itr; ++itr) {
+            if (pe.getShutdownRequested()) {
+                SPLAPPTRC(L_TRACE, "Exiting directory loop because of shutdown", SPL_OPER_DBG);
+                break; // give up now if we are shutting down
+	    }
+            if (bf::is_directory(*itr))
+                continue;
+            string component = itr->path().filename().string();
+            SPLAPPTRC(L_DEBUG, "Found file '" << component << '\'', SPL_OPER_DBG);
+            <%if ($ignoreDotFiles) {%>
+                // ignore files with a leading '.'
+                if (<%=$ignoreDotFiles%> && itr->path().filename().string()[0] == '.') {
+                    SPLAPPTRC(L_DEBUG, "Skipping file with leading \'.\': '" << itr->path().filename().string() << '\'', SPL_OPER_DBG);
+                    continue;
+                }
+            <%}%>
+            <%if ($pattern) {%>
+                list<rstring> matchRes;
+                try {
+                    matchRes = Functions::String::regexMatch(component, pattern);
+                } catch (SPLRuntimeInvalidArgumentException & e) {
+                    SPLTRACEMSGANDTHROW(SPLRuntimeDirectoryScanOperator, L_ERROR, SPL_APPLICATION_RUNTIME_REGEXP_FAILED_COMPILE(pattern), SPL_FUNC_DBG);
+                }
+                if (matchRes.empty()) {
+                    SPLAPPTRC(L_DEBUG, "File '" << component << "' did not match pattern -- skipping", SPL_OPER_DBG);
+                    continue;
+                }
+            <%}%>
+            rstring file = itr->path().string();
+            // Have we seen this file before?
+            struct stat fInfo;
+            if (::stat (file.c_str(), &fInfo) < 0) {
+                SPLAPPTRC(L_DEBUG, "'stat' of  file '" << file << "' failed: " << RuntimeUtility::getErrorNoStr(), SPL_OPER_DBG);
+                continue;
+            }
+            if (!S_ISREG(fInfo.st_mode)) {
+                SPLAPPTRC(L_DEBUG, "Skipping non-regular file '" << file << '\'', SPL_OPER_DBG);
+                continue;
+            }
+
+            FileInfo fi(file, fInfo.st_ctim);
+	    FileInfoMapType::iterator it = _fileCreationTimes.find(file);
+	    if (it == _fileCreationTimes.end() || it->second < fInfo.st_ctim) {
+                SPLAPPTRC(L_DEBUG, "Queuing '" << component << "' to be sent", SPL_OPER_DBG);
+		foundFiles.push_back(fi);
+	    }
+	    else {
+                SPLAPPTRC(L_DEBUG, "Already sent '" << component << "', skipping", SPL_OPER_DBG);
+	    }
+
+        }
+<%if ($isInConsistentRegion) {%>
+        SPLAPPTRC(L_TRACE, "Releasing scan AutoMutex", SPL_OPER_DBG);
+      }
+<%}%>
+        if (foundFiles.size() > 1) {
+            sort (foundFiles.begin(), foundFiles.end(), sortFunction);
+	}
+        SPLAPPTRC(L_TRACE, "" << foundFiles.size() << " files found", SPL_OPER_DBG);
+
+        // Now send all the files in order them...
+        SPLAPPTRC(L_TRACE, "Entering found files loop", SPL_OPER_DBG);
+        vector<FileInfo>::const_iterator it;
+        for (it = foundFiles.begin(); it != foundFiles.end(); ++it) {
+<%if ($isInConsistentRegion) {%>
+          {
+            SPLAPPTRC(L_TRACE, "Getting main loop ConsistentRegionPermit", SPL_OPER_DBG);
+            ConsistentRegionPermit crp(_crContext);
+	    {
+              SPLAPPTRC(L_TRACE, "Getting main loop entry AutoMutex", SPL_OPER_DBG);
+              AutoMutex am(_mutex);
+              if (_reset) {
+  	        _reset = false;
+	        SPLAPPTRC(L_DEBUG, "Breaking main loop because of reset", SPL_OPER_DBG);
+           	break;
+	      }
+	    }
+<%}%>
+            string baseName = bf::path(it->first).filename().string();
+
+            <%if ($needStatInfo) {%>
+                struct stat fInfo;
+                ::stat (it->first.c_str(), &fInfo);
+            <%}%>
+            <%if ($moveToDirectory && !$isInConsistentRegion) {%>
+                // Are we the first to get this file?
+                bf::path renameLocal = localRenameDir / baseName;
+
+                if (::rename (it->first.c_str(), renameLocal.string().c_str()) != 0) {
+                    SPLAPPTRC(L_DEBUG, "'rename' of  file '" << it->first << "' to '" << renameLocal.string() << "' failed: " << RuntimeUtility::getErrorNoStr(), SPL_OPER_DBG);
+                    continue; // Someone else got there first
+                }
+                rstring remoteName = renamer.rename (renameLocal);
+            <%}%>
+            <%
+            # generate the initializer for the tuple
+            my $init = "";
+            my $numAttrs = $outputPort->getNumberOfAttributes();
+            for (my $i = 0; $i < $numAttrs; $i++) {
+                my $attr = $outputPort->getAttributeAt($i);
+                my $aName = $attr->getName();
+                if ($attr->hasAssignmentWithOutputFunction()) {
+                    my $of = $attr->getAssignmentOutputFunctionName();
+                    my $attrType = $attr->getSPLType();
+                    if ($of eq "DestinationFilePath") {
+                        if ($attrType eq "optional<rstring>") {
+                            $init .= $moveToDirectory ? "optional<rstring>(rstring((bf::path(".$moveToDirectory.")/bf::path(it->first).filename()).string()))" : "optional<rstring>(rstring((bf::path(".$directory.")/bf::path(it->first).filename()).string()))";
+                        } else {
+                            $init .= $moveToDirectory ? "rstring((bf::path(".$moveToDirectory.")/bf::path(it->first).filename()).string())" : "rstring((bf::path(".$directory.")/bf::path(it->first).filename()).string())";
+                        }
+                    } elsif ($of eq "FileName") {
+                        if ($attrType eq "optional<rstring>") {
+                            $init .= "optional<rstring>(rstring(bf::path(it->first).filename().string()))";
+                        } else {
+                            $init .= "rstring(bf::path(it->first).filename().string())";
+                        }
+                    } elsif ($of eq "FilePath") {
+                        if ($attrType eq "optional<rstring>") {
+                            $init .= "optional<rstring>(rstring((bf::path(".$directory.")/bf::path(it->first).filename()).string()))";
+                        } else {
+                            $init .= "rstring((bf::path(".$directory.")/bf::path(it->first).filename()).string())";
+                        }
+                    } elsif ($of eq "FullPath") {
+                        if ($attrType eq "optional<rstring>") {
+                            $init .= "optional<rstring>(rstring((absPath / baseName).string()))";
+                        } else {
+                            $init .= "rstring((absPath / baseName).string())";
+                        }
+                    } elsif ($of eq "DestinationFullPath") {
+                        if ($attrType eq "optional<rstring>") {
+                            $init .= "optional<rstring>(rstring((absDestPath / baseName).string()))";
+                        } else {
+                            $init .= "rstring((absDestPath / baseName).string())";
+                        }
+                    } elsif ($of eq "Directory") {
+                        if ($attrType eq "optional<rstring>") {
+                            $init .= "optional<rstring>(rstring(directoryName))";
+                        } else {
+                            $init .= "rstring(directoryName)";
+                        }
+                    } elsif ($of eq "DestinationDirectory") {
+                        if ($attrType eq "optional<rstring>") {
+                            $init .= "optional<rstring>(rstring(" . ($moveToDirectory ? "$moveToDirectory" : "directoryName") . "))";
+                        } else {
+                            $init .= "rstring(" . ($moveToDirectory ? "$moveToDirectory" : "directoryName") . ")";
+                        }
+                    } elsif ($of eq "Size") {
+                        if ($attrType eq "optional<uint64>") {
+                            $init .= "optional<uint64>(fInfo.st_size)";
+                        } else {
+                            $init .= "fInfo.st_size";
+                        }
+                    } elsif ($of eq "Ctime") {
+                        if ($attrType eq "optional<uint64>") {
+                            $init .= "optional<uint64>(it->second.tv_sec)";
+                        } else {
+                            $init .= "it->second.tv_sec";
+                        }
+                    } elsif ($of eq "Atime") {
+                        if ($attrType eq "optional<uint64>") {
+                            $init .= "optional<uint64>(fInfo.st_atime)";
+                        } else {
+                            $init .= "fInfo.st_atime";
+                        }
+                    } elsif ($of eq "Mtime") {
+                        if ($attrType eq "optional<uint64>") {
+                            $init .= "optional<uint64>(fInfo.st_mtime)";
+                        } else {
+                            $init .= "fInfo.st_mtime";
+                        }
+                    } elsif ($of eq "AsIs") {
+                       $init .= SPL::CodeGenHelper::ensureValue ($attr->getSPLType(), $attr->getAssignmentOutputFunctionParameterValueAt(0)->getCppExpression());
+                    }
+                } else {
+                    $init .= ($moveToDirectory && !$isInConsistentRegion) ? "remoteName" : "rstring(it->first)";
+                }
+                $init .= ", " if $i < $numAttrs-1;
+            }%>
+            OPort0Type tuple$(<%=$init%>);
+            SPLAPPTRC(L_TRACE, "Submitting a tuple", SPL_OPER_DBG);
+            submit (tuple$, 0);
+	    {
+	      AutoMutex am(_mutex);
+	      _fileCreationTimes[it->first] = it->second;
+	    }
+	    <%if ($isTrigger || ($moveToDirectory && $isInConsistentRegion)) {%>
+            SPLAPPTRC(L_DEBUG, "Making consistent", SPL_OPER_DBG);
+            if (_crContext->makeConsistent()) {
+ 	      <%if ($moveToDirectory) {%>
+                rstring remoteName = renamer.rename (it->first.c_str());
+	      <%}%>
+	    } else {
+	    <%if ($isTrigger) {%>
+	      AutoMutex am(_mutex);
+
+	      // makeConsistent failed.  Either
+	      // a reset, reset to initial state,
+	      // or a shutdown happened.
+	      // Break out of this loop, and
+	      // either fall out the bottom
+	      // if shutdown is requested, or
+	      // recreate the found file list.
+	      if (_reset) {
+                SPLAPPTRC(L_DEBUG, "Breaking due to reset", SPL_OPER_DBG);
+		_reset = false;
+	        break;
+	      }
+	      else if (pe.getShutdownRequested()) {
+                SPLAPPTRC(L_DEBUG, "Breaking due to shutdown", SPL_OPER_DBG);
+                break;
+              }
+	      <%}%>
+	    }
+<%}%>
+<%if ($isInConsistentRegion) {%>
+        } // return permit
+<%}%>
+        } // end while
+        // Do a periodic cleanup
+	if (!pe.getShutdownRequested())
+	{
+	  AutoMutex am(_mutex);
+<%if ($isTrigger) {%>
+	  if (!_reset && (--timeToClean == 0)) {
+<%} else {%>
+          if (--timeToClean == 0) {
+<%}%>
+            SPLAPPTRC(L_DEBUG, "Starting cleanup", SPL_OPER_DBG);
+            timeToClean = CLEAN_INTERVAL;
+
+            FileInfoMapType::iterator it = _fileCreationTimes.begin();
+            while (it != _fileCreationTimes.end()) {
+                // Is the file gone?
+                if (!bf::exists(bf::path(it->first))) {
+                    SPLAPPTRC(L_DEBUG, "Entry for file '" << it->first << "' removed", SPL_OPER_DBG);
+                    it = _fileCreationTimes.erase (it);
+                }
+                else {
+                    ++it;
+                }
+            }
+
+            SPLAPPTRC(L_DEBUG, "Finished cleanup", SPL_OPER_DBG);
+          }
+	}
+
+        // finished one scan
+        _numDirectoryScans.incrementValueNoLock();
+
+        // pause until next scan
+        double currentTime = Functions::Time::getTimestampInSecs();
+        if ((currentTime - lastScanStartTime) < scanWaitTime)
+            pe.blockUntilShutdownRequest(scanWaitTime - (currentTime - lastScanStartTime));
+    }
+
+    SPLAPPTRC(L_DEBUG, "DirectoryScan exiting...", SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::getCheckpoint(NetworkByteBuffer & opstate)
+{
+    AutoMutex am(_mutex);
+    <%if ($model->getContext()->getNumberOfStateVariables() > 0) {%>
+        checkpointStateVariables(opstate);
+    <%}%>
+
+    // Save file time information
+    opstate.addUInt32(_fileCreationTimes.size());
+    FileInfoMapType::iterator it;
+    for (it = _fileCreationTimes.begin(); it != _fileCreationTimes.end(); it++) {
+        opstate.addSTLString (it->first);
+        opstate.addUInt64 (it->second.tv_sec);
+	opstate.addUInt64 (it->second.tv_nsec);
+    }
+}
+
+void MY_OPERATOR::restoreCheckpoint(NetworkByteBuffer & opstate)
+{
+    AutoMutex am(_mutex);
+    <%if ($model->getContext()->getNumberOfStateVariables() > 0) {%>
+        restoreStateVariables(opstate);
+    <%}%>
+    _fileCreationTimes.clear();
+    uint32_t n = opstate.getUInt32();
+    while (n) {
+        n--;
+        std::string f;
+        opstate.getSTLString(f);
+        uint64_t t = opstate.getUInt64();
+	uint64_t n = opstate.getUInt64();
+	timespec ts;
+	ts.tv_sec = t;
+	ts.tv_nsec = n;
+        _fileCreationTimes.insert(FileInfo(f,ts));
+    }
+}
+
+<%if ($isInConsistentRegion) {%>
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt)
+{
+    SPLAPPTRC(L_DEBUG, "checkpoint " << ckpt.getSequenceId(), SPL_OPER_DBG);
+    AutoMutex am(_mutex);
+    ckpt << _fileCreationTimes;
+}
+
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    SPLAPPTRC(L_DEBUG, "reset " << ckpt.getSequenceId(), SPL_OPER_DBG);
+    AutoMutex am(_mutex);
+    ckpt >> _fileCreationTimes;
+    _reset = true;
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    SPLAPPTRC(L_DEBUG, "resetToInitialState", SPL_OPER_DBG);
+    AutoMutex am(_mutex);
+    initializeFileCreationTimes();
+    _reset = true;
+}
+<% } %>
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

@@ -1,0 +1,236 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use AggregateCommon;
+    AggregateCommon::verify($model);
+    my $partitionByParam = $model->getParameterByName("partitionBy");
+    my @partitionByTypes = SPL::CodeGen::getParameterCppTypes($partitionByParam);
+    my $groupByParam = $model->getParameterByName("groupBy");
+    my @groupByTypes = SPL::CodeGen::getParameterCppTypes($groupByParam);
+    my $inputPort = $model->getInputPortAt(0);
+    my $outputPort = $model->getOutputPortAt(0);
+    my $window = $inputPort->getWindow();
+    # TODO when to enable this
+    my $optimizeTumbling = $window->isTumbling() &&
+                            !(($groupByParam || $partitionByParam) && AggregateCommon::hasCustom($outputPort));
+    my $tumblingStructName = "Tumbling\$" .  $model->getContext()->getClass();
+    $tumblingStructName =~ s/::/\$/g;
+    if ($groupByParam) {
+        $tumblingStructName .= "\$G";
+    }
+
+    ## BEGIN: projection change
+    ## only perform tuple projection if it is sliding and does not a Custom output
+    # TODO when to enable this?
+    my $isProjOptimized = !$window->isTumbling() &&
+        !AggregateCommon::hasCustom($outputPort) &&
+        !$window->isTimeInterval();
+
+    my $myTupleClass;
+    if ($isProjOptimized) {
+        my %allExprs = AggregateCommon::collectExprs($model);
+        my ($exprs_ref, $types_ref) = AggregateCommon::numberExprs(\%allExprs);
+	    my @exprs  = @$exprs_ref;
+	    my @types = @$types_ref;
+
+        # if there are no fields, we fill the struct with a dummy entry
+        # but in the implementation, we won't actually generate such a struct;
+        # a NULL pointer will be used instead.
+        if (scalar(@exprs)==0) {
+            push(@types, "SPL::int32");
+        }
+        $myTupleClass = SPL::CodeGen::emitClass($model, "MyTuple", @types);
+
+        if ($window->isTimeInterval()) { # unreachable block
+          my $eventTimeAttribute = $window->getEventTimeAttribute();
+          my $eventTimeType = $eventTimeAttribute->getCppType();
+
+          # Here we need to look up the attribute index from its name.
+          # This should be looking through the @exprs array.
+          my $attributeIndex;
+          my $attributeCount = @exprs;
+          my $eventTimeAttributeExpression = $eventTimeAttribute->getCppExpression();
+          for ($attributeIndex = 0; $attributeIndex < $attributeCount; ++$attributeIndex) {
+            my $expression = $exprs[$attributeIndex];
+            last if $expression eq $eventTimeAttributeExpression;
+          }
+
+          if ($attributeIndex == $attributeCount) {
+            # TODO event time attribute not found.  Do error handling.
+            # This is probably unreachable.  The compilation would have
+            # failed before this.
+            SPL::CodeGen::exitln("Event time attribute " . $eventTimeAttribute->getSPLExpression() . " not found");
+          }
+
+          my $eventTimeResolution = $inputPort->getEventTimeResolution;
+%>
+          namespace SPL {
+<%
+            SPL::CodeGen::emitEventTimeClass($myTupleClass, "field".$attributeIndex, $eventTimeType, $eventTimeResolution, 0);
+%>
+          }
+
+<%
+        }
+    }
+
+    my $windowTupleType = $optimizeTumbling ? "IPort0Type" :
+                           ($isProjOptimized ? "ProjectedTupleType*" : "IPort0Type*");
+    if ($window->isTimeInterval()) {
+      $windowTupleType =~ s/\*$//; # remove trailing * if present
+      $windowTupleType = "std::tr1::shared_ptr<" . $windowTupleType . "> ";
+    }
+
+    ## END: projection change
+
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+    my $partitionCppType = ($partitionByParam)
+        ? SPL::CodeGen::emitClass($model, 'PartitionByType', @partitionByTypes) : "int32_t";
+    my $groupCppType = ($groupByParam)
+        ? SPL::CodeGen::emitClass($model, 'GroupByType', @groupByTypes) : "int32_t";
+    my $windowCppType = ($partitionByParam)
+        ? SPL::CodeGen::getWindowCppType($window, $windowTupleType, 'PartitionByType')
+        : SPL::CodeGen::getWindowCppType($window, $windowTupleType);
+    my $windowEventCppType = ($partitionByParam)
+        ? SPL::CodeGen::getWindowEventCppType($window, $windowTupleType, 'PartitionByType')
+        : SPL::CodeGen::getWindowEventCppType($window, $windowTupleType);
+    if ($isInConsistentRegion || $ckptKind ne "none") {
+        # instantiate window with incremental checkpointing capability
+        $windowCppType = ($partitionByParam)
+            ? SPL::CodeGen::getWindowCppType($window, $windowTupleType, 'PartitionByType', 'SPL::IncrDeque')
+            : SPL::CodeGen::getWindowCppType($window, $windowTupleType, '', 'SPL::IncrDeque');
+        $windowEventCppType = ($partitionByParam)
+            ? SPL::CodeGen::getWindowEventCppType($window, $windowTupleType, 'PartitionByType', 'SPL::IncrDeque')
+            : SPL::CodeGen::getWindowEventCppType($window, $windowTupleType, '', 'SPL::IncrDeque');
+    }
+    my $inputCppType = $inputPort->getCppTupleType();
+    $inputCppType .= "*" if (!$optimizeTumbling);
+
+    ## BEGIN: projection change
+    $inputCppType = $myTupleClass."*" if ($isProjOptimized);
+    ## END: projection change
+    if ($window->isTimeInterval()) {
+      $inputCppType =~ s/\*$//; # remove trailing * if present
+      $inputCppType = "std::tr1::shared_ptr<" . $inputCppType . "> ";
+    }
+
+    my $windowEventCppFullType = ($partitionByParam)
+        ? SPL::CodeGen::getWindowEventCppType($window, "$inputCppType", $partitionCppType)
+        : SPL::CodeGen::getWindowEventCppType($window, "$inputCppType");
+    if ($isInConsistentRegion || $ckptKind ne "none") {
+        # instantiate window with incremental checkpointing capability
+        $windowEventCppFullType = ($partitionByParam)
+            ? SPL::CodeGen::getWindowEventCppType($window, "$inputCppType", $partitionCppType, 'SPL::IncrDeque')
+            : SPL::CodeGen::getWindowEventCppType($window, "$inputCppType", '', 'SPL::IncrDeque');
+    }
+    my $isPunctWindow = ($window->isTumbling() &&
+                         ($window->getEvictionPolicyType() ==
+                          $SPL::Operator::Instance::Window::PUNCT));
+    my $aggregateIncompleteWindows = $model->getParameterByName("aggregateIncompleteWindows");
+    $aggregateIncompleteWindows =
+        $aggregateIncompleteWindows ?
+            $aggregateIncompleteWindows->getValueAt(0)->getSPLExpression() : "false";
+    my $aggregateEvictedPartitions = $model->getParameterByName("aggregateEvictedPartitions");
+    $aggregateEvictedPartitions =
+        $aggregateEvictedPartitions ?
+            $aggregateEvictedPartitions->getValueAt(0)->getSPLExpression() : "false";
+
+    my @includes;
+    push @includes, "#include <SPL/Runtime/Common/Metric.h>";
+    if ($isInConsistentRegion) {
+        push @includes, "#include <SPL/Runtime/Operator/State/ConsistentRegionContext.h>";
+    }
+%>
+
+<%SPL::CodeGen::headerPrologue($model, \@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR,
+                    public <%=$windowEventCppFullType%>,
+                    public StateHandler
+{
+public:
+    typedef <%=$groupCppType%> GroupByType;
+    <% ## BEGIN: projection change %>
+    <% print "typedef $myTupleClass ProjectedTupleType;" if ($isProjOptimized); %>
+    <% ## END: projection change %>
+    typedef <%=$partitionCppType%> PartitionByType;
+    typedef <%=$windowCppType%> WindowType;
+    typedef <%=$windowEventCppType%> WindowEventType;
+    MY_OPERATOR();
+    ~MY_OPERATOR();
+    void process(Tuple const & tuple, uint32_t port);
+<%if($isPunctWindow || $window->isTimeInterval()){%>
+    void process(Punctuation const & punct, uint32_t port);
+<%}%>
+<%if($isPunctWindow) {%>
+    void onEmptyWindowPunctEvent(WindowEventType::WindowType & window);
+<%}%>
+<%if($window->isTumbling()){%>
+    void beforeWindowFlushEvent(WindowEventType::WindowType & window,
+                                WindowEventType::PartitionType const & partition);
+<%} elsif ($window->isTimeInterval()) {%>
+    void onWindowInitialFullEvent(WindowEventType::WindowType & window,
+                                  WindowEventType::PartitionType const & partition);
+    void onWindowTriggerEvent(WindowEventType::WindowType & window,
+                              WindowEventType::PartitionType const & partition);
+
+    void beforeWindowFlushEvent(WindowEventType::WindowType & window,
+                                WindowEventType::PartitionType const & partition);
+
+<%} else {%>
+<%if (($aggregateIncompleteWindows eq "false")){%>
+    void onWindowInitialFullEvent(WindowEventType::WindowType & window,
+                                  WindowEventType::PartitionType const & partition);
+<%}%>
+
+    void onWindowTriggerEvent(WindowEventType::WindowType & window,
+                              WindowEventType::PartitionType const & partition);
+
+    void beforeTupleEvictionEvent(WindowEventType::WindowType & window,
+                                  WindowEventType::TupleType & tuple,
+                                  WindowEventType::PartitionType const & partition);
+
+<%}%>
+<%if ($window->hasPartitionEvictionPolicy()) {%>
+    void onWindowPartitionEviction(WindowEventType::WindowType & window,
+                                   WindowEventType::PartitionIterator const& begin,
+                                   WindowEventType::PartitionIterator const& end);
+<%}%>
+<%if ($optimizeTumbling) {%>
+    struct <%=$tumblingStructName%>;
+<%}%>
+    // StateHandler implementation
+    void drain();
+    void checkpoint(Checkpoint & ckpt);
+    void reset(Checkpoint & ckpt);
+    void resetToInitialState();
+
+private:
+    void aggregatePartition(WindowEventType::WindowType & window,
+                            WindowEventType::PartitionType const & partition);
+
+    WindowType _window;
+    Mutex    _mutex;
+<%if (!$window->isTumbling() && $aggregateIncompleteWindows eq "false"){%>
+    std::tr1::unordered_set<WindowEventType::PartitionType> _windowFull;
+<%}%>
+    Metric& _partitionCount;
+    <%if ($isInConsistentRegion) {%>ConsistentRegionContext * const _crContext;<%}%>
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

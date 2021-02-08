@@ -1,0 +1,199 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    unshift @INC, dirname($model->getContext()->getOperatorDirectory()) . "/Common";
+    require AdapterHelper;
+    use V1TCPSourceCommon;
+    V1TCPSourceCommon::verify($model);
+    my $outputPort = $model->getOutputPortAt(0);
+    my $address = $model->getParameterByName("address");
+    my $port = $model->getParameterByName("port");
+    my $role = $model->getParameterByName("role");
+    my $receiveBufferSize = $model->getParameterByName("receiveBufferSize");
+    my $reconnectionBound = $model->getParameterByName("reconnectionBound");
+    my $reconnectionPolicy = $model->getParameterByName("reconnectionPolicy");
+
+    # other corrections
+    $address = $address->getValueAt(0)->getCppExpression() if $address;
+    $port = $port ? $port->getValueAt(0)->getCppExpression() : "\"\"";
+    $role = $role->getValueAt(0)->getSPLExpression();
+    $receiveBufferSize = $receiveBufferSize->getValueAt(0)->getCppExpression() if $receiveBufferSize;
+    $reconnectionBound = $reconnectionBound->getValueAt(0)->getCppExpression() if $reconnectionBound;
+    $reconnectionPolicy = $reconnectionPolicy ? $reconnectionPolicy->getValueAt(0)->getSPLExpression()
+                                        : "NoRetry";
+    my $parsing = "fast";
+    my $format = 'bin';
+    my $ignoreExtraCSVValues = 0;
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fstream>
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
+#include <SPL/Runtime/Serialization/StreamByteBuffer.h>
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Toolkit/IOHelper.h>
+#include <SPL/Toolkit/RuntimeException.h>
+#include <SPL/Runtime/Operator/OperatorMetrics.h>
+
+using namespace std;
+using namespace boost::iostreams;
+
+@include "../../adapter/Common/GenerateSourceReadLoopErrorChecks.cgt"
+
+MY_OPERATOR::MY_OPERATOR()
+    : MY_BASE_OPERATOR(), _fd(0), _connector(0),
+        _tupleNumber(0),
+        <%if (defined $reconnectionBound) {%>
+           _reconnectsLeft (<%=$reconnectionBound%>),
+        <%}%>
+        _numInvalidTuples(getContext().getMetrics().getCustomMetricByName("nInvalidTuples")),
+        _numReconnects(getContext().getMetrics().getCustomMetricByName("nReconnections"))
+{
+    _numInvalidTuples.setValueNoLock(0);
+    _numReconnects.setValueNoLock(0);
+}
+
+
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads (1);
+}
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    if (_fd) {
+        shutdown (_fd, SHUT_RDWR); // try to clean things up nicely
+        _fd = 0;
+    }
+    if (_connector)
+        _connector->terminate();
+}
+
+void MY_OPERATOR::process(uint32_t)
+{
+    SPLAPPTRC(L_DEBUG, "V1TCPSource startup...", SPL_OPER_DBG);
+    OPort0Type tuple$;
+    <%if ($role eq "client") {%>
+        SPL::TCPClient conn (getPE());
+    <%} else {%>
+        SPL::TCPServer conn (getPE());
+    <%}
+    if ($receiveBufferSize) {%>
+        conn.setReceiveBufferSize(<%=$receiveBufferSize%>);
+    <%}
+    if ($role eq "client") {%>
+        conn.setup (<%="$address,$port"%>);
+    <%} else {%>
+        conn.setup (<%=$port%>);
+    <%}%>
+
+    _fd = conn.fileDescriptor();
+    SPLAPPTRC(L_DEBUG, "V1TCPSource connected.  File descriptor = " << _fd, SPL_OPER_DBG);
+    _connector = &conn;
+
+    <%if ($reconnectionPolicy eq "InfiniteRetry") {%>
+        while (!getPE().getShutdownRequested()) {{
+    <%} elsif ($reconnectionBound) {%>
+        while (!getPE().getShutdownRequested() && _reconnectsLeft-- != 0) {{
+    <%}%>
+    file_descriptor_source fd_src (_fd, never_close_handle);
+    filtering_streambuf<input> filt_str;
+    filt_str.push (fd_src);
+    iostream fs (&filt_str);
+    fs.imbue(locale::classic());
+    SPL::StreamByteBuffer sbfs(fs);
+
+    while(!getPE().getShutdownRequested() && !fs.eof()) {
+        _tupleNumber++;
+        if (SPL::safePeek(fs) == EOF) break;
+        try {
+            // V1 has tuple size before the tuple
+            SPL::uint32 tupleSize$, listSize$;
+            SPL::uint16 stringLen$;
+            char string$buffer[64*1024];
+            sbfs >> tupleSize$;
+            <%my $numAttrs = $outputPort->getNumberOfAttributes();
+              for (my $i = 0; $i < $numAttrs; ++$i) {
+                  my $attr = $outputPort->getAttributeAt($i);
+                  my $attrName = $attr->getName();
+                  my $attrType = $attr->getSPLType();
+                  if (SPL::CodeGen::Type::isSigned($attrType) ||
+                            SPL::CodeGen::Type::isFloat($attrType) ||
+                            SPL::CodeGen::Type::isBoolean($attrType)) {%>
+                      sbfs >> tuple$.get_<%=$attrName%>();
+                  <%} elsif (SPL::CodeGen::Type::isRString($attrType)) {%>
+                      sbfs >> stringLen$;
+                      tuple$.get_<%=$attrName%>() = string (sbfs.getFixedCharSequence (string$buffer, stringLen$), stringLen$);
+                  <%} else { # must be a list
+                      my $attrCppType = $attr->getCppType();
+                      $attrType = SPL::CodeGen::Type::getElementType($attrType);%>
+                      sbfs >> listSize$;
+                      {
+                          <%=$attrCppType%>& a$ = tuple$.get_<%=$attrName%>();
+                          a$.clear();
+                          SPL::<%=$attrType%> v$;
+                          for (uint32_t i = 0; i < listSize$; i++) {
+                              <%if (SPL::CodeGen::Type::isSigned($attrType) ||
+                                        SPL::CodeGen::Type::isFloat($attrType) ||
+                                        SPL::CodeGen::Type::isBoolean($attrType)) {%>
+                                  sbfs >> v$;
+                                  a$.push_back (v$);
+                              <%} else { # rstring %>
+                                  sbfs >> stringLen$;
+                                  a$.push_back (string (sbfs.getFixedCharSequence (string$buffer, stringLen$), stringLen$));
+                              <%}%>
+                          }
+                      }
+                  <%}%>
+            <%}%>
+            submit (tuple$, 0);
+            if (fs.fail())
+                _numInvalidTuples.incrementValueNoLock();
+        } catch (const SPL::SPLRuntimeSerializationException& e) {
+            SPLAPPTRC(L_DEBUG, "Serialization exception: " << e.getExplanation(), SPL_OPER_DBG);
+            _numInvalidTuples.incrementValueNoLock();
+        } catch (...) {
+            _numInvalidTuples.incrementValueNoLock();
+        }
+    }
+
+    submit (Punctuation::WindowMarker, 0);
+    <%if ($reconnectionPolicy ne "NoRetry") {%>
+            }
+            _fd = conn.reconnect();
+            _numReconnects.incrementValueNoLock();
+        }
+    <%}%>
+    conn.terminate();
+    _fd = 0; // no longer using this
+    _connector = 0;
+    <%if ($reconnectionBound) {%>
+        if (_reconnectsLeft == 0)
+            submit (Punctuation::FinalMarker, 0);
+    <%} elsif ($reconnectionPolicy eq "NoRetry") {%>
+        submit (Punctuation::FinalMarker, 0);
+    <%}%>
+    SPLAPPTRC(L_DEBUG, "V1TCPSource exiting...", SPL_OPER_DBG);
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

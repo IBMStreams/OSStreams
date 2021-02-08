@@ -1,0 +1,45 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use warnings;
+use Getopt::Std;
+use Cwd qw(realpath abs_path getcwd);
+use File::Basename;
+
+use FindBin;
+use lib "${FindBin::Bin}";
+use lib "${FindBin::Bin}/impl/bin";
+use lib "${FindBin::Bin}/../system/impl/bin";
+
+use SPL::Helper;
+use SPL::Msg; # load message constants
+
+#### MAIN
+my %opts;
+my @options = ('help|h', 'file|f=s');
+SPLGetOptionsLong(\&SPL::Msg::SVO_USAGE, \%opts, @options);
+
+my $dist = realpath(dirname($0));
+my $xsd = "${dist}/../etc/xsd/SPL/operatorModel.xsd";
+my $xmlLint = "/usr/bin/xmllint";
+
+my $file = $opts{file};
+SPLDie(1, SPL::Msg::OPERATOR_MODEL_FILE_NOT_SPECIFIED()) unless($file);
+
+exit 1 unless(system("$xmlLint --noout --schema $xsd $file") >> 8 == 0);

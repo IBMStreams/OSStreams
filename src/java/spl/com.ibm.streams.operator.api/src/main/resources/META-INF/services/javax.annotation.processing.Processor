@@ -1,0 +1,10 @@
+com.ibm.streams.operator.internal.model.processors.OperatorClassVerifier
+com.ibm.streams.operator.internal.model.processors.PrimitiveOperatorAnnotationsProcessor
+com.ibm.streams.operator.internal.model.processors.PortAnnotationsProcessor
+com.ibm.streams.operator.internal.model.processors.CustomMetricVerifier
+com.ibm.streams.operator.internal.model.processors.ParameterVerifier
+com.ibm.streams.operator.internal.model.processors.FunctionVerifier
+com.ibm.streams.operator.internal.model.processors.IconsAnnotationVerifier
+com.ibm.streams.operator.internal.model.processors.NamespaceVerifier
+com.ibm.streams.operator.internal.model.processors.ShadowClassGenerator
+com.ibm.streams.operator.internal.model.processors.DefaultAttributeVerifier

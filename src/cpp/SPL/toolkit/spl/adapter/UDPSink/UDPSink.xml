@@ -1,0 +1,276 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description  docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.adapter$UDPSink.html">
+The `UDPSink` operator writes data to a UDP socket in the form of tuples (and punctuation).
+Each tuple must fit into a single UDP packet and a single UDP packet contains only a single tuple or punctuation.
+
+# Checkpointed data
+
+When the `UDPSink` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `UDPSink` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+When in a consistent region, replayed tuples are rewritten to the UDP socket.
+Logic state variables (if present) are also automatically checkpointed and resetted.
+
+# Checkpointing behavior in an autonomous region
+
+When the `UDPSink` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `UDPSink` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Exceptions
+
+The `UDPSink` operator throws an exception in the following cases:
+* The host cannot be resolved.
+* The name cannot be located.
+
+# Examples
+
+This example uses the `UDPSink` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring name, uint32 age, uint64 salary&gt; Employees = Beacon() {}
+        // send messages to "some.node.some.host", using port for "ftp"
+        () as Beat = UDPSink(Employees)
+        {
+          param
+            address : "some.node.some.host";
+            port    : "ftp";
+        }
+        // similar to above, but employ a certain send buffer size
+        () as Beat1 = UDPSink(Employees)
+        {
+          param
+            address        : "some.node.some.host";
+            port           : 80u;
+            sendBufferSize : 10240u;
+        }
+        // send messages to the source registered at the name server
+        () as Beat2 = UDPSink(Employees)
+        {
+          param
+            name : "my_server";
+        }
+    }
+
+</description>
+      <iconUri size="16">UDPSink_16.gif</iconUri>
+      <iconUri size="32">UDPSink_32.gif</iconUri>
+      <customLiterals>
+        <enumeration>
+          <name>DataFormat</name>
+          <value>csv</value>
+          <value>txt</value>
+          <value>bin</value>
+          <value>block</value>
+          <value>line</value>
+        </enumeration>
+        <enumeration>
+          <name>CompressionAlg</name>
+          <value>zlib</value>
+          <value>gzip</value>
+          <value>bzip2</value>
+        </enumeration>
+      </customLiterals>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:lib>boost_iostreams</cmn:lib>
+            <cmn:lib>boost_system</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="UDPSink with Address">
+          <description>UDPSink with Address</description>
+          <template>() as ${sinkPrefix}Sink = UDPSink(${inputStream}) {
+            param
+                address : "${hostOrIp}";
+                port : "${sinkPort}";
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="UDPSink with Name">
+          <description>UDPSink with Name</description>
+          <template>() as ${sinkPrefix}Sink = UDPSink(${inputStream}) {
+            param
+                name : "${name}";
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>address</name>
+        <description>
+Specifies the address of the receiver where the UDP packets are sent.
+It must be specified when the **name** parameter is not specified and it cannot be specified otherwise.
+The parameter value can be a host name or an IP address.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>port</name>
+        <description>
+Specifies the port address to which the UDP packets are sent.
+It must be specified when the **name** parameter is not specified and it cannot be specified otherwise.
+For more information, see the **port** parameter in the [UDPSource] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>name</name>
+        <description>
+Specifies the name that is used to look up the address and port pair for the [UDPSource] operator from the name service,
+so that this `UDPSink` operator can send its UDP packets to the registered address at the registered port.
+
+These names are automatically prefixed with the application scope, thus applications with differing scopes cannot communicate through the same name.
+The application scope can be set by using `config applicationScope` on the main composite in the application.
+It is an error for a name with the same application scope to be defined multiple times with an instance.
+If multiple operators attempt to define the same name, the second and subsequent operators keep trying periodically to register the name
+with an error message for each failure.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>format</name>
+        <description>
+Specifies the format of the data.
+For more information, see the **format** parameter in the [FileSink] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>DataFormat</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>encoding</name>
+        <description>
+Specifies the character set encoding of the output.
+For more information, see the **encoding** parameter in the [FileSink] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>hasDelayField</name>
+        <description>
+Specifies that the format contains inter-arrival delays as the first field.
+For more information, see the **hasDelayField** parameter in the [FileSink] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>compression</name>
+        <description>
+Specifies the compression mode.
+For more information, see the **compression** parameter in the [FileSink] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>CompressionAlg</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>writePunctuations</name>
+        <description>
+Specifies whether to write punctuations to the output.
+For more information, see the **writePunctuations** parameter in the [FileSink] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sendBufferSize</name>
+        <description>Specifies the kernel send buffer size for the UDP socket.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>separator</name>
+        <description>
+Specifies the separator character for the csv format.
+For more information, see the **separator** parameter in the [FileSink] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>quoteStrings</name>
+        <description>
+Specifies whether to generate quoted strings for csv format.
+For more information, see the **quoteStrings** parameter in the [FileSink] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+	<name>timeToLive</name>
+	<description>
+Specifies the time-to-live (TTL) on generated packets.
+TTL controls the lifespan of generated packets on the network.
+If the operator is configured with a multicast address, this value is used as the multicast TTL IP header field.
+Otherwise, it is used as the TTL IP header field.
+
+If you do not specify a value for this parameter, a system-specific default is used.</description>
+	<optional>true</optional>
+	<rewriteAllowed>false</rewriteAllowed>
+	<expressionMode>Constant</expressionMode>
+	<type>uint8</type>
+	<cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `UDPSink` operator is configurable with a single input port, which ingests tuples to be written to UDP packets.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

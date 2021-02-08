@@ -1,0 +1,646 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.adapter$TCPSink.html">
+The `TCPSink` operator writes data to a TCP socket in the form of tuples.
+It can be configured as a TCP server (listens for a client connection)
+or as a TCP client (initiates a connection to a server).
+In both modes, it handles a single connection at a time.
+
+# Checkpointed data
+
+When the `TCPSink` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `TCPSink` operator is not supported in a consistent region.
+
+# Checkpointing behavior in an autonomous region
+
+When the `TCPSink` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `TCPSink` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Exceptions
+
+The `TCPSink` operator throws an exception in the following cases:
+* The host cannot be resolved.
+* The name cannot be located.
+
+# Examples
+
+These examples use the `TCPSink` operator.
+
+The following example sets the **closeMode** parameter to `dynamic` to send tuples to different TCP servers.
+The **suppress** parameter is used to omit the host and port tuple attributes from the output sent to the TCP server.
+
+    // Function to compute desired port for each tuple
+    uint32 getPort (int32 count) {
+      return (count % 3) == 0 ? 8888u : 8889u;
+    }
+
+    composite Main {
+      graph
+        stream&lt;rstring host, uint32 port, uint32 value&gt; A = Beacon() {
+          param iterations : 100;
+                initDelay  : 4.0;
+          output A         : host = "localhost", port = getPort ((int32) IterationCount()),
+                             value = (uint32) IterationCount();
+        }
+        () as TCPSink1 = TCPSink(A) {
+          param
+            closeMode        : dynamic;
+            suppress         : host, port; // Do not send host and port information on TCP/IP connection
+            address          : host;
+            port             : port;
+            role             : client;
+            retryFailedSends : true;
+        }
+    }
+
+The following example uses various common parameters in the `TCPSink` operator:
+
+    composite Main {
+      graph
+        stream&lt;rstring name, uint32 age, uint64 salary&gt; Beat = Beacon() {}
+        // server sink with an alias string as port
+        () as Beat1 = TCPSink(Beat)
+        {
+          param
+            role : server;
+            port : "ftp";
+        }
+        // server sink with a number string as port
+        () as Beat2 = TCPSink(Beat)
+        {
+          param
+            role : server;
+            port : 23145u;
+        }
+        // server sink with a name
+        () as Beat3 = TCPSink(Beat)
+        {
+          param
+            role  : server;
+            name  : "my_server";
+        }
+        // server sink with a name and port
+        () as Beat4 = TCPSink(Beat)
+        {
+          param
+            role  : server;
+            port  : 23145u;
+            name  : "my_server";
+        }
+        // server sink with a port and infinite reconnection
+        () as Beat5 = TCPSink(Beat)
+        {
+          param
+            role               : server;
+            port               : "ftp";
+            reconnectionPolicy : InfiniteRetry;
+        }
+        // client sink with an IP address and port
+        () as Beat6 = TCPSink(Beat)
+        {
+          param
+            role    : client;
+            address : "99.2.45.67";
+            port    : "ftp";
+        }
+        // client sink with an host name as the address
+        () as Beat7 = TCPSink(Beat)
+        {
+          param
+            role    : client;
+            address : "mynode.mydomain";
+            port    : 23145u;
+        }
+        // client sink with name
+        () as Beat8 = TCPSink(Beat)
+        {
+          param
+            role  : client;
+            name  : "my_server";
+        }
+        // client sink with reconnection (25 connections)
+        () as Beat9 = TCPSink(Beat)
+        {
+          param
+            role               : client;
+            address            : "mynode.mydomain";
+            port               : "ftp";
+            reconnectionPolicy : BoundedRetry;
+            reconnectionBound  : 25u;
+        }
+    }
+
+</description>
+      <iconUri size="16">TCPSink_16.gif</iconUri>
+      <iconUri size="32">TCPSink_32.gif</iconUri>
+      <metrics>
+        <metric>
+          <name>nReconnections</name>
+          <description>The number times the TCP connection was re-established.</description>
+          <kind>Counter</kind>
+        </metric>
+        <metric>
+          <name>nConnections</name>
+          <description>
+The number of current TCP/IP connections.
+If the `TCPSink` operator is waiting for a connection or a reconnection, the value is `0`.
+If the operator is currently connected,  the value is `1`.
+</description>
+          <kind>Gauge</kind>
+        </metric>
+        <metric>
+          <name>nConfirmWireFormatFailures</name>
+          <description>The number of times the output connection wire format handshake failed.</description>
+          <kind>Counter</kind>
+        </metric>
+      </metrics>
+      <customLiterals>
+        <enumeration>
+          <name>DataFormat</name>
+          <value>csv</value>
+          <value>txt</value>
+          <value>bin</value>
+          <value>block</value>
+          <value>line</value>
+        </enumeration>
+        <enumeration>
+          <name>SocketRole</name>
+          <value>server</value>
+          <value>client</value>
+        </enumeration>
+        <enumeration>
+          <name>CompressionAlg</name>
+          <value>zlib</value>
+          <value>gzip</value>
+          <value>bzip2</value>
+        </enumeration>
+        <enumeration>
+          <name>ReconnectionPolicy</name>
+          <value>InfiniteRetry</value>
+          <value>NoRetry</value>
+          <value>BoundedRetry</value>
+        </enumeration>
+        <enumeration>
+          <name>CloseMode</name>
+          <value>dynamic</value>
+          <value>never</value>
+        </enumeration>
+        <enumeration>
+          <name>ClientAuth</name>
+          <value>none</value>
+          <value>request</value>
+          <value>require</value>
+        </enumeration>
+      </customLiterals>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:lib>boost_iostreams</cmn:lib>
+            <cmn:lib>boost_system</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="TCPSink (client)">
+          <description>TCPSink (client)</description>
+          <template>() as ${sinkPrefix}Sink = TCPSink(${inputStream}) {
+            param
+                role: client;
+                address : "${hostOrIp}";
+                port : "${sinkPort}";
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="TCPSink (server)">
+          <description>TCPSink (server)</description>
+          <template>() as ${sinkPrefix}Sink = TCPSink(${inputStream}) {
+            param
+                role: server;
+                port : "${sinkPort}";
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="TCPSink with Name (client or server)">
+          <description>TCPSink with Name (client or server)</description>
+          <template>() as ${sinkPrefix}Sink = TCPSink(${inputStream}) {
+            param
+                role: ${serverOrClient};
+                name : "${name}";
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>address</name>
+        <description>
+Specifies the destination address of the TCP connection (client-mode).
+For more information, see the **address** parameter in the [TCPSource] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>port</name>
+        <description>
+Specifies the listening port address (server-mode) or the destination port address (client-mode).
+For more information, see the **port** parameter in the [TCPSource] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>name</name>
+        <description>
+In the case of a server-based `TCPSink` operator, this parameter specifies the name
+that is used to register the address and port pair for the server
+with the name service that is part of the Streams instance.
+This name can be used by a corresponding client-based `TCPSource` operator to connect to this operator
+by just specifying the name, without the need for an address or port number.
+
+These names are automatically prefixed by the application scope,
+thus applications with differing scopes cannot communicate through the same name.
+The application scope can be set by using `config applicationScope` on the main composite in the application.
+It is an error for a name with the same application scope to be defined multiple times with an instance.
+If multiple operators attempt to define the same name, the second and subsequent operators keep trying periodically to register the name,
+with an error message for each failure.
+
+In the case of a client-based `TCPSink`, this parameter specifies the name that is used to look up the address
+and port pair for the destination server from the name service that is part of the Streams instance.
+
+When the **name** parameter is specified in the client-mode, then the **port** and **address** parameters cannot be specified.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>role</name>
+        <description>
+Specifies whether the operator acts as a TCP server or client.
+For more information, see the **role** parameter in the [TCPSource] operator.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>SocketRole</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>format</name>
+        <description>
+Specifies the format of the data. For more information, see the **format** parameter in the [FileSink] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>DataFormat</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>encoding</name>
+        <description>
+Specifies the character set encoding of the output. For more information, see the **encoding** parameter in the [FileSink] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>eolMarker</name>
+        <description>
+Specifies the end of line marker. For more information, see the **eolMarker** parameter in the [FileSink] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>flush</name>
+        <description>
+Specifies the number of tuples after which to flush the output. For more information, see the **flush** parameter in the [FileSink] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>flushOnPunctuation</name>
+        <description>
+Specifies to flush the output when a punctuation is received. For more information, see the **flushOnPunctuation** parameter in the [FileSink] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>writePunctuations</name>
+        <description>
+Specifies whether to write punctuations to output.
+For more information, see the **writePunctuations** parameter in the [FileSink] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>hasDelayField</name>
+        <description>
+Specifies that the format contains inter-arrival delays as the first field.
+For more information, see the **hasDelayField** parameter in the [FileSink] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>compression</name>
+        <description>
+Specifies the compression mode. For more informaition, see the **compression** parameter in the `FileSink` operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>CompressionAlg</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>reconnectionPolicy</name>
+        <description>
+In server mode, it specifies whether additional connections are allowed once the initial connection terminates.
+In client mode, it specifies whether additional connection attempts are made once the initial connection to the server terminates.
+For more information, see the **reconnectionPolicy** parameter in the [TCPSource] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>ReconnectionPolicy</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>reconnectionBound</name>
+        <description>
+Specifies the number of successive connections that are accepted (server-mode) or attempted (client-mode).
+For more information, see the **reconnectionBound** parameter in the [TCPSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>retryFailedSends</name>
+        <description>
+Specifies whether to retry until a connection is established and the send succeeds.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sendBufferSize</name>
+        <description>Specifies the kernel send buffer size for the TCP socket.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>separator</name>
+        <description>
+Specifies the separator character for the csv format.
+For more information, see the **separator** parameter in the [FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>quoteStrings</name>
+        <description>
+Specifies whether to generate quoted strings for csv format.
+For more information, see the **quoteStrings** parameter in the [FileSink] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>interface</name>
+        <description>
+Specifies the network interface to use to register when the **name** parameter is specified.
+This parameter is valid only when the **role** parameter value is `server` and the **name** parameter is specified.
+Using the **interface** parameter with the **name** parameter ensures that a matching operator
+with a **role** parameter value of `client` and the same **name** parameter uses the wanted interface.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>confirmWireFormat</name>
+        <description>
+Specifies whether an exchange of the wire format description is required to confirm that the client and server are passing compatible data.
+If this paramaeter is not specified, the default value is `false`.
+The wire format is defined in `etc/xsd/SPL/wireFormatModel.xsd`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>closeMode</name>
+        <description>
+Specifies when a client connection is closed and a new one opened.
+This parameter has type enum \{dynamic, never\}. The default value is `never`.
+
+If the parameter value is `dynamic`:
+* The **retryFailedSends** parameter value must be `true`.
+* The **role** parameter value must be `client`.
+* The **address** and **port** parameters must be provided.
+  The **address** and **port** parameter values might reference attributes from the input tuple.
+  Each time a tuple is received, the **address** and **port** parameter values are compared to the previous values.
+  If either changes, then the TCP connection to the current server is closed
+  and a new TCP connection is opened to the new **address** and **port** parameter values.
+  The tuple is sent to the new connection.
+
+If the **closeMode** parameter value is `never`, the **address** and **port** parameter values must not reference
+input attributes from the input tuple.</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>CloseMode</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>suppress</name>
+        <description>
+Specifies a list of input attributes that are not output to the TCP connection.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Attribute</expressionMode>
+      </parameter>
+      <parameter>
+        <name>detectDisconnectsBeforeSends</name>
+        <description>
+Instructs the `TCPSink` operator to check at each tuple or punctuation to see whether the TCP/IP connection is disconnected.
+If the **role** parameter value is `server` and another client is already connected, it switches immediately to the new client connection.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sslConfigName</name>
+        <description>
+Instructs the `TCPSink` operator to configure SSL / TLS with the properties from the application configuration named. The key in the application configuration can be any of the other remaining parameters related to SSL / TLS. Values from the application configuration will supercede the equivalent parameter.
+If this parameter or **sslProtocol** is given SSL / TLS will be available even if the **sslProtocol** is `none` at runtime. Since this may have performance and memory overhead, if you are certain you do not require SSL / TLS then leave this and **sslProtocol** unset.
+Using the **password** parameter is less secure than using an application configuration with the **password** as a key because the parameter may be stored as clear text in the SAB file. Using the application configuration is strongly recommended.
+This parameter may be supplied at runtime to allow the application to use different configurations.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sslProtocol</name>
+        <description>
+Instructs the `TCPSink` operator which, if any, SSL / TLS protocol to use at a minimum. The currently recognized values are: `none`, `SSLv3`, `TLSv1`, `TLSv1.1`, `TLSv1.2`.
+If this parameter or **sslConfigName** is given SSL / TLS will be available even if the **sslProtocol** is `none` at runtime. Since this may have performance and memory overhead, if you are certain you do not require SSL / TLS then leave this and **sslConfigName** unset.
+If the value is `none`, SSL / TLS will not be used. For other values it represents the minimum allowed SSL / TLS protocol version. The actual protocol used will be the highest version mutually supported by both ends of the connection if one can be negotiated, otherwise the connection will fail.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sslCertificateFile</name>
+        <description>
+If SSL / TLS is being used (**sslConfigName** or **sslProtocol** is set), this is the path to a PEM format file that includes a certificate chain and private key. Relative paths are relative to the data directory. If the private key is encrypted (recommended), the password must be given either by the an application configuration named by **sslConfigName** and containing a property `password` (recommended), or directly with the **password** parameter. Using **sslConfigName** is recommended, since it prevents the password from being included in the SAB.
+If you have a Java keystore named `keys.jks` with an entry alias `mycert` a file in the correct format for `TCPSink` named `cert.pem` can be created by running the command:
+`keytool -list -rfc -keystore keys.jks -alias mycert > cert.pem`
+If the key was encrypted in the Java keystore it will also be encrypted in `cert.pem` and a password will be required.
+When the **role** is `server` the parameter is required and the certificate will be offered to clients. If the **role** is client the certificate will be given to the server if a client certificate is requested during negotiation.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>password</name>
+        <description>
+If SSL / TLS is being used (**sslConfigName** or **sslProtocol** is set), this is the password or passphrase required for an encrypted private key in **sslCertificateFile**.
+It is strongly recommended that this be supplied in the application configuration given by **sslConfigName** instead of a hard-coded parameter to prevent the password from being stored in clear-text in the SAB.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sslCertificateAuthorityFile</name>
+        <description>
+If SSL / TLS is being used (**sslConfigName** or **sslProtocol** is set), this is the path to a file containing trusted Certificate Authority certificates in PEM format. Relative paths are relative to the data directory. When validating certificates these will be checked before checking the default trusted certificat authorities.
+If you have a Java truststore named `trust.jks` a file in the correct format for `TCPSink` named `ca_certs.pem` can be created by running the command:
+`keytool -list -rfc -keystore trust.jks > ca_certs.pem`
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sslAuthenticateClient</name>
+        <description>
+If SSL / TLS is being used (**sslConfigName** or **sslProtocol** is set) and the **role** is `server`, this controls whether or not the server requests a client certificate, and if so whether or not the client is required to send one. When the **role** is client this parameter is ignored and the client always validates the server certificate.
+The default value if the parameter is not provided is `request`.
+If the value is `none` the server will not request a client certificate. This is equivaled to using `setWantClientAuth(false)` and `setNeedClientAuth(false)` with the Java SSL API, or `SSL_VERIFY_NONE` with the OpenSSL API.
+If the value is `request`, the server will request a client certificate and send the list of certificate authorities from **sslCertificateAuthorityFile** as trusted CAs. The client is not required to send a certificate, but if it does, it will be validated and failure will cause the connection to be rejected. This behavior is equivalent to using `setWantClientAuth(true)` but `setNeedClientAuth(false)` with the Java SSL API, or using `SSL_VERIFY_PEER` with the OpenSSL API.
+If the value is `require`, the server will request a client certificate and send the list of certificate authorities from **sslCertificateAuthorityFile** as trusted CAs. The client must send a certificate that the server can successfully validate or the connection will be rejected. This behavior is equivalent to using  `setNeedClientAuth(true)` with the Java SSL API, or using both `SSL_VERIFY_PEER` and `SSL_VERIFY_FAIL_IF_NO_PEER_CERT` with the OpenSSL API.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>ClientAuth</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sslCipherSuites</name>
+        <description>
+If SSL / TLS is being used (**sslConfigName** or **sslProtocol** is set), this is the list of cipher suites in OpenSSL format that will be available during negotiation.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `TCPSink` operator is configurable with a single input port, which ingests tuples to be written to the TCP connection.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

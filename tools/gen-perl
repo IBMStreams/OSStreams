@@ -1,0 +1,117 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use warnings;
+use XML::Simple;
+$XML::Simple::PREFERRED_PARSER = "XML::Parser";
+use Getopt::Std;
+use File::Temp qw(tempfile);
+use Data::Dumper;
+use List::Util qw(max);
+
+sub buildMessage($$$$);
+
+sub badUsage($)
+{
+   my ($rc) = @_;
+   my $usage = <<END;
+Usage: gen-perl [-h] -i infile.xlf -o outfile.pm
+	-h: Print this help information
+	-i filename: filename is the xml file containing the message definitions
+	-o filename: the specific perl module we want to generate.
+        -v Run in verbose mode
+END
+   print $usage;
+   exit($rc);
+}
+
+my %opts;
+getopts('hi:o:v', \%opts);
+
+badUsage(0) if ($opts{'h'});
+badUsage(1) unless ($opts{'i'});
+badUsage(1) unless ($opts{'o'});
+my $outfile = $opts{'o'};
+
+my $xml = new XML::Simple;
+my $data = $xml->XMLin($opts{'i'}, KeepRoot => 1, KeyAttr => [], ForceArray => ['group', 'trans-unit']);
+
+my ($fhTemp, $filename) = tempfile(UNLINK => 1, SUFFIX => ".pm");
+
+my $header = <<END;
+### Note: This is a generated file.  Any changes made to this file will be lost
+
+package SPL::Msg;
+use strict;
+use SPL::Helper;
+END
+print $fhTemp "$header";
+
+foreach my $group (@{$data->{'xliff'}->{'file'}->{'body'}->{'group'}}) {
+   if ($group->{'id'} ne "StreamsSPLCompilerMessages" && $group->{'id'} ne "StreamsSPLRuntimeMessages") { next; }
+   foreach my $message (@{$group->{'trans-unit'}}) {
+      my $resName = $message->{'resname'};
+      print "Processing entry $resName\n" if $opts{'v'};
+      my $define = $message->{'extraData'};
+      if (!($define =~ /SPL_PERL.*/)) { next; }
+      my $messageText = $message->{'source'}->{'content'};
+      buildMessage($define, $resName, $messageText, $fhTemp);
+   }
+}
+
+print $fhTemp "1;\n";
+close ($fhTemp);
+
+my $cmd = "cp $filename $outfile";
+system("chmod +r $filename");
+if (system($cmd) != 0) { die "Could not copy file\n"; }
+
+sub buildMessage($$$$)
+{
+   my ($define, $resName, $messageText, $fhTemp) = @_;
+   my $parmCount = -1;
+   my @varList = ();
+   my $start = index($messageText, "{", 0);
+   while ($start != -1) {
+      my $end = index($messageText, "}", $start+1);
+      my $str = substr($messageText, $start, $end-$start+1);
+      $str =~ /\{\s*(\d+).*\}/;
+      $varList[$1] = 1 if (defined($1));
+      $start = $end+1;
+      $start = index($messageText, "{", $start);
+   }
+   $define =~ /SPL_PERL_(.*)/;
+
+   my $proto = "";
+   for (my $i = 0; $i < scalar @varList; ++$i) {
+      $proto = $proto . '$';
+   }
+
+   my $sub = <<END;
+sub $1($proto)
+{
+   my \$defaultText = <<STOP;
+$messageText
+STOP
+   return SPL::Helper::SPLText("${resName}", \\\$defaultText, \@_);
+}
+
+END
+   print $fhTemp $sub;
+}

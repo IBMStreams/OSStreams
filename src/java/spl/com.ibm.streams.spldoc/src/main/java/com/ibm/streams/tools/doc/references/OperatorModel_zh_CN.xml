@@ -1,0 +1,459 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<reference id="spldoc_reference_operator_model">
+<title>SPL 操作程序模型</title>
+<refbody>
+<section id="overview">
+<p>
+可以使用操作程序模型描述 C++ 基本操作程序或 Java 基本操作程序。Java 操作程序模型中可存在的元素集为 C++ 操作程序模型中可存在的元素的严格子集，用于 JVM 相关配置的特殊元素除外。
+</p>
+</section>
+<section id="context">
+<title outputclass="splhead-1">上下文</title>
+<p>
+上下文元素描述作为一个整体适用于操作程序且不与操作程序的特定参数或端口关联的属性。此元素还包含在操作程序模型中其他位置引用的公共定义。
+</p>
+<dl>
+  <dlentry id="context__description">
+    <dt>描述</dt>
+    <dd>描述元素是可选元素，用于提供操作程序的概述。</dd>
+  </dlentry>
+  <dlentry id="context__metrics">
+    <dt>指标</dt>
+    <dd>指标元素是可选元素，包含由操作程序公开的指标列表。
+此指标作为指标元素列表构造，其中每个指标元素包含名称、描述和类型。
+      <dl>
+        <dlentry id="context__metrics_kind_counter">
+          <dt>类型：计数器</dt>
+          <dd>表示值既不是递减也不是递增的指标。
+          </dd>
+        </dlentry>
+        <dlentry id="context__metrics_kind_gauge">
+          <dt>类型：标尺</dt>
+          <dd>表示可自由更改其值（即，可以增大或减小）的指标。
+          </dd>
+        </dlentry>
+        <dlentry id="context__metrics_kind_time">
+          <dt>类型：时间</dt>
+          <dd>表示指示时间点的指标。
+          </dd>
+        </dlentry>
+      </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="context__customliterals">
+    <dt>定制文字</dt>
+    <dd>customLiterals 元素是可选元素，用于捕获可在操作程序的参数配置中显示的标识。此元素作为枚举元素的列表构造。例如，“源”操作程序可支持不同源格式，在此情况下，可具有将包含值 <tt>{csv、xml 和 bin}</tt> 的名为 FileFormat 的枚举。
+    </dd>
+  </dlentry>
+  <dlentry id="context__customoutputfunctions">
+    <dt>定制输出函数（仅适用于 C++）</dt>
+    <dd>customOutputFunctions 元素是可选元素，用于捕获操作程序在其输出属性分配中使用的输出函数原型。此元素作为 customOutputFunction 元素的列表构造，其中每个枚举包含一个名称和输出函数原型的列表。例如，“聚集”操作程序可支持关系聚集，在此情况下，可具有将包含输出函数 <tt>{Min、Max、Avg 和 Sum 等}</tt> 的名为 RelationalAggs 的枚举。
+    </dd>
+  </dlentry>
+  <dlentry id="context__dependencies">
+    <dt>依赖关系（可选）</dt>
+    <dd>一个或多个库元素的序列，每个元素表示一个库依赖关系。
+库元素格式与用于操作程序模型的库元素格式完全相同。
+     <dl>
+        <dlentry id="context__dependencies__description">
+          <dt>描述（可选）</dt>
+          <dd>库的描述
+          </dd>
+        </dlentry>
+        <dlentry id="context__dependencies__managedlibrary">
+          <dt>受管库</dt>
+          <dd>指定单个库工件的详细信息。路径可包含在 @ 符号之间嵌入的环境变量（例如：<tt>@FOO_FFT_HOME@/lib</tt>），这些变量在编译时通过 SPL 编译器进行充分解析。
+            <dl>
+              <dlentry id="context__dependencies__managedlibrary__lib">
+                <dt>lib（可选）</dt>
+                <dd>指定将传递到 C++ 编译器的 <tt>-l</tt> 自变量的名称（例如 <tt>fft</tt> 在传递到链接器时将转换为 <tt>-lfft</tt>）
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__libpath">
+                <dt>libPath（可选）</dt>
+                <dd>指定将传递到 C++ 编译器的 <tt>-L</tt> 自变量的路径。
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__includepath">
+                <dt>includePath（可选）</dt>
+                <dd>指定将传递到 C++ 编译器的 <tt>-I</tt> 自变量的路径。
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__command">
+                <dt>command（可选）</dt>
+                <dd>程序的路径，将执行此程序以检索 <tt>includePath、libPath</tt> 和 <tt>lib</tt> 信息。如果程序的路径是相对路径，那么假定其为操作程序模型的根目录。将执行程序三次，每次使用不同自变量（即 <tt>lib、libPath</tt> 和 <tt>includePath</tt>）执行。将读取这些执行的标准输出，且会根据执行类型，向 <tt>lib、libPath</tt> 和 <tt>includePath</tt> 元素中的一个元素添加每行（删除空格）。将忽略以 # 开头的行。假定相对路径为操作程序模型 XML 文档所在的根目录。
+                </dd>
+              </dlentry>
+            </dl>
+          </dd>
+        </dlentry>
+    </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="context__providessinglethreadedexecutioncontext">
+    <dt>提供单线程执行上下文（仅适用于 C++）</dt>
+    <dd><p><tt>providesSingleThreadedContext</tt> 元素描述与执行流相关的操作程序的线程语义。操作程序只有在以下情况下，才提供单线程执行上下文：
+      <ul>
+        <li>操作程序不执行并发提交调用，除非并行调用了其处理方法。</li>
+        <li>在触发提交的处理调用完成之前，操作程序的提交调用已完成。</li>
+      </ul>
+    </p>
+    <p>源操作程序和非源操作程序都具有处理方法，且以上定义在全局范围内适用。根据此定义，如果操作程序提交的调用不是由处理调用触发（例如，由基于时间的事件触发的调用），那么此操作程序不提供单线程执行上下文。请注意，此定义不要求在同一线程（用来执行已触发了提交的处理调用）下执行提交调用，不过一般情况下它们会在同一线程下执行。</p>
+    <p>此属性具有多个有效值：
+<ul>
+  <li><tt>Never：</tt> 此操作程序的实例永不提供单线程执行上下文。</li>
+  <li><tt>Always：</tt> 此操作程序的实例始终提供单线程执行上下文。</li>
+  <li><tt>WindowBound：</tt> 对于此操作程序的未指定基于时间的窗口逐出策略或基于时间的窗口触发策略的实例，提供单线程执行上下文。</li>
+  <li><tt>WindowEvictionBound：</tt> 对于此操作程序的未指定基于时间的窗口逐出策略的实例，提供单线程执行上下文。</li>
+  <li><tt>WindowTriggerBound：</tt> 对于此操作程序的未指定基于时间的窗口触发策略的实例，提供单线程执行上下文。</li>
+  <li><tt>WindowPartitionEvictionBound：</tt> 此操作程序的实例使用线程实现分区逐出。如果从 onWindowPartitionEvictionSelection 事件提交元组，请使用此设置。</li>
+</ul>
+    </p>
+<p>
+作为示例，请考虑<tt>过滤</tt>操作程序。除非正并行调用其处理方法，否则，<tt>过滤</tt>操作程序不会执行并发提交调用。此操作程序的提交调用由传入元组触发。此操作程序通过处理调用接收元组时，如果收到的元组传递过滤条件，那么会执行提交调用，且该提交调用会先完成，然后触发该提交调用的处理调用才会完成。因此，<tt>过滤</tt>操作程序的所有实例都提供单线程上下文，并且设置 <tt>Always</tt> 是适当的。
+</p>
+<p>
+实现注意事项：<tt>providesSingleThreadedContext</tt> 元素用于启用 SPL 运行时以避免执行不必要的线程同步。针对所有操作程序，将其设置为值 Never 是安全的，它将在操作程序提供单线程上下文时，阻止执行可减少同步线程的最佳化操作。指定 Never 之外的其他值并且该值不符合操作程序实现的线程语义，那么会导致未定义的行为。
+</p>
+    </dd>
+  </dlentry>
+  <dlentry id="context__incrementalcompilationstrategy">
+    <dt>增量编译策略（仅适用于 C++）</dt>
+    <dd><p>指定编译器应该如何管理操作程序的增量编译。选项包括：
+       <ul>
+         <li><tt>SourceDependent</tt>：在此方式中，仅当此操作程序的 SPL 源代码或代码生成器不是最新的时，编译器才会重新生成操作程序源代码。这是缺省方式。</li>
+         <li><tt>ResultDependent：</tt> 在此方式中，编译器始终生成操作程序源代码，但仅在源文件与编译之前所存在的源文件不同时，才会更新这些文件。如果操作程序代码生成器依赖的外部配置未由 SPL 源代码中给定的参数化捕获，请使用此方式。
+         </li>
+       </ul>
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__allowCustomLogic">
+    <dt>允许定制逻辑（仅适用于 C++）</dt>
+    <dd><p>此可选元素指定使用操作程序时是否允许具有用于指定 <tt>onTuple</tt> 或 <tt>onPunct</tt> 处理状态的 logic 子句。设置为 false 时，无法为给定操作程序指定 logic 子句。缺省情况下，在不具有此元素时，设置为 true。
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__codetemplate">
+    <dt>代码模板
+</dt>
+    <dd><p>此可选元素指定操作程序的一个或多个代码模板。
+这些元素将显示在 IDE 的上下文相关内容辅助菜单和 SPLDOC 文档中。
+每个代码模板具有名称属性（用于对其命名）、描述元素（用于对其进行描述）以及值元素（此元素为包含模板的样板代码的字符串）。
+在 IDE 中使用模板时，会将样板代码嵌入源代码。
+格式为 ${name} 的代码部分用于指示必须由用户定制的部分。IDE 将使用 ${} 中指定的标识指示可定制部分。以下是 Barrier 操作程序的一个示例：
+</p>
+<p>
+<!-- START NON-TRANSLATABLE -->
+<codeblock>
+&lt;codeTemplates>
+  &lt;codeTemplate name="Barrier">
+    &lt;description>Basic Barrier template&lt;/description>
+    &lt;template>
+      &lt;![CDATA[
+        stream&lt;${schema}> ${outputStream} = Barrier(${inputStream1};${inputStream2})
+        {
+          param
+            ${parameter}: ${parameterExpression};
+          output
+            ${outputStream}: ${outputExpression};
+          ${cursor}
+        }
+      ]]&gt;
+    &lt;template>
+  &lt;/codeTemplate>
+&lt;/codeTemplates>
+</codeblock>
+<!-- END NON-TRANSLATABLE -->
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__splexpressiontree">
+    <dt>SPL 表达式树（仅适用于 C++）</dt>
+    <dd><p>这是一个可选元素，用于控制 SPL 表达式树的生成以在通用 C++ 基本操作程序中使用。</p>
+      <ul>
+      <li><tt>param</tt> - 如果设置为 <tt>true</tt>，那么会为参数生成 SPL 表达式树。</li>
+      <li><tt>output</tt> - 如果设置为 <tt>true</tt>，那么会为输出生成 SPL 表达式树。</li>
+      <li><tt>cppCode</tt> - 如果设置为 <tt>true</tt>，那么会通过使用模板的 C++ 代码增强生成的操作程序实例 XML 中的每个节点。
+此 C++ 代码可用于为 SPL 表达式生成 C++ 代码。例如，对于 SPL 代码：
+<p>
+<codeblock>
+param predicates : {a = "a" == In.letter, b = "b" == In.letter};
+</codeblock>
+</p>
+<p>
+生成的 SPL 表达式树包含：
+</p>
+<p>
+<!-- START NON-TRANSLATABLE -->
+<codeblock>
+&lt;expressionTree cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})">
+  &lt;literal cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})" type="1">
+    &lt;tuple count="2" cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})" type="1">
+      &lt;attr id="a">
+        &lt;value cppCode="({Lhs} == {Rhs})" type="2">
+          &lt;expn cppCode="({Lhs} == {Rhs})">
+            &lt;binary cppCode="({Lhs} == {Rhs})" op="==" type="2">
+              &lt;lhs cppCode="SPL::rstring("a")">
+                &lt;literal cppCode="SPL::rstring("a")" type="0">"a"&lt;/literal>
+              &lt;/lhs>
+              &lt;rhs cppCode="iport$0.get_letter()">
+                &lt;attribute attribute="letter" cppCode="iport$0.get_letter()" type="0">
+                  &lt;lhs cppCode="iport$0">
+                    &lt;stream cppCode="iport$0" name="In" port="0" type="3"/>
+                  &lt;/lhs>
+                &lt;/attribute>
+              &lt;/rhs>
+            &lt;/binary>
+          &lt;/expn>
+        &lt;/value>
+      &lt;/attr>
+</codeblock>
+<!-- END NON-TRANSLATABLE -->
+</p>
+<p>
+模板（例如，<tt>{Lhs} 和 {attr:0}</tt>）用于确保正确定义了代码替代项。
+</p>
+<p>
+这些表达式表示 SPL 表达式，但以易读的格式提供。
+Perl 对象派生自 <tt>SPL::Operator::Instance::ExpressionTree</tt>，具有种类、类型和方法来访问表达式的字段。<tt>ExpressionTreeVisitor</tt> 是提供的一种访问者模式，用于轻松浏览表达式树。有关更多信息，请参阅《IBM Streams 处理语言代码生成 API 文档》<i></i>。
+</p>
+      </li>
+      </ul>
+    </dd>
+   </dlentry>
+   <dlentry id="context__capability">
+    <dt>操作系统功能（仅适用于 C++）</dt>
+    <dd><p>此可选元素列表指定操作程序的特权。IBM Streams 通过功能元素支持 Linux 功能模型。您可以包含任何数目的元素，以指定操作程序所需的确切特权。例如，<tt>&lt;capability&gt;CAP_NET_RAW+eip&lt;/capability&gt;</tt> 指示操作程序需要用于访问原始套接字的许可权。请注意，必须配置 IBM Streams 实例以允许 PE 流程通过特殊操作系统功能运行。</p></dd>
+   </dlentry>
+</dl>
+</section>
+
+<section id="input_port_set">
+<title outputclass="splhead-1">输入端口集</title>
+<p>
+输入端口以端口集的形式进行了定义。端口集是共享相同配置且数目固定的端口。
+这可避免针对不同端口重复使用相同配置。端口集可以是开放式的，在此情况下，端口集可包含 0 个端口也可包含更多具有相同配置的端口。inputPorts 元素包含 0 个或更多 inputPortSet 元素，后跟一个可选 inputPortOpenSet 元素。
+</p>
+<dl>
+  <dlentry id="input_port_set__cardinality">
+    <dt>基数</dt>
+    <dd>定义端口集表示的端口数。此属性适用于非开放式端口集。
+    </dd>
+  </dlentry>
+  <dlentry  id="input_port_set__optional">
+    <dt>可选</dt>
+    <dd>一个布尔值，用于指定输入端口集是否为可选。
+    </dd>
+  </dlentry>
+    <dlentry  id="input_port_set__controlport">
+    <dt>控制端口</dt>
+    <dd>可选 controlPort 元素告知编译器，此端口上接收的元组将仅用于控制操作程序，并且在此端口上处理元组时不会提交任何元组。
+如果未指定，那么值为 false。在操作程序图形中找到循环时，SPL 编译器将发出警告，因为这会导致死锁或无限递归。将 controlPort 设置为 true 会告知编译器，此端口不会再提交其他元组，且这是预期（无害）反馈循环，因此不会针对此端口发出任何警告。
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowingmode">
+    <dt>窗口方式</dt>
+    <dd>windowingMode 元素指定端口的有效窗口配置。选项包含 NonWindowed、Windowed 和 OptionallyWindowed。
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowpunctuationinputmode">
+    <dt>窗口标点输入方式</dt>
+    <dd>
+windowPunctuationInputMode 元素指定输入端口的标点语义。有效选项为：
+<ul>
+<li><tt>Expecting</tt> - 此端口预期具有窗口标点，这样操作程序可正常运行，因此必须为其提供添加了标点的流。</li>
+<li><tt>Oblivious</tt> - 此端口不需要标点，操作程序也可正常运行，因此对于可与其连接的连接不具有任何限制。</li>
+<li><tt>WindowBound</tt> - 如果具有基于标点的窗口，那么此端口为 Expecting 端口，否则为 Oblivious 端口。</li>
+</ul>
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowexpressionmode">
+    <dt>窗口表达式方式</dt>
+    <dd>此元素告知编译器，哪种类型的窗口表达式有效。如果未指定，那么缺省值为 <tt>Constant</tt>。
+    <ul>
+      <li><tt>Constant</tt> - <tt>计数</tt>、<tt>时间</tt>和<tt>变化量</tt>中的表达式必须为可在编译时或者在未引用输入元组属性的运行时表达式有效时求值的常量。</li>
+      <li><tt>AttributeFree</tt> - 表达式无法引用输入元组属性。可以使用诸如时间 <tt>((int32) getSubmissionTimeValue("timeParam"))</tt> 的表达式。对于变化量，仅允许第二个自变量为运行时无属性表达式。第一个自变量仍为来自输入流的属性。</li>
+    </ul>
+   </dd><!-- windowexpressionmode -->
+  </dlentry>
+  <dlentry id="input_port_set_rewriteallowedforwindowexpression">
+    <dt>允许重写窗口表达式（仅适用于 C++）</dt>
+    <dd>如果设置为 true，那么此布尔值元素告知编译器，其可以采用与 <tt>rewriteAllowed</tt> 元素重写参数值中显示的表达式相同的方式，重写窗口表达式。有关 rewriteAllowed 元素的更多信息，请参阅<tt>参数</tt>。如果未指定 <tt>rewriteAllowedForWindowExpression</tt> 元素，那么缺省情况下，此值设置为 flase。<tt>rewriteAllowedForWindowExpression</tt> 在 C++ 基本操作程序要将值作为文字检查时，必须是 false（或将其忽略）。
+    </dd>
+  </dlentry>
+  <dlentry id="input_port_set_tuplemutationallowed">
+    <dt>允许元组变化</dt>
+    <dd>tupleMutationAllowed 元素定义，已连接至输入端口的处理逻辑（这包含了两种类型的逻辑处理：操作程序的流程函数和 SPL 代码中的 onTuple 子句）是否可变更传入元组。对于需要修改其收到的元组的操作程序，可将此元素设置为 true。</dd>
+  </dlentry>
+</dl>
+
+</section>
+<section  id="output_port_set">
+  <title outputclass="splhead-1">输出端口集</title>
+  <p>
+与输入端口类似，输出端口以端口集形式进行定义。端口集是共享相同配置且数目固定的端口。
+这可避免针对不同端口重复使用相同配置。端口集可以是开放式的，在此情况下，端口集可包含 0 个端口也可包含更多具有相同配置的端口。outputPorts 元素包含 0 个或更多 outputPortSet 元素，后跟一个可选 outputPortOpenSet 元素。
+</p>
+  <dl>
+  <dlentry  id="output_port_set__cardinality">
+    <dt>基数</dt>
+    <dd>定义端口集表示的端口数。此属性适用于非开放式端口集。
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__optional">
+    <dt>可选</dt>
+    <dd>一个布尔值，用于指定输出端口集是否为可选。
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set_expressionmode">
+    <dt>表达式方式（仅适用于 C++）</dt>
+    <dd>
+expressionMode 元素描述对此端口执行的属性分配的有效语法。
+请注意，CustomLiteral 的 expressionMode 值对于输出端口无效，将导致编译错误。表达式方式的有效值为：
+<ul>
+<li><tt>Attribute：</tt> 这表示对此端口的输出属性执行的分配需要为流属性。例如：输出 <tt>Out : x = In.y;</tt> 而不是 <tt>x = In.y.z</tt>。</li>
+<li><tt>AttributeFree：</tt> 这表示对此端口的输出属性执行的分配不能引用任何输入流属性。例如：output <tt>Out : x = 3 + random(3);</tt> 而不是 <tt>x = In.x + 3</tt>。</li>
+<li><tt>Constant：</tt> 这表示对此端口的输出属性执行的分配需要在编译时可求值为常量。例如：output <tt>Out : x = 3 + pow(2, 3);</tt> 而不是 <tt>x = random(3)</tt>。</li>
+<li><tt>Expression：</tt> 这是最为灵活的表达式方式，任何正确类型的 SPL 表达式都可显示为针对此端口的输出属性的分配。例如：output<tt> Out : x = A.y + B.z;</tt>。</li>
+<li><tt>Nonexistent：</tt> 这表示无法在此端口的 SPL 源代码中指定输出属性分配。</li>
+</ul>
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set__autoassignment">
+    <dt>自动分配</dt>
+    <dd>
+<tt>autoAssignment</tt> 元素定义是否会从输入端口的属性自动分配未分配的属性。
+如果设置为 true，那么 SPL 编译器会在编译时重写操作程序调用，就像未分配的输出属性在输出部分中具有显式分配一样。对于缺少赋值的每个输出属性，将对其分配具有相同名称和类型或具有相同名称且类型为 <tt>T</tt>（其中输出属性类型为 <tt>optional&lt;T&gt;</tt>）的输入属性。如果不具有此类输入属性或具有多个输入属性，那么会在编译时报告错误。请注意，Constant 的 expressionMode 值与 autoAssignment 值 true 不兼容。
+将这两者组合使用会导致编译错误。
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__completeassignment">
+    <dt>完成分配</dt>
+    <dd>
+<tt>completeAssignment</tt> 元素定义是否需要分配所有输出端口属性，以具有有效的操作程序调用。在编译时将对此进行检查。在对某个操作程序的给定实例执行自动分配步骤（如果已请求）后，如果此操作程序在其操作程序模型中将此元素设置为 true，并且只有部分输出属性具有分配，那么会报告错误。</dd>
+  </dlentry>
+  <dlentry id="output_port_set__rewriteallowed">
+    <dt>允许重写（仅适用于 C++）</dt>
+    <dd>
+<tt>rewriteAllowed</tt> 元素指定是否允许编译器重写在此端口的输出属性分配中显示的表达式。
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__outputfunctions">
+    <dt>输出函数</dt>
+    <dd>
+outputFunctions 元素定义可在输出属性分配中显示的有效定制输出函数。
+它是可选的。呈现此元素时，其包含两个子元素：type 元素，用于定义定制输出函数类型的名称（如在 RelationalAggs 中一样）；和 default 元素，用于定义执行输出属性的自动分配时要使用的缺省输出函数。对于正在使用的定制输出函数类型，此值应该为有效函数名称（如 RelationalAggs 中的 Last 一样）。请注意，如果用户代码指定某个输出属性分配，但不包含用于某个端口（预期具有一个输出函数）的输出函数，那么将自动插入缺省输出函数。
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set__finalpunctuationoutputscope">
+    <dt>最终标点端口范围</dt>
+    <dd>
+<tt>finalPunctuationPortScope</tt> 是可选元素，用于指定由 SPL 语言运行时用于最终标点转发的输入端口集。缺省情况下，具有输入端口和输出端口的操作程序会自动将最终标点从其输入端口转发到其输出端口。这可通过在所有输入端口上收到最终标点时在输出端口上生成最终标点实现。finalPunctuationPortScope 可用于限制将用于转发最终标点的输入端口集。通过设置将用于转发到空集的输入端口集，还可使用此元素关闭最终标点的自动转发功能。在此情况下，操作程序开发人员负责确保输出端口获取最终标点。
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__windowpunctuationoutputmode">
+    <dt>窗口标点输出方式</dt>
+    <dd>
+windowPunctuationOutputMode 指定输出端口的窗口标点语义。选项为：
+<ul>
+<li><tt>Generating</tt> - 此端口用于生成窗口标点。</li>
+<li><tt>Free</tt> - 此端口不使用窗口标点。</li>
+<li><tt>Preserving</tt> - 此端口保留收到的窗口标点。如果操作程序具有多个输入端口，那么必须指定 windowPunctuationInputPort 元素，以识别将保留哪个输入端口的标点。</li>
+</ul>
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__tuplemutationallowed">
+    <dt>允许元组变化</dt>
+    <dd>
+<tt>tupleMutationAllowed</tt> 元素定义，此操作程序是否允许下游操作程序变更通过提交调用提交给此端口的输出元组。如果设置为 true，那么操作程序的处理逻辑应该预期其提交到此端口的元组将会因此提交调用而进行修改。
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__windowpunctuationinputport">
+    <dt>窗口标点输入端口</dt>
+    <dd>
+如上所述，<tt>windowPunctuationInputPort</tt> 元素将输入端口与用于保留输出端口的标点关联。仅当输出端口的窗口标点方式为 Preserving 时，才可指定此元素。
+windowPunctuationInputPort 可设置为 -1，这与缺少的 windowPunctuationInputPort 元素具有相同语义。
+请务必注意，SPL 语言运行时不会自动执行窗口标点的标点转发（这与最终标点不一样），且会使用操作程序模型通知 SPL 编译器操作程序将实现的行为。有关更多信息，请参阅《IBM Streams 处理语言工具箱开发参考》<i></i>。
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__outputassignmentportscope">
+    <dt>输出分配端口范围</dt>
+    <dd>
+<tt>outputAssignmentPortScope</tt> 可选择限制哪些输入端口属性可显示在对此端口的输出分配中。如果指定了范围，那么只有该范围指定的端口中的属性才可以显示在此端口的输出分配中。
+    </dd>
+  </dlentry>
+</dl>
+</section>
+
+<section id="parameters">
+<title outputclass="splhead-1">参数</title>
+<p>
+parameters 元素描述可以用于配置操作程序的有效参数。
+此元素还描述了此类参数配置的有效语法。
+</p>
+<dl>
+  <dlentry id="parameters__allowany">
+    <dt>允许任何项</dt>
+    <dd>此元素是一个布尔标志，用于确定操作程序是否可采用任意参数，而没有任何限制。
+虽然操作程序可采用任意参数，但仍指定其他参数和关联限制。
+    </dd><!-- Allow Any -->
+  </dlentry>
+  <dlentry id="parameters__parameter">
+    <dt>参数</dt>
+    <dd><p>每个 parameter 元素都包含多个子元素。
+    </p>
+      <dl>
+       <dlentry id="parameters__parameter__name">
+         <dt>名称</dt>
+         <dd><tt>name</tt> 元素是将显示在 SPL 源代码中的参数名称。
+例如，<tt>Functor</tt> 操作程序可具有 <tt>filter</tt> 参数。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__description">
+         <dt>描述</dt>
+         <dd>此参数的可选描述。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__optional">
+         <dt>可选</dt>
+         <dd>布尔值，用于指定此参数是否为可选。值 false 表示必须在 SPL 源代码中指定此参数。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__rewriteallowed">
+         <dt>允许重写（仅适用于 C++）</dt>
+         <dd>此布尔值参数允许编译器通过将文字（包括执行编译时求值步骤后生成的文字）替换为运行时装入其值的变量，重写此参数的值中显示的表达式。这可使编译器为其参数配置稍有不同的操作程序生成较少代码。在某些情况下，操作程序代码生成器可能希望查看参数值，以根据找到的特定值生成其他代码或执行编译时验证。例如，<tt>format: csv</tt> 可能会导致为“源”操作程序生成专用代码。在此类情况下，应该关闭表达式重写功能。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__expressionmode">
+         <dt>表达式方式</dt>
+         <dd>
+           <ul>
+             <li><tt>Attribute</tt> 将参数值限制为流属性。</li>
+             <li><tt>AttributeFree</tt> - 参数值为不包含对流属性的引用的表达式。</li>
+             <li><tt>Constant（仅适用于 C++）</tt> - 参数值需要在编译时可求值为常量。</li>
+             <li><tt>CustomLiteral</tt> - 将参数值限制为模型上下文部分中定义的其中一个定制文字枚举的有效值</li>
+             <li><tt>Expression（仅适用于 C++）</tt> - 最灵活的表达式方式，在该方式中，任何类型正确的 SPL 表达式都可显示为参数值。</li>
+           </ul>
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__type">
+         <dt>类型</dt>
+         <dd>参数的 <tt>type</tt> 是其值的 SPL 类型（例如 <tt>list&lt;ustring></tt>）或定制文字名称（例如，<tt>SourceFormat</tt>）。还可忽略 type，在此情况下，任何 SPL 类型都将匹配。参数的 type 子元素可具有空值，这与缺少的 type 元素具有相同语义。
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__cardinality">
+         <dt>基数</dt>
+         <dd>参数接受的最大值数。如果将其忽略或值为 -1，那么会假定值的数目无界限。参数值的数目必须与基数匹配。cardinality 子元素可采用值 -1，这与缺少的 cardinality 元素具有相同语义。
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__portScope">
+         <dt>端口范围（仅适用于 C++）</dt>
+         <dd>此元素用于将出现在参数值中的流属性限制为特定输入端口或一列输入端口。端口索引从 0 开始。忽略时，表示对流属性没有任何限制。
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__customOutputFunction">
+         <dt>定制输出函数（仅适用于 C++）</dt>
+         <dd>参数的此可选元素指定在上下文元素中定义的定制输出函数集的名称，并在编译参数期间，使此集中定义的函数可见。此操作程序负责使用参数来生成涉及定制输出函数的正确 C++ 代码，所采用的方式与它用于 output 子句时所采用的方式相同。
+         </dd>
+       </dlentry>
+      </dl>
+    </dd><!-- Parameter -->
+  </dlentry>
+</dl> <!-- Parameters -->
+</section>
+</refbody>
+</reference>

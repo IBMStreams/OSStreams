@@ -1,0 +1,179 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+    <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.compat$V1TCPSink.html">
+The `V1TCPSink` operator writes binary data to a TCP socket that is connected to an InfoSphere Streams Version 1.2 TCP `Source` operator.
+It can be configured as a TCP server, which listens for a client connection, or as a TCP client, which initiates a connection to a server.
+In both modes, it handles a single connection at a time.
+
+The `V1TCPSink` operator works with both IPv4 and IPv6 addresses.
+The corresponding Version 1.2 `V1TCPSource` operator must have a **binFormat** modifier to send the data in binary format.
+The `V1TCPSink` operator is defined in the spl.compat namespace and must be included through a `use spl.compat::V1TCPSink;` statement.
+
+# Exceptions
+
+The `V1TCPSink` operator throws an exception in the following cases:
+* The host cannot be resolved.
+
+# Examples
+
+This example uses the `V1TCPSink` operator.
+
+    composite Main {
+    graph
+        stream&lt;rstring name, int32 age, int32 salary&gt; A = Beacon() {}
+        // Send the tuple out to an InfoSphere Streams V1.2 system
+        () as Nil = spl.compat::V1TCPSink(A)
+        {
+          param
+             address : "localhost";
+             port : 4001u;
+             role : client;
+             flush : 1u;
+        }
+    }
+
+The following example contains the corresponding V1.2 TCP Sink:
+
+    Nil := Sink(A) ["ctcp://thishost:4000/", binFormat] {}
+
+</description>
+      <iconUri size="16">../../adapter/TCPSink/TCPSink_16.gif</iconUri>
+      <iconUri size="32">../../adapter/TCPSink/TCPSink_32.gif</iconUri>
+      <metrics>
+        <metric>
+          <name>nReconnections</name>
+          <description>The number of times the TCP connection was re-established.</description>
+          <kind>Counter</kind>
+        </metric>
+      </metrics>
+      <customLiterals>
+        <enumeration>
+          <name>SocketRole</name>
+          <value>server</value>
+          <value>client</value>
+        </enumeration>
+        <enumeration>
+          <name>ReconnectionPolicy</name>
+          <value>InfiniteRetry</value>
+          <value>NoRetry</value>
+          <value>BoundedRetry</value>
+        </enumeration>
+      </customLiterals>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>address</name>
+        <description>
+Specifies the destination address of the TCP connection in client mode.
+For more information, see the **address** parameter in the [V1TCPSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>port</name>
+        <description>
+Specifies the listening port address in server mode or the destination port address in client mode.
+For more information, see the **port** parameter in the [V1TCPSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>role</name>
+        <description>
+Specifies whether the operator acts as a TCP server or client.
+For more information, see the **role** parameter in the [V1TCPSource] operator.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>SocketRole</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>flush</name>
+        <description>
+Specifies the number of tuples after which to flush the output.
+For more information, see the **flush** parameter in the [spl.adapter::FileSink] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>reconnectionPolicy</name>
+        <description>
+In server mode, this parameter specifies whether more connections are allowed when the initial connection terminates.
+In client mode, this parameter specifies whether more connection attempts are made once the initial connection to the server terminates.
+For more information, see the **reconnectionPolicty** parameter in the [V1TCPSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>ReconnectionPolicy</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>reconnectionBound</name>
+        <description>
+Specifies the number of successive connections that will be accepted in server mode or attempted in client mode.
+For more information, see the **reconnectionBound** parameter in the [V1TCPSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sendBufferSize</name>
+        <description>Specifies the kernel send buffer size for the TCP socket.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `V1TCPSink` operator is configurable with a single input port, which ingests tuples to be written over a TCP connection to a V1.x system.
+The tuple that is accepted by the `V1TCPSink` operator must contain attributes of supported SPL types only.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

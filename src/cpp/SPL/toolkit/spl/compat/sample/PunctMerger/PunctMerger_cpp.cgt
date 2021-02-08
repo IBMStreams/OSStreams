@@ -1,0 +1,52 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+   use PunctMergerCommon;
+   PunctMergerCommon::verify($model);
+   my $numInputPorts = $model->getNumberOfInputPorts();
+%>
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+MY_OPERATOR::MY_OPERATOR()
+: MY_BASE_OPERATOR(), _nReadyPorts(0), _nPunctsReceived(<%=$numInputPorts%>, 0)
+{
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+   submit (tuple, 0);
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+    if (punct != Punctuation::WindowMarker)
+        return;
+
+    AutoMutex am(_mutex);
+    if (_nPunctsReceived[port]++ == 0)
+        ++_nReadyPorts;
+
+    if (_nReadyPorts == <%=$numInputPorts%>) {
+        submit (Punctuation::WindowMarker, 0);
+        for (uint32_t i=0; i < <%=$numInputPorts%>; ++i) {
+            if (--_nPunctsReceived[i] == 0)
+                --_nReadyPorts;
+        }
+    }
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

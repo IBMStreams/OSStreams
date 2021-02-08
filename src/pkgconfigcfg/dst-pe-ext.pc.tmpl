@@ -1,0 +1,10 @@
+# -*- shell-script -*-
+
+prefix=${distinst}
+exec_prefix=${prefix}
+
+Name: pe-ext
+Version: 1
+Description: PE-building necessary packages (using installation tarball)
+Libs: -lfmdutil -lxerces-c -lxml2 -lz -ltecla_r -liberty -lcrypto -lssl -lrt -lm
+Requires: dst-icu dst-boost-iostreams dst-boost-filesystem

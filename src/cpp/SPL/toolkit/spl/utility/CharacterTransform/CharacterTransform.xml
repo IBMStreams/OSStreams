@@ -1,0 +1,147 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$CharacterTransform.html">
+The `CharacterTransform` operator is used to convert from one encoding in blob to another encoding in blob.
+
+# Checkpointed data
+
+When the `CharacterTransform` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `CharacterTransform` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+In a consistent region, a `CharacterTransform` operator stores its state when a checkpoint is taken.
+When the region is reset, the operator restores the state from the checkpoint.
+
+# Checkpointing behavior in an autonomous region
+
+When the `CharacterTransform` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `CharacterTransform` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `CharacterTransform` operator.
+
+    composite Main2 {
+      graph
+       stream&lt;blob b&gt; Src = FileSource() {
+          param file      : "in";
+                format    : block;
+                blockSize : 4096u;
+        }
+        stream&lt;blob b&gt; TSrc = CharacterTransform (Src){
+          output TSrc : b = Convert ("857", "UTF-8", b);
+        }
+        stream&lt;ustring u, rstring r&gt; PSrc = Parse (TSrc) {
+          param format : txt;
+        }
+    }
+
+    // This example is equivalent to the following SPL program:
+    composite Main {
+      graph
+        stream&lt;ustring u, rstring r&gt; PSrc = FileSource() {
+          param file     : "in";
+                format   : txt;
+                encoding : "857";
+         }
+    }
+
+</description>
+      <iconUri size="16">transform_16.gif</iconUri>
+      <iconUri size="32">transform_32.gif</iconUri>
+      <customOutputFunctions>
+        <customOutputFunction>
+          <name>TransformFunctions</name>
+          <function>
+            <description>
+Converts the characters in *data* from encoding *fromEncoding* to encoding *toEncoding*.
+All other output attributes are filled in from input attributes if they are not specified on the output clause.
+For `Source` or `Sink` purposes, either *fromEncoding* or *toEncoding* are usually UTF-8
+for compatibility with the `Source` or `Sink` **encoding** parameter.
+</description>
+            <prototype><![CDATA[blob Convert (rstring fromEncoding, rstring toEncoding, blob data)]]></prototype>
+          </function>
+          <function>
+            <description>Returns the input argument.</description>
+            <prototype><![CDATA[<any T> T AsIs(T v)]]></prototype>
+          </function>
+        </customOutputFunction>
+      </customOutputFunctions>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="CharacterTransform to UFT8">
+          <description>Basic Compress template</description>
+          <template>(stream&lt;${schema}&gt; ${outputStream} = CharacterTransform(${inputStream})   {
+            output
+            ${outputStream} : ${outputAttribute} = Encode (${sourceEncoding}, "UTF8", ${value});
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="CharacterTransform from UFT8">
+          <description>Basic Compress template</description>
+          <template>(stream&lt;${schema}&gt; ${outputStream} = CharacterTransform(${inputStream})   {
+            output
+            ${outputStream} : ${outputAttribute} = Encode ("UTF8", ${targetEncoding}, ${value});
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `CharacterTransform` operator is configurable with a single input port,
+which ingests tuples containing data to be transformed.
+The input tuple can contain attributes of any type. The attributes to be encoded must be of type blob.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `CharacterTransform` operator is configurable with a single output port, which produces tuples containing transformed data.
+</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <outputFunctions>
+            <default>AsIs</default>
+            <type>TransformFunctions</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

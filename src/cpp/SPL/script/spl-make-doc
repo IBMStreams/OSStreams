@@ -1,0 +1,319 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use warnings;
+use Cwd qw(realpath getcwd);
+use File::Basename;
+
+use FindBin;
+use lib "${FindBin::Bin}";
+use lib "${FindBin::Bin}/impl/bin";
+use lib "${FindBin::Bin}/../system/impl/bin";
+
+use SPL::Helper;
+use SPL::Msg;
+
+sub initDitaOT($);
+
+my $currentDir = getcwd();
+my $toolkitDir = $currentDir;
+my $toolkitPath = '';
+my $toolkitPathSeparator = ":";
+my $author = '';
+my $imageFormat = 'svg';
+my $keepDitaFiles = 0;
+my $outputFormat = 'xhtml';
+
+# Gather the options
+my $rc;
+my %opts;
+my @options = ('author:s',
+               'check-tags',
+               'clean|c',
+               'copy-image-files',
+               'directory|i=s',
+               'doc-title=s',
+               'help|h',
+               'image-format|x=s',
+               'keep-dita-files',
+               'no-toolkit-indexing',
+               'output-directory=s',
+               'output-format|x=s',
+               'toolkit-path|t=s',
+               'verbose-mode|v',
+               'warn-no-comments',
+               'warn-on-cross-link-error',
+               'include-all',
+               'include-composite-operator-diagram',
+               'include-excluded-artifacts',
+               'include-function-set-header',
+               'include-private-artifacts',
+               'include-source',
+               'suppress-primitive-operator-diagram',
+               'suppress-reference-docs'
+              );
+SPLGetOptionsLong(\&SPL::Msg::SMDOC_USAGE, \%opts, @options);
+
+my $mixedModeArgs = "";
+if (scalar(@ARGV) > 0) {
+    foreach my $arg (@ARGV) {
+        $mixedModeArgs .= " $arg";
+    }
+}
+
+$toolkitDir = $opts{'directory'} if ($opts{'directory'});
+$toolkitPath = $opts{'toolkit-path'} if ($opts{'toolkit-path'});
+if (defined($opts{'author'})) {
+    my $id = `whoami`; chomp $id;
+    $author = ($opts{'author'} eq '') ? $id : $opts{'author'};
+}
+$imageFormat = $opts{'image-format'} if ($opts{'image-format'});
+$outputFormat = $opts{'output-format'} if ($opts{'output-format'});
+$keepDitaFiles = 1 if ($opts{'keep-dita-files'} || $outputFormat eq 'ditaonly');
+
+# Make sure -t is not used with -i or mixed-mode arguments
+SPLUsage(\&SPL::Msg::SMDOC_USAGE, 1) if
+    (($opts{'toolkit-path'} && $opts{'directory'}) ||
+     ($opts{'toolkit-path'} && $mixedModeArgs));
+
+# Make sure the toolkit directory specified with -i exists and is a directory
+SPLDie(1, SPL::Msg::NOT_A_DIR_OR_DOESNT_EXIST($toolkitDir))
+    if ($opts{'directory'} && !-d $toolkitDir);
+
+# Get the fully qualified name of the -i toolkit directory
+$toolkitDir = realpath($toolkitDir);
+
+# set up for output
+my $docTitle = $opts{'doc-title'} if ($opts{'doc-title'});
+my $outputDir = ($opts{'output-directory'}) ? $opts{'output-directory'} :
+    ($opts{'toolkit-path'}) ? $currentDir . '/doc/spldoc' :
+    $toolkitDir . '/doc/spldoc';
+my $ditaDir = $outputDir . '/dita';
+my $tempDir = $outputDir . '/temp';
+my $htmlDir = $outputDir . '/html';
+my $imageDir = $outputDir . '/image';
+my $pdfDir = $outputDir . '/pdf';
+
+my @dirsToClean = ();
+# If the user has specified an output dir,
+# then we will delete just the artifact directories,
+# otherwise we delete the entire spldoc dir
+if ($opts{'output-directory'}) {
+    push(@dirsToClean, $ditaDir);
+    push(@dirsToClean, $tempDir);
+    push(@dirsToClean, $htmlDir);
+    push(@dirsToClean, $imageDir);
+    push(@dirsToClean, $pdfDir);
+} else {
+    push(@dirsToClean, $outputDir);
+}
+
+# Clean and exit if requested
+if ($opts{'clean'}) {
+    foreach my $dir (@dirsToClean) {
+        if (-e $dir) {
+            $rc = system("rm -fr '${dir}' >/dev/null 2>&1");
+            $rc = $rc >> 8;
+            SPLDie(1, SPL::Msg::CANNOT_REMOVE_DIRECTORY($dir, $rc)) if ($rc);
+        }
+    }
+    exit(0);
+}
+
+# Validate the image format
+SPLDie(1, SPL::Msg::UNSUPPORTED_IMAGE_FORMAT) if (scalar grep({/^$imageFormat$/} qw(addjpeg jpegonly svg)) == 0);
+
+# Validate the output format
+SPLDie(1, SPL::Msg::UNSUPPORTED_OUTPUT_FORMAT) if (scalar grep({/^$outputFormat$/} qw(xhtml ditaonly)) == 0);
+
+# We're going to generate some documentation
+my $dist = realpath(dirname($0));
+my $binDir = $dist;
+my $spldocJar = 'com.ibm.streams.spl-make-doc.jar';
+my $ditaHome = "/usr/local/DITA-OT1.5.4";
+my $spldocJarPath = $dist . "/../system/impl/lib";
+my $classPath = "";
+my $classInvocation = "-jar ${spldocJarPath}/${spldocJar}";
+
+$ENV{'DITA_HOME'} = $ditaHome;
+
+my $buildOpt = "";
+
+# If -t is specified, find the toolkits by locating the toolkit models
+my @toolkitDirs = ();
+if ($opts{'toolkit-path'}) {
+    my @dirs_searched = ();
+    my @dirs = split($toolkitPathSeparator, $toolkitPath);
+    for my $dir (@dirs) {
+        # test for a toolkit directory
+        SPLDie(1, SPL::Msg::NOT_A_DIR_OR_DOESNT_EXIST($dir))
+            if !-d $dir;
+        push(@dirs_searched, $dir);
+        if (-e "$dir/toolkit.xml") {
+            push(@toolkitDirs, realpath($dir));
+        } else {
+            # test for a directory of toolkit directories
+            opendir(my $handle, $dir) ||
+                SPLDie(1, SPL::Msg::CANNOT_OPEN_FILE_FOR_READING("$dir ($!)"));
+            my @subdirs = grep {/^[^\.]/ && -d "$dir/$_"} readdir($handle);
+            for my $subdir (@subdirs) {
+                push(@dirs_searched, "$dir/$subdir");
+                if (-e "$dir/$subdir/toolkit.xml") {
+                    push(@toolkitDirs, realpath("$dir/$subdir"));
+                }
+            }
+            closedir($handle);
+        }
+    }
+    if ($#toolkitDirs < 0) {
+        SPLDie(1, SPL::Msg::NO_TOOLKIT_MODEL("@dirs_searched"));
+    }
+}
+# If -i mode is used with no indexing, make sure the toolkit model exists
+elsif ($opts{'no-toolkit-indexing'}) {
+    if (!-e "$toolkitDir/toolkit.xml") {
+        SPLDie(1, SPL::Msg::NO_TOOLKIT_MODEL($toolkitDir));
+    }
+    push(@toolkitDirs, $toolkitDir);
+}
+# -i mode with indexing: run spl-make-toolkit to ensure the index is up-to-date
+else {
+    my $indexCmd = "${binDir}/spl-make-toolkit -i '${toolkitDir}'${mixedModeArgs}";
+    # dependency-scan: ignore the following line
+    $rc = system("${indexCmd}");
+    $rc = $rc >> 8;
+    SPLDie(1, SPL::Msg::SYSTEM_FAILED('spl-make-doc', 'spl-make-toolkit', $rc)) if ($rc);
+
+    # If there are no sources in the toolkit, the indexer will return w/o error,
+    # but the index file will not be created.
+    if (!-e "$toolkitDir/toolkit.xml") {
+        SPLStdErrLn(SPL::Msg::NO_INDEX_GENERATED);
+        exit(0);
+    }
+    push(@toolkitDirs, $toolkitDir);
+}
+
+# Now that we know that the toolkit model exists
+# create directories for the doc output.
+
+# If the output directory doesn't exist, create it
+if (!-e $outputDir) {
+    $rc = system("mkdir -p '${outputDir}' >/dev/null 2>&1");
+    $rc = $rc >> 8;
+    SPLDie(1, SPL::Msg::CANNOT_CREATE_DIRECTORY($outputDir)) if ($rc);
+}
+
+# Create temp directory for holding source models
+if (!-e $tempDir) {
+    $rc = system("mkdir '${tempDir}' >/dev/null 2>&1");
+    $rc = $rc >> 8;
+    SPLDie(1, SPL::Msg::CANNOT_CREATE_DIRECTORY($tempDir)) if ($rc);
+}
+
+# Run spl-make-toolkit to generate the source model(s)
+SPLStdOutLn(SPL::Msg::USING_DIRECTORY($outputDir));
+my $toolkitNum = 0;
+my $toolkitDirList = "";
+for my $dir (@toolkitDirs) {
+    $toolkitDirList .= $toolkitPathSeparator if $toolkitNum > 0;
+    $toolkitDirList .= "'${dir}'";
+    $toolkitNum++;
+    my $srcModelDir = "$tempDir/$toolkitNum";
+    if (!-e $srcModelDir) {
+        $rc = system("mkdir '${srcModelDir}' >/dev/null 2>&1");
+        $rc = $rc >> 8;
+        SPLDie(1, SPL::Msg::CANNOT_CREATE_DIRECTORY($srcModelDir)) if ($rc);
+    }
+
+    my $cmd = "${binDir}/spl-make-toolkit -i '${dir}' --gen-source-model '${srcModelDir}'";
+    SPLStdOutLn(SPL::Msg::GENERATING_SOURCE_MODEL($dir)) if ($opts{'verbose-mode'});
+    # dependency-scan: ignore the following line
+    $rc = system("${cmd}");
+    $rc = $rc >> 8;
+    SPLDie(1, SPL::Msg::SYSTEM_FAILED('spl-make-doc', 'spl-make-toolkit', $rc)) if ($rc);
+}
+
+SPLStdOutLn(SPL::Msg::GENERATING_DOCUMENTS);
+SPLStdOutLn(SPL::Msg::GENERATING_DITA_DOCUMENTS) if ($opts{'verbose-mode'});
+
+initDitaOT($ditaHome);
+
+# Always make sure the output dir is fully qualified
+$outputDir = realpath($outputDir);
+
+my $options = $opts{'toolkit-path'} ?
+    "\"-t ${toolkitDirList}\"" :
+    "\"-i '${toolkitDir}'\"";
+$options .= " \"--author ${author}\"" if($author ne '');
+$options .= " \"--check-tags\"" if ($opts{'check-tags'});
+$options .= " \"--copy-image-files\"" if ($opts{'copy-image-files'});
+$options .= " \"--doc-title ${docTitle}\"" if ($opts{'doc-title'});
+$options .= " \"--image-format ${imageFormat}\"";
+$options .= " \"--include-all\"" if ($opts{'include-all'});
+$options .= " \"--include-composite-operator-diagram\"" if ($opts{'include-composite-operator-diagram'});
+$options .= " \"--include-excluded-artifacts\"" if ($opts{'include-excluded-artifacts'});
+$options .= " \"--include-function-set-header\"" if ($opts{'include-function-set-header'});
+$options .= " \"--include-private-artifacts\"" if ($opts{'include-private-artifacts'});
+$options .= " \"--include-source\"" if ($opts{'include-source'});
+$options .= " \"--output-directory '${outputDir}'\"";
+$options .= " \"--output-format ${outputFormat}\"";
+$options .= " \"--suppress-primitive-operator-diagram\"" if ($opts{'suppress-primitive-operator-diagram'});
+$options .= " \"--suppress-reference-docs\"" if ($opts{'suppress-reference-docs'});
+$options .= " \"-v\"" if ($opts{'verbose-mode'});
+$options .= " \"--warn-no-comments\"" if ($opts{'warn-no-comments'});
+$options .= " \"--warn-on-cross-link-error\"" if ($opts{'warn-on-cross-link-error'});
+
+# Use embedded Java in install image.
+my $javaPath = SPLGetIBMJavaPath();
+my $javaVM = $javaPath . "/java";
+my $javaArgs = "${classPath} -Djava.awt.headless=true -enableassertions ${classInvocation} ${options}";
+print "java cmd: $javaVM $javaArgs\n" if ($opts{'verbose-mode'});
+$rc = system("$javaVM $javaArgs");
+$rc = $rc >> 8;
+SPLDie(1, SPL::Msg::SYSTEM_FAILED('spl-make-doc', 'java', $rc)) if ($rc);
+
+if (!$keepDitaFiles) {
+    # Remove the dita files
+    SPLStdOutLn(SPL::Msg::REMOVING_DITA_DOCUMENTS) if ($opts{'verbose-mode'});
+    if (-e $ditaDir) {
+        $rc = system("rm -fr '${ditaDir}' >/dev/null 2>&1");
+        $rc = $rc >> 8;
+        SPLDie(1, SPL::Msg::CANNOT_REMOVE_DIRECTORY($ditaDir, $rc)) if ($rc);
+    }
+}
+
+if (-e $tempDir && !$ENV{'STREAMS_MAKE_DOC_SAVE_TEMP'}) {
+    $rc = system("rm -fr '${tempDir}' >/dev/null 2>&1");
+    $rc = $rc >> 8;
+    SPLDie(1, SPL::Msg::CANNOT_REMOVE_DIRECTORY($tempDir, $rc)) if ($rc);
+}
+
+sub initDitaOT($)
+{
+    # ANT is shipped with the streams install.  Initialize the ANT env vars to use that
+    my ($ditaHome) = @_;
+    my $antOpts = "-Xmx512m -Djavax.xml.transform.TransformerFactory=net.sf.saxon.TransformerFactoryImpl";
+    $ENV{'ANT_OPTS'} = $antOpts;
+    my $antHome = "$ditaHome/tools/ant";
+    $ENV{'ANT_HOME'} = $antHome;
+    my $path = $ENV{'PATH'};
+    $ENV{'PATH'} = "${antHome}/bin:${path}";
+    my $classPath = ($ENV{'CLASSPATH'}) ? ":$ENV{'CLASSPATH'}" : "";
+    $ENV{'CLASSPATH'} = "${ditaHome}/lib/saxon/saxon9.jar:${ditaHome}/lib/saxon/saxon9-dom.jar:${ditaHome}/lib:${ditaHome}/lib/dost.jar:${ditaHome}/lib/commons-codec-1.4.jar:${ditaHome}/lib/resolver.jar:${ditaHome}/lib/icu4j.jar${classPath}";
+}

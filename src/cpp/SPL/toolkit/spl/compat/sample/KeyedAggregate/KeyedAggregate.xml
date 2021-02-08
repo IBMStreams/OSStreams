@@ -1,0 +1,76 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description>Handle duplicate keys for a Sum.</description>
+      <customOutputFunctions>
+        <customOutputFunction>
+          <name>KeyedAggregation</name>
+          <function>
+            <description>Return given attribute from some tuple</description>
+            <prototype><![CDATA[ <any T> T Any (T v) ]]></prototype>
+          </function>
+          <function>
+            <description>Return given attribute from the last tuple in a group</description>
+            <prototype><![CDATA[ <any T> T Last (T v) ]]></prototype>
+          </function>
+          <function>
+            <description>Return given attribute from the first tuple in a group</description>
+            <prototype><![CDATA[ <numeric T> T Sum(T v)]]></prototype>
+          </function>
+          <function>
+            <description>Pass through unchanged</description>
+            <prototype><![CDATA[ <any T> T None (T v) ]]></prototype>
+          </function>
+        </customOutputFunction>
+      </customOutputFunctions>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>AggregationKey</name>
+        <description>Which attributes should be summed?</description>
+        <optional>false</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Attribute</expressionMode>
+      </parameter>
+      <parameter>
+        <name>ReplacementKey</name>
+        <description>Which attributes should be replaced?</description>
+        <optional>false</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Attribute</expressionMode>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <outputFunctions>
+          <default>None</default>
+          <type>KeyedAggregation</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Free</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

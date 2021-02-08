@@ -1,0 +1,241 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use BarrierCommon;
+    BarrierCommon::verify($model);
+
+    my $numInputPorts = $model->getNumberOfInputPorts();
+    my $numParameters = $model->getNumberOfParameters();
+    my @parameters = $model->getParameters();
+    my $bufferSize = $model->getParameterByName("bufferSize");
+
+    $bufferSize = $bufferSize->getValueAt(0)->getCppExpression() if $bufferSize;
+
+    my $seenPartitionBy = 0;
+    my @partitions;
+    for (my $i = 0; $i < $numParameters; $i++) {
+        my $p = $model->getParameterAt($i);
+        my $pName = $p->getName();
+        if ($pName =~ /^partitionByLHS$/) {
+            $seenPartitionBy = 1;
+            $partitions[0] = $p;
+        } elsif ($pName =~ /^partitionByRHS$/) {
+            $seenPartitionBy = 1;
+            $partitions[$numInputPorts-1] = $p;
+        } elsif ($pName =~ /^partitionBy(\d+)$/) {
+            $seenPartitionBy = 1;
+            $partitions[$1] = $p;
+        }
+    }
+
+    # windowing/partition support
+    my @partitionByArgs;
+    if($seenPartitionBy) {
+        for (my $i = 0; $i < $numParameters; $i++) {
+            push @partitionByArgs, SPL::CodeGen::getParameterCppInitializer ($partitions[$i]);
+        }
+    }
+
+    my $assignments = SPL::CodeGen::getOutputTupleCppInitializer($model->getOutputPortAt(0));
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+MY_OPERATOR::MY_OPERATOR()
+: MY_BASE_OPERATOR()
+{
+    <%if ($bufferSize) {%>
+        _bufferSize = <%=$bufferSize%>;
+        if (!_bufferSize)
+            _bufferSize = 1;
+    <%}
+    if ($seenPartitionBy) {
+        for (my $i = 0; $i < $numInputPorts; $i++) {
+            my $name = $model->getInputPortAt($i)->getCppTupleName();%>
+            <%=$name%>.clear();
+        <%}
+    }%>
+}
+
+<%if ($bufferSize) {%>
+void MY_OPERATOR::prepareToShutdown()
+{
+    _notFull.broadcast();
+}
+<%}%>
+
+MY_OPERATOR::~MY_OPERATOR()
+{
+    // Delete any remaining tuples in the windows
+    <%if ($seenPartitionBy) {%>
+        MapType::iterator it;
+        for (it = Partitions.begin(); it != Partitions.end(); it++) {
+            OneQueueSet& q = it->second;
+            for (uint32_t i = 0; i < <%=$numInputPorts%>; i++) {
+                DequeType& d = q._tuples[i];
+                for (DequeType::iterator it2 = d.begin(); it2 != d.end(); it2++)
+                    delete *it2;
+            }
+        }
+    <%} else {%>
+        for (uint32_t i = 0; i < <%=$numInputPorts%>; i++) {
+            DequeType& d = Tuples._tuples[i];
+            for (DequeType::iterator it = d.begin(); it != d.end(); it++)
+                delete *it;
+        }
+    <%}%>
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+    const Tuple *inputTuples[<%=$numInputPorts%>];
+    {
+        AutoMutex am(_mutex);
+        <%if ($seenPartitionBy) {%>
+            MapType::iterator it;
+            switch (port) {
+                <%for (my $i = 0; $i < $numInputPorts; $i++) {
+                    my $name = $model->getInputPortAt($i)->getCppTupleName();
+                    my $args = $partitionByArgs[$i];%>
+                    case <%=$i%> : {
+                        const IPort<%=$i%>Type& <%=$name%> =
+                            static_cast<const IPort<%=$i%>Type&>(tuple);
+                        PartitionByType partition(<%=$args%>);
+                        it = Partitions.find (partition);
+                        if (it == Partitions.end()) {
+                            it = Partitions.insert(
+                                    MapType::value_type(partition, OneQueueSet())).first;
+                        }
+                    }
+                    break;
+                <%}%>
+                default : assert(!"cannot happen"); break;
+            }
+            // Note that this intentionally hides the member of the same name.
+            OneQueueSet& Tuples = it->second;
+        <%}
+        if ($bufferSize) {%>
+            // Do we have to wait?
+            while (!getPE().getShutdownRequested() &&
+                    Tuples._tuples[port].size() == _bufferSize) {
+                <%print "Tuples._waitCount++;" if $seenPartitionBy;%>
+                _notFull.wait(_mutex);
+                <%print "Tuples._waitCount--;" if $seenPartitionBy;%>
+            }
+            if (getPE().getShutdownRequested())
+                return;
+            // Okay, there is a spot for us
+        <%}%>
+        if (Tuples._tuples[port].empty())
+            Tuples._nonEmptyQueues++;
+        Tuples._tuples[port].push_back (tuple.clone());
+        if (Tuples._nonEmptyQueues != <%=$numInputPorts%>)
+            return;
+
+        <%if ($bufferSize) {%>
+            bool needSignal = false;
+        <%}%>
+        for (uint32_t i = 0; i < <%=$numInputPorts%>; i++) { // clean up
+            DequeType& d = Tuples._tuples[i];
+            inputTuples[i] = d.front();
+            <%if ($bufferSize) {%>
+                if (d.size() == _bufferSize)
+                    needSignal = true;
+            <%}%>
+            d.pop_front();
+            if (d.empty())
+                Tuples._nonEmptyQueues--;
+        }
+        <%if ($seenPartitionBy) {%>
+            <%if ($bufferSize) {%>
+                if (Tuples._nonEmptyQueues == 0 && Tuples._waitCount == 0)
+            <%} else {%>
+                if (Tuples._nonEmptyQueues == 0)
+            <%}%>
+                    Partitions.erase(it);
+        <%}%>
+        <%if ($bufferSize) {%>
+            if (needSignal)
+                _notFull.broadcast();
+        <%}%>
+    }
+
+    // Now we can submit the output tuple and delete the input tuples
+    <%for (my $i = 0; $i < $numInputPorts; $i++) {
+        my $name = $model->getInputPortAt($i)->getCppTupleName();%>
+        const IPort<%=$i%>Type& <%=$name%> =
+            static_cast<const IPort<%=$i%>Type&>(*inputTuples[<%=$i%>]);
+    <%}%>
+
+    OPort0Type otuple (<%=$assignments%>);
+    submit (otuple, 0);
+
+    // Now delete the saved input tuples
+    for (uint32_t i = 0; i < <%=$numInputPorts%>; i++)
+        delete inputTuples[i];
+}
+
+<% if ($isInConsistentRegion or $ckptKind ne "none") {%>
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    <%if ($seenPartitionBy) {%>
+        ckpt << Partitions;
+    <%} else {%>
+        ckpt << Tuples;
+    <%}%>
+}
+
+void MY_OPERATOR::resetCommon()
+{
+    <%if ($seenPartitionBy) {%>
+        MapType::iterator it;
+        for (it = Partitions.begin(); it != Partitions.end(); it++) {
+            OneQueueSet& q = it->second;
+            q.resetToInitialState();
+        }
+        Partitions.clear();
+    <%} else {%>
+        Tuples.resetToInitialState();
+    <%}%>
+}
+
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    // Clear up queues, then restore checkpoint
+    resetCommon();
+    <%if ($seenPartitionBy) {%>
+        ckpt >> Partitions;
+    <%} else {%>
+        ckpt >> Tuples;
+    <%}%>
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    AutoMutex am(_mutex);
+    resetCommon();
+}
+<% } %>
+
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

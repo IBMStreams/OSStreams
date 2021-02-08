@@ -1,0 +1,71 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use DirectoryScanCommon;
+    DirectoryScanCommon::verify($model);
+    my @includes;
+    push @includes, "#include <SPL/Runtime/Common/Metric.h>";
+    #consistent region support
+    my $crContext = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $isInConsistentRegion = $crContext ? 1 : 0;
+    my $isTrigger = $crContext ? $crContext->isTriggerOperator() : 0;
+    if ($isInConsistentRegion) {
+        push @includes, "#include <SPL/Runtime/Operator/State/StateHandler.h>";
+        push @includes, "#include <SPL/Runtime/Operator/State/ConsistentRegionContext.h>";
+    }
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+%>
+
+#include <SPL/Runtime/Common/Metric.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+<%SPL::CodeGen::headerPrologue($model, \@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR<%if ($isInConsistentRegion or $ckptKind ne "none") {%>, public StateHandler<%}%>
+{
+public:
+   MY_OPERATOR();
+
+   virtual void process(uint32_t index);
+
+   virtual void allPortsReady();
+   virtual void getCheckpoint(NetworkByteBuffer & opstate);
+   virtual void restoreCheckpoint(NetworkByteBuffer & opstate);
+
+<% if ($isInConsistentRegion) { %>
+   // Consistent region support
+   virtual void checkpoint(Checkpoint & ckpt);
+   virtual void reset(Checkpoint & ckpt);
+   virtual void resetToInitialState();
+<% } %>
+private:
+   void initializeFileCreationTimes();
+
+   typedef std::tr1::unordered_map<std::string, timespec> FileInfoMapType;
+   FileInfoMapType _fileCreationTimes;
+   Metric &_numDirectoryScans;
+   Mutex _mutex;
+
+<% if ($isInConsistentRegion) { %>
+   ConsistentRegionContext *_crContext;
+   bool _reset;
+<% } %>
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

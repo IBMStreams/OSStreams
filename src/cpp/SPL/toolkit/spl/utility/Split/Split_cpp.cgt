@@ -1,0 +1,144 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use SplitCommon;
+    SplitCommon::verify($model);
+    my $numOutputPorts = $model->getNumberOfOutputPorts();
+    my $inputPort = $model->getInputPortAt(0);
+    my $inputPortName = $inputPort->getCppTupleName();
+    my $index = $model->getParameterByName("index");
+    my $file = $model->getParameterByName("file");
+    my $key = $model->getParameterByName("key");
+    my $keyType = $key ? $key->getValueAt(0)->getCppType() : "int64_t";
+    my $keySPLType = $key ? $key->getValueAt(0)->getSPLType() : "int64";
+    my $keyExpn = $key ? $key->getValueAt(0)->getCppExpression() : "0";
+    my $iType = $index ? $index->getValueAt(0)->getSPLType() : "int64";
+    my $iCppType = $index ? $index->getValueAt(0)->getCppType() : "int64_t";
+    my $iCppExpn = $index ? $index->getValueAt(0)->getCppExpression() : "0";
+    my $iList = $iType =~ /^list/;
+    my $iSigned = $iType =~ /^int/ || $iType =~ /^list<int/;
+    my $optList = 0;
+    if ($iList && $index) {
+        # can we optimize the list?
+        my $splTree = $index->getValueAt(0)->getSPLExpressionTree();
+        $optList = 1 if $splTree->isLiteral();
+    }
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+
+<%if ($key) {%>
+#include <SPL/Toolkit/MapFileParser.h>
+#include <SPL/Runtime/Utility/LogTraceMessage.h>
+#include <boost/filesystem/path.hpp>
+<%}%>
+
+using namespace std;
+
+MY_OPERATOR::MY_OPERATOR()
+: MY_BASE_OPERATOR()
+{
+    SPLAPPTRC(L_DEBUG, "Split startup...", SPL_OPER_DBG);
+<%if ($key) {
+    my $fName = $file->getValueAt(0)->getCppExpression();%>
+    namespace bf = boost::filesystem;
+    bf::path p(<%=$fName%>);
+    if (!p.is_absolute()) {
+        // getDataDirectory will throw an exception if there is no data directory
+        p = getPE().getDataDirectory();
+        p /= (std::string)<%=$fName%>;
+    }
+    _fileName = p.string();
+    SPL::parseMapFile ("Split", getPE(), _fileName, _Map, _Default, _hasDefault);
+<%}%>
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+    // Send the punctuation everywhere
+    forwardWindowPunctuation(punct);
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+    const IPort0Type& <%=$inputPortName%> = static_cast<const IPort0Type&>(tuple);
+<%if ($index) {%>
+    <%if ($optList) {
+        # Handle each expression in the tree
+        my $splTree = $index->getValueAt(0)->getSPLExpressionTree();
+        my $numElements = $splTree->getNumberOfElements();
+        for (my $i = 0; $i < $numElements; $i++) {
+            my $e = $splTree->getLiteralAt($i);
+            my $codeGen = SPL::Operator::Instance::ExpressionTreeCppGenVisitor->new();
+            $codeGen->visit($e);
+            my $code = $codeGen->getCppCode;%>
+            {
+                <%=$iCppType%>::value_type result = <%=$code%>;
+                <%if ($iSigned) {%>
+                    if (result >= 0)
+                <%}%>
+                        submit (tuple, result % <%=$numOutputPorts%>);
+            }
+        <%}
+    } else {%>
+        <%=$iCppType%> result = <%=$iCppExpn%>;
+        <%if ($iList) {%>
+            for (uint32_t i = 0, n = result.size(); i < n; i++) {
+                <%if ($iSigned) {%>
+                    int64_t r = result[i];
+                    if (r < 0)
+                        continue;
+                    submit (tuple, r % <%=$numOutputPorts%>);
+                <%} else {%>
+                    submit (tuple, result[i] % <%=$numOutputPorts%>);
+                <%}%>
+            }
+        <%} else {%>
+            <%if ($iSigned) {%>
+                if (result < 0)
+                    return;
+            <%}%>
+            submit (tuple, result % <%=$numOutputPorts%>);
+        <%}%>
+    <%}%>
+<%} else {%>
+    MapType::const_iterator it = _Map.find (<%=$keyExpn%>);
+    const vector<int64_t> *list = &_Default;
+    if (it == _Map.end()) {
+        if (!_hasDefault) {
+            stringstream key;
+            key.imbue(locale::classic());
+            key << <%=$keyExpn%>;
+            SPLTRACEMSGANDTHROW(SPLRuntimeSplitOperator, L_ERROR, SPL_APPLICATION_RUNTIME_SPLIT_NO_DEFAULT(key.str(), _fileName), SPL_OPER_DBG);
+        }
+    } else
+        list = &it->second;
+
+    // And submit the results
+    for (uint32_t i = 0, n = list->size(); i < n; i++) {
+        int64_t r = (*list)[i];
+        if (r < 0)
+            continue;
+        submit (tuple, r % <%=$numOutputPorts%>);
+    }
+
+<%}%>
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

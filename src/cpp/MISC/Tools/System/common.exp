@@ -1,0 +1,330 @@
+proc spc_send {arg} {
+
+    sleep .1
+    send -s $arg
+
+}
+
+proc abort { } {
+
+    puts stderr "abort..."
+    exit 1 ;
+
+}
+
+proc typematch { command match } {
+
+    #puts "$command"
+    spc_send $command
+    spc_expect_glob "^$match"
+
+}
+
+proc type { command } {
+
+    typematch "$command\r" "$command\r\n"
+
+}
+
+proc type_re { command } {
+
+    spc_send "$command\r"
+    spc_expect_re "^$command\[\r\n\]{2}"
+
+}
+
+proc uniq_id { } {
+
+    set res ""
+
+    for {set i 0} {$i<16} {incr i} {
+
+        set r [expr { int(rand()*16) }]
+        set x [string index "0123456789abcdef" $r]
+        set res "$res$x"
+
+    }
+
+    return $res
+
+}
+
+proc default_value { value def } {
+
+    if { $value == "" } then {
+
+        return $def
+
+    } else {
+
+        return $value
+
+    }
+
+}
+
+proc getenvdef { name def } {
+
+    global env
+
+    set bla [array names env $name]
+
+    if { [llength $bla] > 0 } then {
+
+        return $env($name)
+
+    }
+
+    return $def
+
+}
+
+proc getenv { name } {
+
+    return [getenvdef $name ""]
+
+}
+
+proc max { a b } {
+
+    if { $a > $b } {
+
+        return $a
+
+    } else {
+
+        return $b
+
+    }
+
+}
+
+proc prepare_shell { } {
+
+    spc_send "ping?\r"
+    expect default abort "pong!\r\n> $"
+
+}
+
+proc export_var { name value } {
+
+    type "export $name=\"$value\""
+    spc_expect_re "^> $"
+
+}
+
+proc unexport_var { name } {
+
+    export_var $name ""
+
+}
+
+proc transfer_env_name { name } {
+
+    set value [getenv "$name"]
+    export_var $name $value
+
+}
+
+proc transfer_env { } {
+
+    transfer_env_name "STREAMS_INSTANCE_ID"
+    transfer_env_name "LD_LIBRARY_PATH"
+
+}
+
+proc start_shell { } {
+
+    global spawn_id
+    global env
+
+    spawn ./minishell.pl
+    prepare_shell
+
+    #transfer_env
+
+}
+
+proc expect_r { pattern } {
+
+    global timeout
+    global expect_out
+
+    set got_it 0
+    set retry $timeout
+    set prev_timeout $timeout
+    set timeout 1
+
+    while { ! $got_it && $retry > 0 } {
+
+        set got_it 1
+
+        expect timeout {
+            set got_it 0
+        } default abort $pattern
+
+        set retry [expr $retry - 1]
+
+    }
+
+    set timeout $prev_timeout
+
+    if { ! $got_it } {
+
+        abort
+
+    }
+
+}
+
+proc type_expect_glob_r { cmd pattern } {
+
+    global timeout
+    global expect_out
+
+    set got_it 0
+    set retry [expr $timeout / 5]
+    set prev_timeout $timeout
+    set timeout 5
+
+    while { ! $got_it && $retry > 0 } {
+
+        spc_send "$cmd\r"
+        #type $cmd
+
+        set got_it 1
+
+        expect timeout {
+
+            set got_it 0
+            # flush buffer
+            expect "^*$"
+
+        } default abort $pattern
+
+        set retry [expr $retry - 1]
+
+    }
+
+    set timeout $prev_timeout
+
+    if { ! $got_it } {
+
+        abort
+
+    }
+
+}
+
+proc type_expect_glob_re { cmd pattern } {
+
+    global timeout
+    global expect_out
+
+    set got_it 0
+    set retry [expr $timeout / 5]
+    set prev_timeout $timeout
+    set timeout 5
+
+    while { ! $got_it && $retry > 0 } {
+
+        spc_send "$cmd\r"
+        #type $cmd
+
+        set got_it 1
+
+        expect timeout {
+
+            set got_it 0
+            # flush buffer
+            expect "^*$"
+
+        } default {
+
+          abort
+
+        } -re $pattern
+
+        set retry [expr $retry - 1]
+
+    }
+
+    set timeout $prev_timeout
+
+    if { ! $got_it } {
+
+        abort
+
+    }
+
+}
+
+proc spc_expect_re { pattern } {
+
+    global expect_out
+
+    expect timeout {
+
+        abort
+
+    } default {
+
+        abort
+
+    } -re $pattern
+
+}
+
+proc spc_expect_glob { pattern } {
+
+    global expect_out
+
+    expect timeout {
+
+        abort
+
+    } default {
+
+        abort
+
+    } -glob $pattern
+
+}
+
+proc spc_expect_exact { pattern } {
+
+    global expect_out
+
+    expect timeout {
+
+        abort
+
+    } default {
+
+        abort
+
+    } -exact $pattern
+
+}
+
+# Spawns a remote-run process for remote nodes, or local for localhost
+proc spc_spawn { spc_host spc_pgm args } {
+
+    global spawn_id
+
+    if { $spc_host != "localhost" } then {
+        spawn "../bin/remote-run.sh" $spc_host $spc_pgm $args
+    } else {
+        spawn sh -c "$spc_pgm $args"
+    }
+}
+
+match_max -d 65536
+set timeout 45
+lappend send_slow [default_value [getenv "EXPECT_TYPE_RATE"] 1]
+lappend send_slow [default_value [getenv "EXPECT_TYPE_SPEED"] 0.1]
+
+set expect_log_file [getenv "EXPECT_LOG_FILE"]
+if { $expect_log_file != "" } {
+    exp_internal -f $expect_log_file 0
+}

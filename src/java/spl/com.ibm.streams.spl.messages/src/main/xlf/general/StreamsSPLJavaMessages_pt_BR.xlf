@@ -1,0 +1,1469 @@
+<?xml version="1.0" encoding="utf-8"?>
+  <xliff version="1.1" xmlns="urn:oasis:names:tc:xliff:document:1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.1 ../../../../../../../etc/xliff/xliff-core-1.1.xsd">
+    <file datatype="plaintext" original="root.txt" source-language="en" target-language="pt-BR" xml:space="preserve">
+      <body>
+        <!-- =============================================================== -->
+        <!-- TRNOTE Please refer to the "XML Localization Interchange File   -->
+        <!-- Format (.xlf) files" section in the translation instructions    -->
+        <!-- file for more information on this file.                         -->
+        <!--                                                                 -->
+        <!-- NLS_ENCODING=UTF-8                                              -->
+        <!-- TRNOTE Return this file using the UTF-8 encoding.               -->
+        <!--                                                                 -->
+        <!-- NLS_MESSAGEFORMAT_ALL                                           -->
+        <!-- TRNOTE Because of a behavior with the Java MessageFormat class, -->
+        <!-- any message in the Java Resource Bundle that has a {0} string   -->
+        <!-- in it, must escape all single quotes in that message. To escape -->
+        <!-- the single quote, just insert another single quote before it.   -->
+        <!-- For example, the following message                              -->
+        <!--    "Can't find card with name [{0}]"                            -->
+        <!-- would be changed to                                             -->
+        <!--    "Can''t find card with name [{0}]"                           -->
+        <!--                                                                 -->
+        <!-- TRNOTE Do not translate the text between the curly braces. This -->
+        <!-- text is reserved and should not be translated. For example,     -->
+        <!-- the text in the following curly braces should not be translated:-->
+        <!--    {0,number} {0,number,percent} {0,date} {0,time}              -->
+        <!--                                                                 -->
+        <!-- TRNOTE For the target language setting, please use the          -->
+        <!-- appropriate value for your locale as indicated in parenthesis:  -->
+        <!--   Danish (da), Dutch (nl), Finnish (fi), French (fr),           -->
+        <!--   German (de), Italian (it), Norwegian - Bokmal (no),           -->
+        <!--   Brazilian Portuguese (pt-BR), Portuguese (pt-PT),             -->
+        <!--   Spanish (es), Swedish (sv), Czech (cs), Hungarian (hu),       -->
+        <!--   Polish (pl), Russian (ru), Simplified Chinese (zh),           -->
+        <!--   Traditional Chinese (zh-TW), Japanese (ja), Korean (ko),      -->
+        <!--   Arabic (ar), Hebrew (he), Slovakian (sk), Slovenian (sl),     -->
+        <!--   Thai (th), Turkish (tr)                                       -->
+        <!--                                                                 -->
+        <!-- TRNOTE Please start translating the following entries.          -->
+        <!-- =============================================================== -->
+
+        <group id="StreamsSPLJavaMessages" restype="table" xml:space="preserve">
+
+          <!-- Compiler messages -->
+          <!-- CDISP7300-7500 -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7302E" extraData="SPL_JAVA_OCCI_DEPENDS_PARAMS" resname="CDISP7302E" xml:space="preserve">
+            <source xml:lang="en">Operator parameter {0} requires parameter {1}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="parameter"/>
+              <REPLACEMENT arg="{1}" value="parameter"/>
+              <EXPLANATION>One parameter requires another parameter.</EXPLANATION>
+              <USER_RESPONSE>Add the required parameter.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O parâmetro do operador {0} requer o parâmetro {1}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7303E" extraData="SPL_JAVA_OCCI_EXPARAMS" resname="CDISP7303E" xml:space="preserve">
+            <source xml:lang="en">Operator parameter {1} cannot be set when parameter {0} is set.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="parameter"/>
+              <REPLACEMENT arg="{1}" value="parameter"/>
+              <EXPLANATION>The two parameters may not be used together.</EXPLANATION>
+              <USER_RESPONSE>Remove one of the parameters.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O parâmetro do operador {1} não pode ser configurado quando o parâmetro {0} estiver configurado.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7304E" extraData="SPL_JAVA_OCCI_MISSING_ATTR" resname="CDISP7304E" xml:space="preserve">
+            <source xml:lang="en">Required attribute {0} is missing from schema {1}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="attribute"/>
+              <REPLACEMENT arg="{1}" value="schema"/>
+              <EXPLANATION>The schema requires the specified attribute.</EXPLANATION>
+              <USER_RESPONSE>Add the missing attribute.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O atributo necessário {0} está ausente do esquema {1}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7305E" extraData="SPL_JAVA_OCCI_MISSING_PORT_ATTR" resname="CDISP7305E" xml:space="preserve">
+            <source xml:lang="en">Required attribute {0} is missing from schema {1} for port {2}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="attribute"/>
+              <REPLACEMENT arg="{1}" value="schema"/>
+              <REPLACEMENT arg="{2}" value="port"/>
+              <EXPLANATION>The schema requires the specified attribute.</EXPLANATION>
+              <USER_RESPONSE>Add the missing attribute.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O atributo necessário {0} está ausente do esquema {1} para a porta {2}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7306E" extraData="SPL_JAVA_OCCI_SCHEMA_MISMATCH" resname="CDISP7306E" xml:space="preserve">
+            <source xml:lang="en">Schema {3} for port {2} does not match schema {1} for port {0}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="schema"/>
+              <REPLACEMENT arg="{2}" value="port"/>
+              <REPLACEMENT arg="{3}" value="schema"/>
+              <EXPLANATION>The two schemas must match.</EXPLANATION>
+              <USER_RESPONSE>Change one schema to match the other.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O esquema {3} para a porta {2} não corresponde ao esquema {1} para a porta {0}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7307E" extraData="SPL_JAVA_OCCI_WINDOW_TYPE" resname="CDISP7307E" xml:space="preserve">
+            <source xml:lang="en">Input port {0} is required to be have window type {1} but has type {2}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="input port"/>
+              <REPLACEMENT arg="{1}" value="window type"/>
+              <REPLACEMENT arg="{2}" value="window type"/>
+              <EXPLANATION>The port must have a certain window type.</EXPLANATION>
+              <USER_RESPONSE>Change window type to the required type.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A porta de entrada {0} precisa ter o tipo de janela {1}, mas tem o tipo {2}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7308E" extraData="SPL_JAVA_OCCI_WRONG_ATTR_TYPE" resname="CDISP7308E" xml:space="preserve">
+            <source xml:lang="en">Attribute {0} is required to be of type {1} but has type {2}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="attribute"/>
+              <REPLACEMENT arg="{1}" value="type"/>
+              <REPLACEMENT arg="{2}" value="type"/>
+              <EXPLANATION>The attribute must have a certain type.</EXPLANATION>
+              <USER_RESPONSE>Change attribute type to the required type.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O atributo {0} precisa ser do tipo {1}, mas tem o tipo {2}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7309E" extraData="SPL_JAVA_CTS_RUNTIME_ONLY" resname="CDISP7309E" xml:space="preserve">
+            <source xml:lang="en">Not supported at SPL compile time</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>An API method was used at compile time.  The method is available only at runtime.</EXPLANATION>
+              <USER_RESPONSE>Remove the use of the method.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Não suportado no tempo de compilação SPL</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7310E" extraData="SPL_JAVA_OCT_MODEL_FILE" resname="CDISP7310E" xml:space="preserve">
+            <source xml:lang="en">Java primitive {0} operator model file {1} can not be read.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="primitive"/>
+              <REPLACEMENT arg="{1}" value="model file"/>
+              <EXPLANATION>The model file does not exist or cannot be read.</EXPLANATION>
+              <USER_RESPONSE>Verify that the file exists.  Check the permissions on the file.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O arquivo de modelo {0} do operador {1} primitivo Java não pode ser lido.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7311E" extraData="SPL_JAVA_NO_TOOLKIT_ROOT" resname="CDISP7311E" xml:space="preserve">
+            <source xml:lang="en">Internal error: No current toolkit root directory</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>No toolkit root directory was found.</EXPLANATION>
+              <USER_RESPONSE>This is an unexpected error condition.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Erro interno: nenhum diretório raiz do kit de ferramentas atual</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7312E" extraData="SPL_JAVA_OCCI_ATTR_TYPE" resname="CDISP7312E" xml:space="preserve">
+            <source xml:lang="en">Operator does not support {0} for attribute {1}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="type"/>
+              <REPLACEMENT arg="{1}" value="attribute"/>
+              <EXPLANATION>The operator supports only certain types for the attribute.</EXPLANATION>
+              <USER_RESPONSE>Change the type of the attribute to one of the support types.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O operador não suporta {0} para o atributo {1}.</target>
+          </trans-unit>
+
+          <!-- From com.ibm.streams.operator.spl.internal -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7313E" extraData="AMP_CONCRETE" resname="CDISP7313E" xml:space="preserve">
+            <source xml:lang="en">Annotation {0} requires {1} to be a non-abstract class.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="class"/>
+              <EXPLANATION>The annotation may be used only in a concrete class.</EXPLANATION>
+              <USER_RESPONSE>Make the class concrete.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação {0} requer que {1} seja uma classe não abstrata.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7314E" extraData="AMP_INSTANCE" resname="CDISP7314E" xml:space="preserve">
+            <source xml:lang="en">Annotation {0} requires {1} to be an instance method.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="method"/>
+              <EXPLANATION>The annotation requires an instance method.</EXPLANATION>
+              <USER_RESPONSE>Make the method an instance method.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação {0} requer que {1} seja um método de instância.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7315E" extraData="AMP_PUBLIC" resname="CDISP7315E" xml:space="preserve">
+            <source xml:lang="en">Annotation {0} requires {1} to be public.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="language element"/>
+              <EXPLANATION>The language element, such as a class or method, must be public.</EXPLANATION>
+              <USER_RESPONSE>Make the language element public.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação {0} requer que {1} seja público.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7316E" extraData="AMP_SETTER" resname="CDISP7316E" xml:space="preserve">
+            <source xml:lang="en">Annotation {0} requires {1} to be a setter method with a single parameter.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="method"/>
+              <EXPLANATION>The method must be setter with a single parameter.</EXPLANATION>
+              <USER_RESPONSE>Change the method to be a setter method with a single parameter.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação {0} requer que {1} seja um método setter com um único parâmetro.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7317E" extraData="AMP_SPLID" resname="CDISP7317E" xml:space="preserve">
+            <source xml:lang="en">Annotation {0} requires {1} to be a valid SPL identifier.</source>
+            <target xml:lang="pt-BR">A anotação {0} requer que {1} seja um identificador SPL válido.</target>
+          </trans-unit>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="identifier"/>
+              <EXPLANATION>The identifier is not a valid SPL identifier.</EXPLANATION>
+              <USER_RESPONSE>Make the identifier a valid SPL identifier.</USER_RESPONSE>
+            </MSGDOC> -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7318E" extraData="AMP_SPLNS" resname="CDISP7318E" xml:space="preserve">
+            <source xml:lang="en">Annotation {0} requires {1} to be a valid SPL namespace identifier.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="identifier"/>
+              <EXPLANATION>The identifier is not a valid SPL namespace identifier.</EXPLANATION>
+              <USER_RESPONSE>Make the identifier a valid SPL namespace identifier.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação {0} requer que {1} seja um identificador de namespace SPL válido.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7319E" extraData="AMP_STATIC" resname="CDISP7319E" xml:space="preserve">
+            <source xml:lang="en">Annotation {0} requires {1} to be static.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="language element"/>
+              <EXPLANATION>The language element, such as a method or class, must be static.</EXPLANATION>
+              <USER_RESPONSE>Make the language element static.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação {0} requer que {1} seja estático.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7320E" extraData="AMP_VOID" resname="CDISP7320E" xml:space="preserve">
+            <source xml:lang="en">Annotation {0} requires {1} to be a void method.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="method"/>
+              <EXPLANATION>The method must be a void method.</EXPLANATION>
+              <USER_RESPONSE>Make the method a void method.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação {0} requer que {1} seja um método void.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7321E" extraData="CMV_SETTER" resname="CDISP7321E" xml:space="preserve">
+            <source xml:lang="en">Annotation {0} requires {1} to be a setter method with a single parameter with type Metric.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="method"/>
+              <EXPLANATION>The method must be a setter method with a single parameter of type Metric.</EXPLANATION>
+              <USER_RESPONSE>Make the method a setter method with a single parameter of type Metric.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação {0} requer que {1} seja um método setter com um único parâmetro do tipo Métrica.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7322E" extraData="FV_VARARGS" resname="CDISP7322E" xml:space="preserve">
+            <source xml:lang="en">Varargs methods are not supported by annotation {0} : Method {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="method"/>
+              <EXPLANATION>A varargs method may not be used with the annotation.</EXPLANATION>
+              <USER_RESPONSE>Use a method with a fixed number of parameters.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Os métodos Varargs não são suportados pela anotação {0}: método {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7323E" extraData="FV_TYPE" resname="CDISP7323E" xml:space="preserve">
+            <source xml:lang="en">Annotation {0} does not support parameter type {2} for method {1}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="type"/>
+              <REPLACEMENT arg="{2}" value="method"/>
+              <EXPLANATION>The parameter type is not a supported type for the annotation.</EXPLANATION>
+              <USER_RESPONSE>Use a supported parameter type.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação {0} não suporta o tipo de parâmetro {2} para o método {1}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7324E" extraData="OCV_OPERATOR" resname="CDISP7324E" xml:space="preserve">
+            <source xml:lang="en">Annotation {0} requires {1} to implement the Operator interface.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="class"/>
+              <EXPLANATION>The class must implement the Operator interface.</EXPLANATION>
+              <USER_RESPONSE>Change the class to implement the Operator interface.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação {0} requer {1} para implementar a interface do operador.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7325E" extraData="PV_CARDINALITY" resname="CDISP7325E" xml:space="preserve">
+            <source xml:lang="en">Cardinality for annotation {0} for method {1} must be greater than 1 or equal to -1 to represent unbounded.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="method"/>
+              <EXPLANATION>The cardinality for the annotation must be greater than one.</EXPLANATION>
+              <USER_RESPONSE>Change the cardinality to be greater than one, or make it unbounded by setting it to -1.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A cardinalidade para a anotação {0} para o método {1} deve ser maior que 1 ou igual a -1 para representar ilimitado.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7326E" extraData="PV_SINGLE" resname="CDISP7326E" xml:space="preserve">
+            <source xml:lang="en">Cannot set cardinality for annotation {0} for method {1} as the setter method''s type enforces cardinality of 1.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="method"/>
+              <EXPLANATION>The cardinality for the annotation cannot be set.</EXPLANATION>
+              <USER_RESPONSE>Remove the cardinality for the annotation.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Não é possível configurar cardinalidade para a anotação {0} para o método {1}, pois o tipo de método setter aplica cardinalidade de 1.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7327E" extraData="PV_OPTIONAL" resname="CDISP7327E" xml:space="preserve">
+            <source xml:lang="en">Optional attribute for annotation {0} for method {1} must be set to true (or unspecified) if used in conjunction with the @DefaultAttribute annotation.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="method"/>
+              <EXPLANATION>The @DefaultAttribute may by used only with an optional attribute.</EXPLANATION>
+              <USER_RESPONSE>Set the optional attribute to true, or leave it unspecified.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O atributo opcional para a anotação {0} para o método {1} deverá ser configurado como true (ou não especificado) se usado em conjunto com a anotação @DefaultAttribute.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7328E" extraData="PV_DEFAULTATTRIBUTE_SINGLE" resname="CDISP7328E" xml:space="preserve">
+            <source xml:lang="en">Cannot set cardinality for annotation {0} for method {1} as the setter method''s @DefaultAttribute annotation enforces cardinality of 1.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="method"/>
+              <EXPLANATION>The @DefaultAttribute annotation enforces cardinality of one.</EXPLANATION>
+              <USER_RESPONSE>Do not set the cardinality for the annotation.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Não é possível configurar cardinalidade para a anotação {0} para o método {1}, pois a anotação @DefaultAttribute do método setter aplica cardinalidade de 1.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7329E" extraData="PV_DEFAULTATTRIBUTE_NOPARAM" resname="CDISP7329E" xml:space="preserve">
+            <source xml:lang="en">DefaultAttribute annotation can only be used in conjunction with the @Parameter annotation.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The @DefaultAttribute annotation must be used with the @Parameter annotation.</EXPLANATION>
+              <USER_RESPONSE>Use a @Parameter annotation with the @DefaultAttribute annotation.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação DefaultAttribute pode ser usada somente em conjunto com a anotação @Parameter.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7330E" extraData="PV_DEFAULTATTRIBUTE_INVALIDVALUE" resname="CDISP7330E" xml:space="preserve">
+            <source xml:lang="en">Annotation {0} requires {1} to be a valid attribute name.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="identifier"/>
+              <EXPLANATION>The identifier must be a valid attribute name.</EXPLANATION>
+              <USER_RESPONSE>Change the identifier to be a valid attribute name.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação {0} requer que {1} seja um nome de atributo válido.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7331E" extraData="IAV_ICONS_REQUIRES_PRIMITIVEOPERATOR" resname="CDISP7331E" xml:space="preserve">
+            <source xml:lang="en">Icons annotation can only be used in conjunction with the PrimitiveOperator annotation.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The @Icons annotation must be used with the @PrimitiveOperator annotation.</EXPLANATION>
+              <USER_RESPONSE>Remove the use of the @Icons annotation.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A anotação de ícones pode ser usada somente em conjunto com a anotação PrimitiveOperator.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7332E" extraData="PAP_OUTPUT_CARDINALITY_REQUIRED" resname="CDISP7332E" xml:space="preserve">
+            <source xml:lang="en">The cardinality of the output port set must be specified.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The cardinality of the output port set is required.</EXPLANATION>
+              <USER_RESPONSE>Add the cardinality to the output port set.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A cardinalidade do conjunto de portas de saída deve ser especificada.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7333E" extraData="PAP_INPUT_CARDINALITY_REQUIRED" resname="CDISP7333E" xml:space="preserve">
+            <source xml:lang="en">The cardinality of the input port set must be specified.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The cardinality of the input port set is required.</EXPLANATION>
+              <USER_RESPONSE>Add the cardinality to the input port set.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A cardinalidade do conjunto de portas de entrada deve ser especificada.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7334E" extraData="PAP_INVALID_PUNCTUATION_INPUT_PORT" resname="CDISP7334E" xml:space="preserve">
+            <source xml:lang="en">The windowPunctuationInputPort value {0} does not correspond with a valid input port set identifier.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="value"/>
+              <EXPLANATION>The value of the windowPunctuationInputPort must match input port set identifier.</EXPLANATION>
+              <USER_RESPONSE>Change the windowPunctuationInputPort value to be a valid input port set identifier.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O valor windowPunctuationInputPort {0} não corresponde a um identificador de conjunto de portas de entrada válido.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7335E" extraData="PAP_INVALID_INPUT_PORTS" resname="CDISP7335E" xml:space="preserve">
+            <source xml:lang="en">InputPortSet and InputPorts annotations cannot occur on the same element.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>An element has both InputPortSet and InputPorts annotations.</EXPLANATION>
+              <USER_RESPONSE>Either use only InputPortSet, or only InputPorts.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">As anotações InputPortSet e InputPorts não podem ocorrer no mesmo elemento.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7336E" extraData="PAP_INVALID_OUTPUT_PORTS" resname="CDISP7336E" xml:space="preserve">
+            <source xml:lang="en">OutputPortSet and OutputPorts annotations cannot occur on the same element.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>An element has both OutputPortSet and OutputPorts annotations.</EXPLANATION>
+              <USER_RESPONSE>Either use only OutputPortSet, or only OutputPorts.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">As anotações OutputPortSet e OutputPorts não podem ocorrer no mesmo elemento.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7337E" extraData="PAP_DUPLICATE_INPUT_PORT_ID" resname="CDISP7337E" xml:space="preserve">
+            <source xml:lang="en">The id for an input port set must be unique.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The same identifier has been used for more than one input port set.</EXPLANATION>
+              <USER_RESPONSE>Change the identifier for one of the input port sets.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O ID para um conjunto de portas de entrada deve ser exclusivo.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7338E" extraData="PAP_REQUIRE_PUNCTUATION_PRESERVING" resname="CDISP7338E" xml:space="preserve">
+            <source xml:lang="en">The windowPunctuationInputPort attribute can be only set on punctuation preserving output ports.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The windowPunctuationInputPort attribute has been used on an output port which is not punctuation preserving.</EXPLANATION>
+              <USER_RESPONSE>Make the output port punctuation preserving, or remove the windowPunctuationInputPort.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O atributo windowPunctuationInputPort pode ser configurado somente nas portas de saída que preservarem a pontuação.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7339E" extraData="COMPILE_TIME_ERROR" resname="CDISP7339E" xml:space="preserve">
+            <source xml:lang="en">ERROR: {0}</source>
+            <target xml:lang="pt-BR">ERRO: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7340W" extraData="COMPILE_TIME_WARNING" resname="CDISP7340W" xml:space="preserve">
+            <source xml:lang="en">WARNING: {0}</source>
+            <target xml:lang="pt-BR">AVISO: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7341E" extraData="DATA_DIRECTORY_NOT_SPECIFIED" resname="CDISP7341E" xml:space="preserve">
+            <source xml:lang="en">Data directory was not specified at compile time.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>A data directory is needed, but one was not specified at compilation.</EXPLANATION>
+              <USER_RESPONSE>Compile again, and specify a data directory.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O diretório de dados não foi especificado no tempo de compilação.</target>
+          </trans-unit>
+          <!-- TODO this (and following) should be split into singular and plural messages -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7342E" extraData="AO_INVALID_NUMBER_INPUT_PORTS" resname="CDISP7342E" xml:space="preserve">
+            <source xml:lang="en">Operator: {0} requires exactly {1} input port(s).</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <REPLACEMENT arg="{1}" value="number"/>
+              <EXPLANATION>The operator requires a certain number of input ports, but a different number were used.</EXPLANATION>
+              <USER_RESPONSE>Add or remove input ports, so that the required number is used.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O operador: {0} requer exatamente {1} portas de entradas.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7343E" extraData="AO_TOO_FEW_INPUT_PORTS" resname="CDISP7343E" xml:space="preserve">
+            <source xml:lang="en">Operator: {0} requires at least {1} input port(s).</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <REPLACEMENT arg="{1}" value="number"/>
+              <EXPLANATION>The operator requires at least a certain number of input ports, but too few were used.</EXPLANATION>
+              <USER_RESPONSE>Add input ports, so that the required number is used.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O operador: {0} requer pelo menos {1} portas de entrada.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7344E" extraData="AO_INVALID_NUMBER_OUTPUT_PORTS" resname="CDISP7344E" xml:space="preserve">
+            <source xml:lang="en">Operator: {0} requires exactly {1} output port(s).</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <REPLACEMENT arg="{1}" value="number"/>
+              <EXPLANATION>The operator requires a certain number of output ports, but a different number were used.</EXPLANATION>
+              <USER_RESPONSE>Add or remove output ports, so that the required number is used.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O operador: {0} requer exatamente {1} portas de saída.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7345E" extraData="AO_TOO_FEW_OUTPUT_PORTS" resname="CDISP7345E" xml:space="preserve">
+            <source xml:lang="en">Operator: {0} requires at least {1} output port(s).</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <REPLACEMENT arg="{1}" value="number"/>
+              <EXPLANATION>The operator requires at least a certain number of output ports, but too few were used.</EXPLANATION>
+              <USER_RESPONSE>Add output ports, so that the required number is used.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O operador: {0} requer pelo menos {1} portas de saída.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7346E" extraData="VF_INVALID_BLOB_LENGTH" resname="CDISP7346E" xml:space="preserve">
+            <source xml:lang="en">Blob cannot support length of: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="length"/>
+              <EXPLANATION>The blob length is too long.  The maximum length for a blob is 2,147,483,647.</EXPLANATION>
+              <USER_RESPONSE>Change the blob length to 2,147,483,647 or less.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O Blob não suporta o comprimento de: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7347E" extraData="VF_INVALID_COMPLEX_FORMAT" resname="CDISP7347E" xml:space="preserve">
+            <!-- TRNOTE: 'Complex' here refers to a complex number. -->
+            <source xml:lang="en">Complex SPL character format is invalid, expecting: ''(real, imaginary)'', was {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="value"/>
+              <EXPLANATION>An SPL complex number literal value was not in the expected format.</EXPLANATION>
+              <USER_RESPONSE>Change the format of the complex number literal value.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O formato de caractere complexo do SPL é inválido, esperando: ''(real, imaginary)'', era {0}</target>
+          </trans-unit>
+
+          <!-- spl-app-info messages -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7348I" extraData="SPL_APP_INFO_ABSTRACT" resname="CDISP7348I" xml:space="preserve">
+            <source xml:lang="en">Extracts information from an application bundle file.</source>
+            <target xml:lang="pt-BR">Extrai informações de um arquivo de pacote configurável do aplicativo.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7349E" extraData="SPL_APP_INFO_FILE_NOT_EXIST" resname="CDISP7349E" xml:space="preserve">
+            <source xml:lang="en">File {0} does not exist.</source>
+            <target xml:lang="pt-BR">O arquivo {0} não existe.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7350E" extraData="SPL_APP_INFO_UNSUPPORTED_BUNDLE_VERSION" resname="CDISP7350E" xml:space="preserve">
+            <source xml:lang="en">Unsupported bundle version</source>
+            <target xml:lang="pt-BR">Versão do pacote configurável não suportada</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7351E" extraData="SPL_APP_INFO_FILE_ERROR" resname="CDISP7351E" xml:space="preserve">
+            <source xml:lang="en">File error: {0}</source>
+            <target xml:lang="pt-BR">Erro no arquivo: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7352E" extraData="SPL_APP_INFO_BUNDLE_ERROR" resname="CDISP7352E" xml:space="preserve">
+            <source xml:lang="en">Bundle error: {0}</source>
+            <target xml:lang="pt-BR">Erro no pacote configurável: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7353I" extraData="SPL_APP_INFO_HELP_OPTION" resname="CDISP7353I" xml:space="preserve">
+            <!-- TRNOTE: do not translate -h, - -help.  Make sure the description starts at column 36 if possible -->
+            <source xml:lang="en">        -h, --help                 Get (this) usage information.</source>
+            <target xml:lang="pt-BR">        -h, --help                 obtém (estas) informações de uso.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7354I" extraData="SPL_APP_INFO_BUILDID_OPTION" resname="CDISP7354I" xml:space="preserve">
+            <!-- TRNOTE: do not translate - -build-id.  Make sure the description starts at column 36 if possible -->
+            <source xml:lang="en">        --build-id                 Get the build id from this bundle.</source>
+            <target xml:lang="pt-BR">        --build-id                 obtém o ID da compilação a partir deste pacote configurável.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7355I" extraData="SPL_APP_INFO_BUILDDATE_OPTION" resname="CDISP7355I" xml:space="preserve">
+            <!-- TRNOTE: do not translate - -build-date.  Make sure the description starts at column 36 if possible -->
+            <source xml:lang="en">        --build-date               Get the build-date from this bundle.</source>
+            <target xml:lang="pt-BR">        --build-date               obtém a data de construção a partir deste pacote configurável.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7357I" extraData="SPL_APP_INFO_TOOLKITS_OPTION" resname="CDISP7357I" xml:space="preserve">
+            <!-- TRNOTE: do not translate - -toolkits.  Make sure the description starts at column 36 if possible -->
+            <source xml:lang="en">        --toolkits                 List all the toolkits in the bundle and their version number.</source>
+            <target xml:lang="pt-BR">        --toolkits                 lista todos os kits de ferramentas no pacote configurável e seus números de versão.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7358I" extraData="SPL_APP_INFO_FILES_OPTION" resname="CDISP7358I" xml:space="preserve">
+            <!-- TRNOTE: do not translate - -files.  Make sure the description starts at column 36 if possible -->
+            <source xml:lang="en">        --files                    List all the files in the bundle.  This implies --toolkits.</source>
+            <target xml:lang="pt-BR">        --files                    lista todos os arquivos no pacote configurável.  Isso implica --toolkits.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7359I" extraData="SPL_APP_INFO_XML_OPTION" resname="CDISP7359I" xml:space="preserve">
+            <!-- TRNOTE: do not translate - -xml.  Make sure the description starts at column 36 if possible -->
+            <source xml:lang="en">        --xml &lt;outFile>            Emit the application bundle information in machine readable format to the specified file.</source>
+            <target xml:lang="pt-BR">        --xml &lt;outFile>            emite informações do pacote configurável do aplicativo em formato legível por máquina para o arquivo especificado.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7360I" extraData="SPL_APP_INFO_UNBUNDLE_OPTION" resname="CDISP7360I" xml:space="preserve">
+            <!-- TRNOTE: do not translate - -unbundle.  Make sure the description starts at column 36 if possible -->
+            <source xml:lang="en">        --unbundle &lt;dir>           Extract the contents of the bundle into the specified directory.</source>
+            <target xml:lang="pt-BR">        --unbundle &lt;dir>           extrai o conteúdo do pacote configurável no diretório especificado.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISP7361I" extraData="SPL_APP_INFO_EXECUTIONMODE_OPTION" resname="CDISP7361I" xml:space="preserve">
+            <!-- TRNOTE: do not translate - -execution_mode.  Make sure the description starts at column 36 if possible -->
+            <source xml:lang="en">        --execution-mode           The execution mode for which the bundle was compiled; standalone or distributed.</source>
+            <target xml:lang="pt-BR">        --execution-mode           O modo de execução para qual o budle foi compilado; independente ou distribuído.</target>
+          </trans-unit>
+
+          <!-- for historical reasons this is defined out-of-order here -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISP9252I" extraData="SPL_APP_INFO_USAGE" resname="CDISP9252I" xml:space="preserve">
+            <!-- TRNOTE: translate only "usage", "outFile" "dir", and "sabFile" -->
+            <source xml:lang="en">usage: spl-app-info -h, --help | [--build-id][--build-date][--toolkits][--files][--xml &lt;outFile>][--unbundle &lt;dir>] &lt;sabFile></source>
+            <!-- <MSGDOC>
+              <EXPLANATION>This describes the command-line parameters for spl-app-info</EXPLANATION>
+              <USER_RESPONSE>No user action is needed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">uso: spl-app-info -h, --help | [--build-id][--build-date][--toolkits][--files][--xml &lt;outFile>][--unbundle &lt;dir>] &lt;sabFile></target>
+          </trans-unit>
+
+
+          <!-- Runtime messages -->
+          <!-- CDISR5500-5700 -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5500E" extraData="SPL_RUNTIME_INPUT_PORT_DOES_NOT_ALLOW_WINDOW_CONFIG" resname="CDISR5500E" xml:space="preserve">
+            <source xml:lang="en">Input port {0} does not allow any window configuration: {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="port set"/>
+              <EXPLANATION>An input port was configured with a window configuration, but a window configuration is not allowed.</EXPLANATION>
+              <USER_RESPONSE>Remove the window configuration on the input port.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A porta de entrada {0} não permite nenhuma configuração de janela: {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5501E" extraData="SPL_RUNTIME_PORT_WINDOW_TYPE_NOT_EXPECTED" resname="CDISR5501E" xml:space="preserve">
+            <source xml:lang="en">Port {0} window type is {1}.  The expected type is {2}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="window type"/>
+              <REPLACEMENT arg="{2}" value="window type"/>
+              <EXPLANATION>A window type was specified for a port, but a different window type is required.</EXPLANATION>
+              <USER_RESPONSE>Change the window type to the required type.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O tipo de janela da porta {0} é {1}.  O tipo esperado é {2}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5502E" extraData="SPL_RUNTIME_PORT_WINDOW_NOT_PARTITIONED" resname="CDISR5502E" xml:space="preserve">
+            <source xml:lang="en">Port {0} window is not partitioned.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <EXPLANATION>A window is not partitioned, but it is required to be partitioned.</EXPLANATION>
+              <USER_RESPONSE>Change the port to be partitioned.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A janela da porta {0} não está particionada.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5503E" extraData="SPL_RUNTIME_PORT_WINDOW_EVICTION_COUNT_POLICY_NEGATIVE" resname="CDISR5503E" xml:space="preserve">
+            <source xml:lang="en">Port {0} window eviction count policy value {1} is negative.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="value"/>
+              <EXPLANATION>A window eviction count policy must be positive.</EXPLANATION>
+              <USER_RESPONSE>Change the value to a positive value.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O valor da política de contagem de desocupação de janela da porta {0} {1} é negativo.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5504E" extraData="SPL_RUNTIME_PORT_WINDOW_EVICTION_TIME_POLICY_NEGATIVE" resname="CDISR5504E" xml:space="preserve">
+            <source xml:lang="en">Port {0} window eviction time policy value {1} is negative.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="value"/>
+              <EXPLANATION>A window eviction time policy must be positive.</EXPLANATION>
+              <USER_RESPONSE>Change the value to a positive value.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O valor da política de tempo de desocupação de janela da porta {0} {1} é negativo.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5505E" extraData="SPL_RUNTIME_INPUT_PORT_SCHEMA_DOES_NOT_MATCH" resname="CDISR5505E" xml:space="preserve">
+            <source xml:lang="en">Input port schema {0} does not match output port schema {1}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="schema"/>
+              <REPLACEMENT arg="{1}" value="schema"/>
+              <EXPLANATION>The input port schema must match the output port schema, but it does not match.</EXPLANATION>
+              <USER_RESPONSE>Change one of the schemas to match the other.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O esquema da porta de entrada {0} não corresponde ao esquema da porta de saída {1}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5506E" extraData="SPL_RUNTIME_PORT_WINDOW_EVICTION_DELTA_ATTRIBUTE_NOT_EXIST" resname="CDISR5506E" xml:space="preserve">
+            <source xml:lang="en">Port {0} window eviction delta policy attribute {1} does not exist.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="attribute"/>
+              <EXPLANATION>The window eviction delta policy attribute must match an attribute in the input port schema.</EXPLANATION>
+              <USER_RESPONSE>Change the attribute to match an attribute in the input port schema.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O atributo da política delta de desocupação de janela da porta {0} {1} não existe.</target>
+          </trans-unit>
+          <!-- TODO split into multiple sentences -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5507E" extraData="SPL_RUNTIME_PORT_WINDOW_EVICTION_DELTA_POLICY_WRONG_TYPE" resname="CDISR5507E" xml:space="preserve">
+            <source xml:lang="en">Port {0} window eviction delta policy for attribute {1} value class {2} is not the required type {3} for {4}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="attribute"/>
+              <REPLACEMENT arg="{2}" value="class"/>
+              <REPLACEMENT arg="{3}" value="type"/>
+              <REPLACEMENT arg="{4}" value="source"/>
+              <EXPLANATION>The type of the attribute is not the required type.</EXPLANATION>
+              <USER_RESPONSE>Change the type of the attribute, or use an attribute that has the correct type.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A política delta de desocupação de janela da porta {0} para o atributo {1} e valor de classe {2} não é o tipo necessário {3} para {4}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5508E" extraData="SPL_RUNTIME_PORT_WINDOW_EVICTION_TRIGGER_POLICY_NEGATIVE" resname="CDISR5508E" xml:space="preserve">
+            <source xml:lang="en">Port {0} window trigger time policy value {1} is negative.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="value"/>
+              <EXPLANATION>The window trigger time policy value must be positive.</EXPLANATION>
+              <USER_RESPONSE>Change the window trigger time policy value to a positive value.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O valor da política de tempo do acionador de janela da porta {0} {1} é negativo.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5509E" extraData="SPL_RUNTIME_PORT_WINDOW_EVICTION_AGE_POLICY_NEGATIVE" resname="CDISR5509E" xml:space="preserve">
+            <source xml:lang="en">Port {0} window partition eviction age policy value {1} is negative.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="value"/>
+              <EXPLANATION>The window partition eviction age policy value must be positive.</EXPLANATION>
+              <USER_RESPONSE>Change the window partition eviction age policy value to a positive value.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O valor da política de idade de desocupação de partição de janela da porta {0} {1} é negativo.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5510E" extraData="SPL_RUNTIME_PORT_WINDOW_TRIGGER_COUNT_POLICY_NEGATIVE" resname="CDISR5510E" xml:space="preserve">
+            <source xml:lang="en">Port {0} window trigger count policy value {1} is negative.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="value"/>
+              <EXPLANATION>The window trigger count policy value must be positive.</EXPLANATION>
+              <USER_RESPONSE>Change the window trigger count age policy value to a positive value.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O valor da política de contagem do acionador de janela da porta {0} {1} é negativo.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5511E" extraData="SPL_RUNTIME_PORT_NOT_WINDOWED" resname="CDISR5511E" xml:space="preserve">
+            <source xml:lang="en">Port {0} is not windowed.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <EXPLANATION>The port requires a window configuration.</EXPLANATION>
+              <USER_RESPONSE>Add a window configuration to the port.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A porta {0} não tem janelas.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5512E" extraData="SPL_RUNTIME_PORT_WINDOW_PARTITION_EVICTION_COUNT_POLICY_NEGATIVE" resname="CDISR5512E" xml:space="preserve">
+            <source xml:lang="en">Port {0} window partition eviction count policy value {1} is negative.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="value"/>
+              <EXPLANATION>The window partition eviction count policy value must be positive.</EXPLANATION>
+              <USER_RESPONSE>Change the window partition eviction count age policy value to a positive value.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O valor da política de contagem de desocupação de partição de janela da porta {0} {1} é negativo.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5513E" extraData="SPL_RUNTIME_PORT_WINDOW_TUPLE_EVICTION_COUNT_POLICY_NEGATIVE" resname="CDISR5513E" xml:space="preserve">
+            <source xml:lang="en">Port {0} window partition tuple eviction count policy value {1} is negative.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="value"/>
+              <EXPLANATION>The window partition tuple eviction count policy value must be positive.</EXPLANATION>
+              <USER_RESPONSE>Change the window partition tuple eviction count age policy value to a positive value.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O valor da política de contagem de desocupação de tupla de partição de janela da porta {0} {1} é negativo.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5514E" extraData="SPL_RUNTIME_PORT_WINDOW_NO_EVICTION_POLICY" resname="CDISR5514E" xml:space="preserve">
+            <source xml:lang="en">Port {0} no window eviction policy specified.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <EXPLANATION>A window eviction policy is required.</EXPLANATION>
+              <USER_RESPONSE>Add a window eviction policy.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A porta {0} não tem nenhuma política de desocupação de janela especificada.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5515E" extraData="SPL_RUNTIME_PORT_WINDOW_NO_SLIDING_WINDOW_TRIGGER_POLICY" resname="CDISR5515E" xml:space="preserve">
+            <source xml:lang="en">Port {0} no sliding window trigger policy specified.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <EXPLANATION>A sliding window trigger policy is required.</EXPLANATION>
+              <USER_RESPONSE>Add a sliding window trigger policy.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A porta {0} não tem nenhuma política do acionador de janela deslizante especificada.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5516E" extraData="SPL_RUNTIME_INPUT_PORT_REQUIRES_WINDOWED_PORT" resname="CDISR5516E" xml:space="preserve">
+            <source xml:lang="en">Input port {1} for operator {0} requires a windowed port: {2}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <REPLACEMENT arg="{1}" value="port"/>
+              <REPLACEMENT arg="{2}" value="port set"/>
+              <EXPLANATION>A windowed port is required.</EXPLANATION>
+              <USER_RESPONSE>Add a windowed port.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A porta de entrada {1} para o operador {0} requer uma porta com janela: {2}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5517E" extraData="SPL_RUNTIME_OPERATOR_NOT_ALLOW_INPUT_PORTS" resname="CDISR5517E" xml:space="preserve">
+            <source xml:lang="en">Operator {0} does not allow input ports.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <EXPLANATION>An input port is used for an operator that does not allow one.</EXPLANATION>
+              <USER_RESPONSE>Remove the input port.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O operador {0} não permite portas de entrada.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5518E" extraData="SPL_RUNTIME_OPERATOR_TOO_MANY_INPUT_PORTS" resname="CDISR5518E" xml:space="preserve">
+            <source xml:lang="en">Input port cannot be added as operator {0} has a maximum of {1} input ports.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <REPLACEMENT arg="{1}" value="number"/>
+              <EXPLANATION>An attempt was made to add an input port to an operator.  The operator already has its maximum number of input ports.</EXPLANATION>
+              <USER_RESPONSE>Do not add the input port, or remove one of the other input ports.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A porta de entrada não pode ser incluída, pois o operador {0} tem um máximo de {1} portas de entrada.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5519E" extraData="SPL_RUNTIME_OPERATOR_PORT_INDEX_OUT_OF_RANGE" resname="CDISR5519E" xml:space="preserve">
+            <source xml:lang="en">Port index out of range: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="index"/>
+              <EXPLANATION>An input port or output port was referenced by index, but the index exceeds the greatest index of input ports or output ports.</EXPLANATION>
+              <USER_RESPONSE>Use an index value between zero and one less than the number of input or output ports.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Índice de porta fora do intervalo: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5520E" extraData="SPL_RUNTIME_OPERATOR_NOT_ALLOW_OUTPUT_PORTS" resname="CDISR5520E" xml:space="preserve">
+            <source xml:lang="en">Operator {0} does not allow output ports.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="index"/>
+              <EXPLANATION>An output port was added to an operator that does not allow output ports.</EXPLANATION>
+              <USER_RESPONSE>Do not add output ports to the operator.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O operador {0} não permite portas de saída.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5521E" extraData="SPL_RUNTIME_OPERATOR_TOO_MANY_OUTPUT_PORTS" resname="CDISR5521E" xml:space="preserve">
+            <source xml:lang="en">Output port cannot be added as operator {0} has a maximum of {1} output ports.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <REPLACEMENT arg="{1}" value="number"/>
+              <EXPLANATION>An attempt was made to add an output port to an operator.  The operator already has its maximum number of output ports.</EXPLANATION>
+              <USER_RESPONSE>Do not add the output port, or remove one of the other output ports.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A porta de saída não pode ser incluída, pois o operador {0} tem um máximo de {1} portas de saída.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5522E" extraData="SPL_RUNTIME_OPERATOR_TOO_FEW_INPUT_PORTS" resname="CDISR5522E" xml:space="preserve">
+            <source xml:lang="en">Operator {0} has a minimum of {1} input ports but only {2} are configured.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <REPLACEMENT arg="{1}" value="number"/>
+              <REPLACEMENT arg="{2}" value="number"/>
+              <EXPLANATION>Fewer input ports are configured for the operator than the operator requires.</EXPLANATION>
+              <USER_RESPONSE>Add input ports to meet the minimum required.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O operador {0} tem um mínimo de {1} portas de entrada, mas somente {2} estão configuradas.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5523E" extraData="SPL_RUNTIME_OPERATOR_INVALID_INPUT_PORT_COUNT" resname="CDISR5523E" xml:space="preserve">
+            <source xml:lang="en">Operator {0} has a minimum of {1} input ports and maximum of {2} but {3} are configured.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <REPLACEMENT arg="{1}" value="number"/>
+              <REPLACEMENT arg="{2}" value="number"/>
+              <REPLACEMENT arg="{3}" value="number"/>
+              <EXPLANATION>Either too many or too few input ports are configured for the operator.</EXPLANATION>
+              <USER_RESPONSE>Add or remove input ports to make the number of input ports fall in the required range.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O operador {0} tem um mínimo de {1} portas de entrada e um máximo de {2}, mas {3} estão configuradas.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5524E" extraData="SPL_RUNTIME_OPERATOR_TOO_FEW_OUTPUT_PORTS" resname="CDISR5524E" xml:space="preserve">
+            <source xml:lang="en">Operator {0} has a minimum of {1} output ports but only {2} are configured.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <REPLACEMENT arg="{1}" value="number"/>
+              <REPLACEMENT arg="{2}" value="number"/>
+              <EXPLANATION>Fewer output ports are configured for the operator than the operator requires.</EXPLANATION>
+              <USER_RESPONSE>Add output ports to meet the minimum required.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O operador {0} tem um mínimo de {1} portas de saída, mas somente {2} estão configuradas.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5525E" extraData="SPL_RUNTIME_OPERATOR_PORT_IS_CONNECTED" resname="CDISR5525E" xml:space="preserve">
+            <source xml:lang="en">Port {0} is connected in the graph.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <EXPLANATION>An operation was performed on a port which is connected.  The operation can only be performed on the port before it is connected.</EXPLANATION>
+              <USER_RESPONSE>Perform the operation before the port is connected.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A porta {0} está conectada no gráfico.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5526E" extraData="SPL_RUNTIME_MISMATCH_ISSUER_SUBJECT_CERT" resname="CDISR5526E" xml:space="preserve">
+            <source xml:lang="en">Mismatched issuer and subject for JCP self-signed certificate.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The issuer and subject must match on a self-signed certificate.</EXPLANATION>
+              <USER_RESPONSE>Generate a new certificate with matching issuer and subject.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Emissor e assunto incompatíveis para o certificado autoassinado do JCP.</target>
+          </trans-unit>
+          <!-- TODO -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5527E" extraData="SPL_RUNTIME_MISMATCH_SUBJECT_CERT" resname="CDISR5527E" xml:space="preserve">
+            <source xml:lang="en">Mismatched subject for JCP self-signed certificate (transient connect to incorrect JCP)</source>
+            <target xml:lang="pt-BR">Assunto incompatível para o certificado autoassinado do JCP (conexão temporária com JCP incorreto)</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5528E" extraData="SPL_RUNTIME_CUSTOM_METRIC_ALREADY_EXISTS" resname="CDISR5528E" xml:space="preserve">
+            <source xml:lang="en">Custom metric {0} already exists.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="metric name"/>
+              <EXPLANATION>A metric was added with a name that was previously used.</EXPLANATION>
+              <USER_RESPONSE>Either do not add the metric, or use a different name.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A métrica customizada {0} já existe.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5529E" extraData="SPL_RUNTIME_CUSTOM_METRIC_EMPTY_NAME" resname="CDISR5529E" xml:space="preserve">
+            <source xml:lang="en">Custom metric name cannot be empty.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>A name is required for a custom metric.</EXPLANATION>
+              <USER_RESPONSE>Add a name to the custom metric.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O nome da métrica customizada não pode ficar vazio.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5530E" extraData="SPL_RUNTIME_CUSTOM_METRIC_NOT_EXISTS" resname="CDISR5530E" xml:space="preserve">
+            <source xml:lang="en">Custom metric {0} does not exist.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="metric name"/>
+              <EXPLANATION>A metric was referenced, but no matching metric exists.</EXPLANATION>
+              <USER_RESPONSE>Verify that the name of the metric is correct, and that the metric is created before it is reference.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A métrica customizada {0} não existe.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5531I" extraData="SPL_RUNTIME_INPUT_PORT_METRIC_NAME" resname="CDISR5531I" xml:space="preserve">
+            <source xml:lang="en">{0} for input port: {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="metric name"/>
+              <REPLACEMENT arg="{1}" value="input port"/>
+              <EXPLANATION>This message describes an input port metric.</EXPLANATION>
+              <USER_RESPONSE>This is information only.  No user response is needed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">{0} para a porta de entrada: {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5532I" extraData="SPL_RUNTIME_OUTPUT_PORT_METRIC_NAME" resname="CDISR5532I" xml:space="preserve">
+            <source xml:lang="en">{0} for output port: {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="metric name"/>
+              <REPLACEMENT arg="{1}" value="output port"/>
+              <EXPLANATION>This message describes an output port metric.</EXPLANATION>
+              <USER_RESPONSE>This is information only.  No user response is needed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">{0} para a porta de saída: {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5533E" extraData="SPL_RUNTIME_NULL_ATTRIBUTE" resname="CDISR5533E" xml:space="preserve">
+            <source xml:lang="en">Null attribute value passed for index {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="index"/>
+              <EXPLANATION>A tuple attribute was assigned a null value.</EXPLANATION>
+              <USER_RESPONSE>Assign tuple attributes only non-null values.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Um valor de atributo nulo foi transmitido para o índice {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5534E" extraData="SPL_RUNTIME_EXPORT_NOT_BY_PROPERTIES" resname="CDISR5534E" xml:space="preserve">
+            <source xml:lang="en">Output port {0} export type {1} is not equal to {2}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <REPLACEMENT arg="{1}" value="export type"/>
+              <REPLACEMENT arg="{2}" value="export type"/>
+              <EXPLANATION>The stream properties of an output port were referenced.</EXPLANATION>
+              <USER_RESPONSE>Do not reference the stream properties of an output port unless it is exported by properties.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A porta de saída {0} do tipo de exportação {1} não é igual a {2}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5535E" extraData="SPL_RUNTIME_PORT_NOT_CONNECTED_TO_PE_PORT" resname="CDISR5535E" xml:space="preserve">
+            <source xml:lang="en">Port {0} is not connected to a PE port.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="port"/>
+              <EXPLANATION>The PE port of an input or output port was referenced, but the port is not connected to a PE port.</EXPLANATION>
+              <USER_RESPONSE>Do not reference the PE port of a port unless the port is connected to a PE port.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A porta {0} não está conectada a uma porta PE.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5536E" extraData="SPL_RUNTIME_ATTR_INDEX_OUT_OF_RANGE" resname="CDISR5536E" xml:space="preserve">
+            <source xml:lang="en">Attribute index ''{0}'' out of range</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="index"/>
+              <EXPLANATION>An attribute of a tuple was referenced by index, but the index was out of the range of indexes in the tuple.  The value range is from zero to one less that the number of attributes in the tuple.</EXPLANATION>
+              <USER_RESPONSE>Reference tuple attributes only by indexes in the valid range for the tuple.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Índice de atributo ''{0}'' fora do intervalo</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5537E" extraData="SPL_RUNTIME_ATTR_NOT_EXIST_IN_SCHEMA" resname="CDISR5537E" xml:space="preserve">
+            <source xml:lang="en">Attribute name ''{0}'' does not exist in the Tuple''s schema.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="name"/>
+              <EXPLANATION>A tuple attribute was referenced by name, but the tuple contains no attribute with a matching name.</EXPLANATION>
+              <USER_RESPONSE>Reference tuple attributes only by the names of the attributes in the tuple.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O nome do atributo ''{0}'' não existe no esquema da Tupla.</target>
+          </trans-unit>
+          <!-- TODO -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5538E" extraData="SPL_RUNTIME_OPERATOR_INVOCATION_CONTEXT_INVALID" resname="CDISR5538E" xml:space="preserve">
+            <source xml:lang="en">Operator invocation context invalid for @OperatorContext.ContextCheck methods for kind {0}, Java class {1}.</source>
+            <target xml:lang="pt-BR">Contexto de chamada do operador inválido para os métodos @OperatorContext.ContextCheck para tipo {0}, classe Java {1}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5539E" extraData="SPL_RUNTIME_DEFAULT_ATTR_NOT_FOUND" resname="CDISR5539E" xml:space="preserve">
+            <source xml:lang="en">Default attribute {0} not found for parameter {1}</source>
+            <target xml:lang="pt-BR">Atributo padrão {0} não localizado para o parâmetro {1}</target>
+          </trans-unit>
+          <!-- TODO -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5540E" extraData="SPL_RUNTIME_MANDATORY_PARAM_NOT_SET" resname="CDISR5540E" xml:space="preserve">
+            <source xml:lang="en">Mandatory parameter {0} not set</source>
+            <target xml:lang="pt-BR">Parâmetro obrigatório {0} não configurado</target>
+          </trans-unit>
+          <!-- TODO -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5541E" extraData="SPL_RUNTIME_MANDATORY_PARAM_NOT_REPRESENTED" resname="CDISR5541E" xml:space="preserve">
+            <source xml:lang="en">Mandatory parameter {0} is not represented in the operator model: {1} annotation on {2}</source>
+            <target xml:lang="pt-BR">O parâmetro obrigatório {0} não é representado no modelo do operador: anotação {1} em {2}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5542E" extraData="SPL_RUNTIME_MANDATORY_PARAM_OPTIONAL_IN_MODEL" resname="CDISR5542E" xml:space="preserve">
+            <source xml:lang="en">Mandatory parameter {0} is optional in the operator model: {1} annotation on {2}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="parameter"/>
+              <REPLACEMENT arg="{1}" value="annotation"/>
+              <REPLACEMENT arg="{2}" value="setter"/>
+              <EXPLANATION>If a parameter is not optional in the Java class definition, it may not be optional in the operator model.</EXPLANATION>
+              <USER_RESPONSE>Change the operator model to make the parameter not optional.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O parâmetro obrigatório {0} é opcional no modelo do operador: anotação {1} em {2}</target>
+          </trans-unit>
+          <!-- TODO	 split this message into sentences with no more than two insertions. -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5543E" extraData="SPL_RUNTIME_REQUIRED_TYPE_NOT_SPECIFIED_FOR_PARAM" resname="CDISR5543E" xml:space="preserve">
+            <source xml:lang="en">Required type {3} not specified for parameter {0} in the operator model: {1} annotation on {2}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="parameter"/>
+              <REPLACEMENT arg="{1}" value="annotation"/>
+              <REPLACEMENT arg="{2}" value="method"/>
+              <REPLACEMENT arg="{3}" value="type"/>
+              <EXPLANATION>The parameter does not have a required type specified in the operator model.</EXPLANATION>
+              <USER_RESPONSE>Add the required type to the operator model.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Tipo necessário {3} não especificado para o parâmetro {0} no modelo do operador: anotação {1} em {2}</target>
+          </trans-unit>
+          <!-- TODO	 split this message into sentences with no more than two insertions. -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5544E" extraData="SPL_RUNTIME_TYPE_FOR_PARAM_NOT_COMPATIBLE" resname="CDISR5544E" xml:space="preserve">
+            <source xml:lang="en">Type {3} for parameter {0} in the operator model is not compatible with {1} annotation on {2}</source>
+            <target xml:lang="pt-BR">O tipo {3} para o parâmetro {0} no modelo do operador não é compatível com a anotação {1} em {2}</target>
+         </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5545E" extraData="SPL_RUNTIME_CARDINALITY_FOR_PARAM_REQUIRED_ONE" resname="CDISR5545E" xml:space="preserve">
+            <source xml:lang="en">Cardinality for parameter {0} in the operator model is required to be 1 to be compatible with {1} annotation on {2}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="parameter"/>
+              <REPLACEMENT arg="{1}" value="annotation"/>
+              <REPLACEMENT arg="{2}" value="method"/>
+              <EXPLANATION>The cardinality for the parameter must be one to be compatible with the annotation.</EXPLANATION>
+              <USER_RESPONSE>Change the cardinality for the parameter to one.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A cardinalidade para o parâmetro {0} no modelo do operador precisa ser 1 para que seja compatível com a anotação {1} em {2}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5546E" extraData="SPL_RUNTIME_METRIC_KIND_MUST_MATCH" resname="CDISR5546E" xml:space="preserve">
+            <source xml:lang="en">The metric kind {2} for custom metric {0} is required to be {1} to match @CustomMetric.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="metric"/>
+              <REPLACEMENT arg="{1}" value="metric kind"/>
+              <REPLACEMENT arg="{2}" value="metric kind"/>
+              <EXPLANATION>The kind (Counter, Gauge, or Time) of the metric must match the expected kind.</EXPLANATION>
+              <USER_RESPONSE>Change the kind of the metric to match the expected kind.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O tipo de métrica {2} para a métrica customizada {0} precisa ser {1} para corresponder a @CustomMetric.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5547E" extraData="SPL_RUNTIME_CONTEXTCHECK_FAILURES" resname="CDISR5547E" xml:space="preserve">
+            <source xml:lang="en">@ContextCheck failures for Java operator class {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="class"/>
+              <EXPLANATION>The context check failed.  Previous error messages provide more details.</EXPLANATION>
+              <USER_RESPONSE>Check the previous error messages.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Falhas de @ContextCheck para a classe do operador Java {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5548E" extraData="SPL_RUNTIME_TUPLE_TYPE_MISMATCH" resname="CDISR5548E" xml:space="preserve">
+	        <!-- TRNOTE: do not translate StreamSchema -->
+            <source xml:lang="en">Tuple type mismatch - port''s StreamSchema: {0} - submitted tuple''s StreamSchema: {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="schema"/>
+              <REPLACEMENT arg="{1}" value="schema"/>
+              <EXPLANATION>The two schemas must match.</EXPLANATION>
+              <USER_RESPONSE>Change one of the schemas to match the other one.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Incompatibilidade de tipo de tupla - StreamSchema da porta: {0} - StreamSchema da tupla enviada: {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5549E" extraData="SPL_RUNTIME_CLASS_NOT_SUPPORTED_FOR_PARAMETER" resname="CDISR5549E" xml:space="preserve">
+            <source xml:lang="en">Class {0} not supported for @Parameter at method: {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="class"/>
+              <REPLACEMENT arg="{1}" value="method"/>
+              <EXPLANATION>The type of the parameter is not supported.</EXPLANATION>
+              <USER_RESPONSE>Change the parameter to a supported type.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Classe {0} não suportada para @Parameter no método: {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5550E" extraData="SPL_RUNTIME_PROPERTY_REQUIRES_SINGLE_VALUE" resname="CDISR5550E" xml:space="preserve">
+            <source xml:lang="en">{0} requires single value</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="property"/>
+              <EXPLANATION>A property was assigned multiple values, but only a single value is allowed.</EXPLANATION>
+              <USER_RESPONSE>Assign only a single value to the property.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O {0} requer valor único</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5551E" extraData="SPL_RUNTIME_PROPERTY_VALUE_INVALID" resname="CDISR5551E" xml:space="preserve">
+            <source xml:lang="en">{0} requires a value in the form &lt;input port name>.&lt;attribute name>. Invalid value specified - {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="property"/>
+              <REPLACEMENT arg="{1}" value="value"/>
+              <EXPLANATION>A property was assigned a value that was not in the required form.</EXPLANATION>
+              <USER_RESPONSE>Assign the property value in the required form.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O {0} requer um valor no formato &lt;input port name>.&lt;attribute name>. Valor inválido especificado - {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5552E" extraData="SPL_RUNTIME_CANNOT_REMOVE_ALL_ATTRIBUTES_FROM_SCHEMA" resname="CDISR5552E" xml:space="preserve">
+            <source xml:lang="en">Cannot remove all attributes from a schema: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="schema"/>
+              <EXPLANATION>Attributes were removed from a schema, leaving no attributes in the schema.  A schema must have at least one attribute.</EXPLANATION>
+              <USER_RESPONSE>Leave at least one attribute in the schema.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Não é possível remover todos os atributos de um esquema: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5553E" extraData="SPL_RUNTIME_JAVA_INTERFACE_NOT_IMPLEMENT_INTERFACE" resname="CDISR5553E" xml:space="preserve">
+            <source xml:lang="en">Java primitive implementation class {0} does not implement {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="class"/>
+              <REPLACEMENT arg="{1}" value="interface"/>
+              <EXPLANATION>The primitive implementation class is required to implement a certain interface.</EXPLANATION>
+              <USER_RESPONSE>Implement the interface in the class.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A classe de implementação primitiva Java {0} não implementa {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5554E" extraData="SPL_RUNTIME_TIMESTAMP_UNAVAILABLE_DURING_CHECKPOINTING" resname="CDISR5554E" xml:space="preserve">
+            <source xml:lang="en">Timestamp is unavailable during checkpointing</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>A timestamp was requested during checkpointing.</EXPLANATION>
+              <USER_RESPONSE>Do not get a timestamp during checkpointing.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O registro de data e hora está indisponível durante o ponto de verificação</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5555E" extraData="SPL_RUNTIME_CHECKPOINT_INPUT_STREAM_RETRIEVED_RESTORE" resname="CDISR5555E" xml:space="preserve">
+            <source xml:lang="en">An input stream can only be retrieved during a restore.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>An input stream was requested when a restore operation was not being done.</EXPLANATION>
+              <USER_RESPONSE>Request an input stream only during a restore.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Um fluxo de entrada pode ser recuperado somente durante uma restauração.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5556E" extraData="SPL_RUNTIME_CHECKPOINT_OUTPUT_STREAM_RETRIEVED_CHECKPOINTING" resname="CDISR5556E" xml:space="preserve">
+            <source xml:lang="en">An output stream can only be retrieved during checkpointing</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>An output stream was requested when a checkpoint operation was not being done.</EXPLANATION>
+              <USER_RESPONSE>Request an output stream only during a checkpoint.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Um fluxo de saída pode ser recuperado somente durante um ponto de verificação.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5557E" extraData="SPL_RUNTIME_OPERATOR_MUST_BE_START" resname="CDISR5557E" xml:space="preserve">
+            <source xml:lang="en">Operator must be at the start of a consistent region</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>An operator called makeConsistent() or makeConsistentNotBlocking.  These may be called only by operators that start a consistent region.</EXPLANATION>
+              <USER_RESPONSE>Call makeConsistent() or makeConsistentNonBlocking only from start operators.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O operador deve estar no início de uma região consistente</target>
+          </trans-unit>
+          <!-- this message is not used -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5558E" extraData="SPL_RUNTIME_STRING_LENGTH_TOO_LARGE_FOR_LANGUAGE" resname="CDISR5558E" xml:space="preserve">
+            <source xml:lang="en">{0}: String length ({1}) too large</source>
+            <target xml:lang="pt-BR">{0}: comprimento da sequência ({1}) muito grande</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5559E" extraData="SPL_RUNTIME_INDEX_OUT_OF_RANGE_FOR_LANGUAGE" resname="CDISR5559E" xml:space="preserve">
+            <source xml:lang="en">Index {0} is out of range for {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="index"/>
+              <REPLACEMENT arg="{1}" value="enum"/>
+              <EXPLANATION>The identifier of an enum type was accessed by index, but the index was out of range.  The valid range of index values is between zero and one less than the number of members of the enum.</EXPLANATION>
+              <USER_RESPONSE>Access the identifier of an enum type using a valid index.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O índice {0} está fora do intervalo para {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5560E" extraData="SPL_RUNTIME_IDENTIFIER_NOT_VALID_FOR_LANGUAGE" resname="CDISR5560E" xml:space="preserve">
+            <source xml:lang="en">Identifier {0} is not valid for {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="identifier"/>
+              <REPLACEMENT arg="{1}" value="enum"/>
+              <EXPLANATION>The index of an enum type was accessed by identifier, but the identifier was not valid.  Valid identifiers are the members of the enum type.</EXPLANATION>
+              <USER_RESPONSE>Access the index of an enum type using a valid identifier.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O identificador {0} não é válido para {1}</target>
+          </trans-unit>
+          <!-- TODO: I am not sure how this could happen -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5561E" extraData="SPL_RUNTIME_INDEX_NOT_EQUAL_ORDINAL_FOR_LANGUAGE" resname="CDISR5561E" xml:space="preserve">
+            <source xml:lang="en">{0}: Index for {1} does not equal ordinal for {2}.{3}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="spl enum type"/>
+              <REPLACEMENT arg="{1}" value="spl enum member"/>
+              <REPLACEMENT arg="{2}" value="java enum type"/>
+              <REPLACEMENT arg="{3}" value="java enum member"/>
+              <EXPLANATION>To convert SPL enum type values to Java Enum type values, it is necessary that the index of each member of the SPL enum is the same as the index of the same member in the Java Enum type.</EXPLANATION>
+              <USER_RESPONSE>Check the declaration of the SPL enum type.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">{0}: o índice para {1} não é um ordinal igual para {2}.{3}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5562E" extraData="SPL_RUNTIME_INVALID_CONVERSION" resname="CDISR5562E" xml:space="preserve">
+            <source xml:lang="en">Conversion between SPL type {0} (MetaType.{1}) and Java type {2} is not supported.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="spl type"/>
+              <REPLACEMENT arg="{1}" value="meta type"/>
+              <REPLACEMENT arg="{2}" value="java type"/>
+              <EXPLANATION>The Java type could not be converted to the SPL type, or the SPL type could not be converted to the Java type.</EXPLANATION>
+              <USER_RESPONSE>Use types that can be converted.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A conversão entre o tipo de SPL {0} (MetaType.{1}) e tipo Java {2} não é suportada.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5563E" extraData="SPL_RUNTIME_JAVAOP_INVALID_LANGUAGE_TYPE" resname="CDISR5563E" xml:space="preserve">
+            <!-- TRNOTE: do not translate JavaOp -->
+            <source xml:lang="en">Language type: {0} not supported by JavaOp</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="spl type"/>
+              <EXPLANATION>The type is not supported by JavaOp.</EXPLANATION>
+              <USER_RESPONSE>Use a type that is supported by JavaOp.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Tipo de idioma: {0} não suportado por JavaOp</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5564E" extraData="SPL_RUNTIME_WINDOW_ATTR_FOR_DELTA_POLICY_NOT_FOUND" resname="CDISR5564E" xml:space="preserve">
+            <source xml:lang="en">Internal Error: Window attribute for delta policy not found: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="attribute"/>
+              <EXPLANATION>The attribute used for a delta policy was not found in the input port schema attributes.</EXPLANATION>
+              <USER_RESPONSE>Use an attribute from the input port schema as the delta policy attribute.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Erro interno: atributo de janela para a política delta não localizado: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5565E" extraData="SPL_RUNTIME_UNSUPPORTED_ATTR_FOR_DELTA_POLICY" resname="CDISR5565E" xml:space="preserve">
+            <source xml:lang="en">Unsupported attribute type for window delta policy: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="attribute"/>
+              <EXPLANATION>The type of the attribute is not supported for a window delta policy.  Supported types are int8, int16, int32, int64, float32, float64, decimal32, decimal64, and timestamp.</EXPLANATION>
+              <USER_RESPONSE>Use an attribute with a supported type as the delta policy attribute.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Tipo de atributo não suportado para a política delta de janela: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5566E" extraData="SPL_RUNTIME_STREAMS_INSTALL_NOT_SET" resname="CDISR5566E" xml:space="preserve">
+            <!-- TRNOTE: do not translate STREAMS_INSTALL -->
+            <source xml:lang="en">Environment variable STREAMS_INSTALL not set</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The environment variable STREAMS_INSTALL must be set to the full path of an IBM Streams installation.</EXPLANATION>
+              <USER_RESPONSE>Set the environment variable.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Variável de ambiente STREAMS_INSTALL não configurada</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5567E" extraData="SPL_RUNTIME_OPERATOR_SHUTDOWN" resname="CDISR5567E" xml:space="preserve">
+            <source xml:lang="en">Operator already shutdown</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>An operation was performed on an operator after the operator was shut down.</EXPLANATION>
+              <USER_RESPONSE>After an operator is shut down, do not use it any more.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Operador já encerrado</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5568E" extraData="SPL_RUNTIME_NOTIFICATION_SOURCE_ALREADY_ADDED" resname="CDISR5568E" xml:space="preserve">
+            <source xml:lang="en">Notification source {0} has already been added.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="name"/>
+              <EXPLANATION>A notification source was added.  The notification source had a name that had previously been used.</EXPLANATION>
+              <USER_RESPONSE>If the same source was added twice, avoid adding it a second time.  If there are two different sources using the same name, change the name of one of them.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A notificação de origem {0} já foi incluída.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5569E" extraData="SPL_RUNTIME_UNSUPPORTED_JAVA_SPEC_VERSION" resname="CDISR5569E" xml:space="preserve">
+            <source xml:lang="en">Java Platform API Specification version not at Java 7 or higher.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>IBM Streams requires Java 7 or higher.</EXPLANATION>
+              <USER_RESPONSE>Use a supported Java Virtual Machine.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A versão do Java Platform API Specification não é Java 7 ou superior.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5570E" extraData="SPL_RUNTIME_UNDETERMINED_JAVA_SPEC_VERSION" resname="CDISR5570E" xml:space="preserve">
+            <source xml:lang="en">Cannot determine Java Platform API Specification version</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The version of the Java Virtual Machine could not be verified.  IBM Streams requires Java 7 or higher.</EXPLANATION>
+              <USER_RESPONSE>Use a supported Java Virtual Machine.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Não é possível determinar a versão do Java Platform API Specification</target>
+          </trans-unit>
+          <!-- Consistent region metrics -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5571I" extraData="SPL_RUNTIME_AVG_DRAIN_TIME_METRIC" resname="CDISR5571I" xml:space="preserve">
+            <source xml:lang="en">Moving average of the time (milliseconds) to drain processing in a consistent region to establish consistent state</source>
+            <target xml:lang="pt-BR">A média móvel do tempo (milissegundos) para processamento de drenagem em uma região consistente para estabelecer estado consistente</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5572I" extraData="SPL_RUNTIME_AVG_RESET_TIME_METRIC" resname="CDISR5572I" xml:space="preserve">
+            <source xml:lang="en">Moving average of the time (milliseconds) to reset the region to a previous consistent state</source>
+            <target xml:lang="pt-BR">A média móvel do tempo (milissegundos) para reconfigurar a região para um estado consistente anterior</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5573I" extraData="SPL_RUNTIME_CONSISTENT_REGION_STATE_METRIC" resname="CDISR5573I" xml:space="preserve">
+            <source xml:lang="en">State of the consistent region</source>
+            <target xml:lang="pt-BR">Estado da região consistente</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5574I" extraData="SPL_RUNTIME_CURRENT_RESET_ATTEMPTS_METRIC" resname="CDISR5574I" xml:space="preserve">
+            <source xml:lang="en">Current number of attempts to reset the region to a previous consistent state</source>
+            <target xml:lang="pt-BR">O número atual de tentativas de reconfigurar a região para um estado consistente anterior</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5575I" extraData="SPL_RUNTIME_LAST_COMPLETED_DRAIN_METRIC" resname="CDISR5575I" xml:space="preserve">
+            <source xml:lang="en">Sequence identifier of the last consistent state for the region</source>
+            <target xml:lang="pt-BR">O identificador de sequência do último estado consistente para a região</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5576I" extraData="SPL_RUNTIME_LAST_COMPLETED_RESET_METRIC" resname="CDISR5576I" xml:space="preserve">
+            <source xml:lang="en">Sequence identifier of the last consistent state the region was reset to</source>
+            <target xml:lang="pt-BR">O identificador de sequência do último estado consistente para o qual a região foi reconfigurada</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5577I" extraData="SPL_RUNTIME_LAST_CONSISTENT_TIME_METRIC" resname="CDISR5577I" xml:space="preserve">
+            <source xml:lang="en">Time of the last consistent state for the region</source>
+            <target xml:lang="pt-BR">Horário do último estado consistente para a região</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5578I" extraData="SPL_RUNTIME_LAST_RESET_TIME_METRIC" resname="CDISR5578I" xml:space="preserve">
+            <source xml:lang="en">Time of the last reset for the region"</source>
+            <target xml:lang="pt-BR">Horário da última reconfiguração para a região"</target>
+          </trans-unit>
+          <!-- TRNOTE: do not translate ExecutableGraph in the following message -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5579E" extraData="EG_EXECUTABLE_GRAPH_NOT_INITIALIZED" resname="CDISR5579E" xml:space="preserve">
+            <source xml:lang="en">ExecutableGraph has not been successfully initialized.</source>
+            <target xml:lang="pt-BR">ExecutableGraph não foi inicializado com sucesso.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5580E" extraData="EG_EXECUTABLE_GRAPH_NOT_NOTIFIED" resname="CDISR5580E" xml:space="preserve">
+            <source xml:lang="en">ExecutableGraph has not been successfully notified of port readiness.</source>
+            <target xml:lang="pt-BR">ExecutableGraph não foi notificado com sucesso da prontidão da porta.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5581E" extraData="OG_DUPLICATE_OPERATOR_NAME" resname="CDISR5581E" xml:space="preserve">
+            <source xml:lang="en">Operator name {0} already exists</source>
+            <target xml:lang="pt-BR">O nome do operador {0} já existe</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5582I" extraData="SPL_RUNTIME_CONTROL_PLANE_METRIC" resname="CDISR5582I" xml:space="preserve">
+            <source xml:lang="en">State of the operator''s connection to the Job Control Plane.</source>
+            <target xml:lang="pt-BR">O estado de conexão do operador com o Job Control Plane.</target>
+          </trans-unit>
+          <!-- SPL expression evaluation messages -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5583E" extraData="SPL_RUNTIME_EXPRESSION_INVALID_POSTFIX" resname="CDISR5583E" xml:space="preserve">
+            <source xml:lang="en">Found subscript in postfix expression, but no constructed add expression.</source>
+            <target xml:lang="pt-BR">Localizado subscript na expressão de sufixo, mas nenhuma expressão de inclusão foi construída.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5584E" extraData="SPL_RUNTIME_EXPRESSION_UNHANDLED_META_TYPE" resname="CDISR5584E" xml:space="preserve">
+            <source xml:lang="en">Unhandled SPL meta type: {0}</source>
+            <target xml:lang="pt-BR">Metatipo de SPL não manipulado: {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5585E" extraData="SPL_RUNTIME_EXPRESSION_NO_SUBEXPRESSION" resname="CDISR5585E" xml:space="preserve">
+            <source xml:lang="en">"No created subexpressions found</source>
+            <target xml:lang="pt-BR">"Nenhuma subexpressão criada localizada</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5586E" extraData="SPL_RUNTIME_EXPRESSION_TOO_FEW_EXPRESSIONS" resname="CDISR5586E" xml:space="preserve">
+            <source xml:lang="en">Expected at least two expressions on stack for {0}</source>
+            <target xml:lang="pt-BR">Pelo menos duas expressões são esperadas na pilha para {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5587E" extraData="SPL_RUNTIME_EXPRESSION_EXPECTED_BINARY_OP" resname="CDISR5587E" xml:space="preserve">
+            <source xml:lang="en">Expected a binary operator on the stack for {0}</source>
+            <target xml:lang="pt-BR">Esperado um operador binário na pilha para {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5588E" extraData="SPL_RUNTIME_EXPRESSION_EXPECTED_EXPRESSION" resname="CDISR5588E" xml:space="preserve">
+            <source xml:lang="en">Expected an expression on the stack for {0}</source>
+            <target xml:lang="pt-BR">Esperada uma expressão na pilha para {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5589E" extraData="SPL_RUNTIME_EXPRESSION_UNRECOGNIZED_OPERATOR" resname="CDISR5589E" xml:space="preserve">
+            <source xml:lang="en">Unrecognized operator; expected {0}, found: {1}</source>
+            <target xml:lang="pt-BR">Operador não reconhecido; esperado {0}, localizado: {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5590E" extraData="SPL_RUNTIME_EXPRESSION_INVALID_PRIMARY" resname="CDISR5590E" xml:space="preserve">
+            <source xml:lang="en">No identifier, value or nested expression found when parsing primary expression</source>
+            <target xml:lang="pt-BR">Nenhuma expressão de identificador, de valor ou aninhada localizada ao analisar a expressão primária</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5591E" extraData="SPL_RUNTIME_CR_MAX_RESET_ATTEMPTS" resname="CDISR5591E" xml:space="preserve">
+            <source xml:lang="en">Set state to MAXIMUM_RESET_ATTEMPTS_REACHED for region {0}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="region"/>
+              <EXPLANATION>A consistent region failed to reset too many times, and was stopped.</EXPLANATION>
+              <USER_RESPONSE>Investigate what is causing the consistent region failures.  Try increasing the drain timeout, the reset timeout, or the maximum number of reset attempts for the consistent region.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Configure o estado para MAXIMUM_RESET_ATTEMPTS_REACHED para a região {0}.</target>
+          </trans-unit>
+
+          <!-- bundle loader messages -->
+          <!-- was CDISR5042T -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5591T" extraData="SPL_RUNTIME_OPTION_CONSOLE" resname="CDISR5591T" xml:space="preserve">
+            <!-- This message is emitted in response to running a standalone pplication with the -h or help option.  It is emitted w/o any message ID -->
+            <!-- TRNOTE: do not translate -c, - -log-to-stderr.  Make sure that the description starts at column 35 if possible -->
+            <source xml:lang="en">   -c, --log-to-stderr             Output trace messages to standard error. The default is standard output.</source>
+            <target xml:lang="pt-BR">   -c, --log-to-stderr             Gera mensagens de rastreio para o erro padrão. O padrão é a saída padrão.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5592I" extraData="SPL_RUNTIME_OPTION_HELP" resname="CDISR5592I" xml:space="preserve">
+            <!-- This message is emitted in response to running a standalone application with the h or help option.  It is emitted w/o any message ID -->
+            <!-- TRNOTE: do not translate -h, - -help.  Make sure that the description starts at column 35 if possible -->
+            <source xml:lang="en">   -h, --help                      Get (this) usage information.</source>
+            <target xml:lang="pt-BR">   -h, --help                 obtém (estas) informações de uso.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5593T" extraData="SPL_RUNTIME_OPTION_DATA_DIRECTORY" resname="CDISR5593T" xml:space="preserve">
+            <!-- This message is emitted in response to running a standalone pplication with the -h or help option.  It is emitted w/o any message ID -->
+            <!-- TRNOTE: do not translate -d, - -data-directory.  Make sure that the description starts at column 35 if possible -->
+            <source xml:lang="en">   -d, --data-directory=VALUE      Specify a data directory for this application to use.</source>
+            <target xml:lang="pt-BR">   -d, --data-directory=VALUE      Especifica um diretório de dados para ser usado por este aplicativo.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5594T" extraData="SPL_RUNTIME_OPTION_EXECUTION_DIRECTORY" resname="CDISR5594T" xml:space="preserve">
+            <!-- This message is emitted in response to running a standalone pplication with the -h or help option.  It is emitted w/o any message ID -->
+
+            <!-- TRNOTE: do not translate -e, - -execution-directory.  Make sure that the description starts at column 35 if possible -->
+            <source xml:lang="en">   -e, --execution-directory=VALUE Specify the root directory the standalone application bundle should be executed from.</source>
+            <target xml:lang="pt-BR">   -e, --execution-directory=VALUE Especifica o diretório-raiz a partir do qual o pacote configurável do aplicativo independente deve ser executado.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5595T" extraData="SPL_RUNTIME_OPTION_DEBUGGER" resname="CDISR5595T" xml:space="preserve">
+            <!-- This message is emitted in response to running a standalone pplication with the -h or help option.  It is emitted w/o any message ID -->
+            <!-- TRNOTE: do not translate -g, - -debug.  Make sure that the description starts at column 35 if possible -->
+            <source xml:lang="en">   -g, --debug=VALUE               Run the standalone executable under the specified debugger.</source>
+            <target xml:lang="pt-BR">   -g, --debug=VALUE               Executa o executável independente no depurador especificado.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5596T" extraData="SPL_RUNTIME_OPTION_KILL_AFTER" resname="CDISR5596T" xml:space="preserve">
+            <!-- This message is emitted in response to running a standalone pplication with the -h or help option.  It is emitted w/o any message ID -->
+            <!-- TRNOTE: do not translate -k, - -kill-after.  Make sure that the description starts at column 35 if possible -->
+            <source xml:lang="en">   -k, --kill-after=VALUE          Shut down the application after N seconds where N is a positive floating point number.</source>
+            <target xml:lang="pt-BR">   -k, --kill-after=VALUE          Encerra o aplicativo após N segundos, em que N é um número de vírgula flutuante positivo.</target>
+          </trans-unit>
+          <!-- was CDISR5598T -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5597T" extraData="SPL_RUNTIME_OPTION_NEW_LOG_LEVEL" resname="CDISR5597T" xml:space="preserve">
+            <!-- This message is emitted in response to running a standalone pplication with the -h or help option.  It is emitted w/o any message ID -->
+            <!-- TRNOTE: do not translate -l, - -log-level.  Make sure that the description starts at column 35 if possible -->
+            <source xml:lang="en">   -l, --log-level=INT             Log level: 0 - ERROR, 1 - WARN, 2 - INFO.</source>
+            <target xml:lang="pt-BR">   -l, --log-level=INT             Nível de log: 0 - ERROR, 1 - WARN, 2 - INFO.</target>
+          </trans-unit>
+          <!-- was CDISR5178T -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5598T" extraData="SPL_RUNTIME_OPTION_TRACE_LEVEL" resname="CDISR5598T" xml:space="preserve">
+            <!-- This message is emitted in response to running a standalone pplication with the -h or help option.  It is emitted w/o any message ID -->
+            <!-- TRNOTE: do not translate -t, - -trace-level.  Make sure that the description starts at column 35 if possible -->
+            <source xml:lang="en">   -t, --trace-level=INT           Trace level: 0 - OFF, 1 - ERROR, 2 - WARN, 3 - INFO, 4 - DEBUG, 5 - TRACE.</source>
+            <target xml:lang="pt-BR">   -t, --trace-level=INT           Nível de rastreio: 0 - OFF, 1 - ERROR, 2 - WARN, 3 - INFO, 4 - DEBUG, 5 - TRACE.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5599E" extraData="SPL_RUNTIME_FAILED_TO_REMOVE_TEMP_DIR" resname="CDISR5599E" xml:space="preserve">
+            <!-- This message is emitted in response to running a standalone pplication with the -h or help option.  It is emitted w/o any message ID -->
+            <source xml:lang="en">Temporary directory {0} was not fully removed.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="directory"/>
+              <EXPLANATION>A temporary directory was created, but it or its contents could not be completedly removed.</EXPLANATION>
+              <USER_RESPONSE>Remove the directory and its contents.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O diretório temporário {0} não foi removido completamente.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5600E" extraData="SPL_RUNTIME_EXEC_LOC_NOT_EXIST" resname="CDISR5600E" xml:space="preserve">
+            <source xml:lang="en">The execution location {0} does not exist.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="directory"/>
+              <EXPLANATION>The directory specified as the execution location does not exist.</EXPLANATION>
+              <USER_RESPONSE>Create the directory, or specify a directory that does exist.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O local de execução {0} não existe.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5601E" extraData="SPL_RUNTIME_EXEC_LOC_NOT_DIR" resname="CDISR5601E" xml:space="preserve">
+            <source xml:lang="en">The execution location {0} is not a directory.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="directory"/>
+              <EXPLANATION>The path specified as the execution location exists, but it is not a directory.</EXPLANATION>
+              <USER_RESPONSE>Specify a directory that does exist as the execution location.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O local de execução {0} não é um diretório.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5602E" extraData="SPL_RUNTIME_EXEC_LOC_BAD_PERMS" resname="CDISR5602E" xml:space="preserve">
+            <source xml:lang="en">The execution location {0} does not have the correct permissions.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="directory"/>
+              <EXPLANATION>The directory specified as the execution location does not have suitable permissions.  It must have read, write, and execute permissions.</EXPLANATION>
+              <USER_RESPONSE>Change the permissions on the directory, or specify a directory with suitable permissions.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O local de execução {0} não possui as permissões corretas.</target>
+          </trans-unit>
+          <!-- was CDISR5022I -->
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5603I" extraData="SPL_RUNTIME_STANDALONE_APPLICATION_ARGUMENT_HELP" resname="CDISR5603I" xml:space="preserve">
+            <source xml:lang="en">Additional command line arguments can be specified by using &lt;name&gt;=&lt;string-literal&gt;.</source>
+            <target xml:lang="pt-BR">Argumentos da linha de comandos adicionais podem ser especificados usando &lt;name&gt;=&lt;string-literal&gt;.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5604I" extraData="SPL_RUNTIME_STANDALONE_APPLICATION_REQUIRED_ARGUMENT_HELP" resname="CDISR5604I" xml:space="preserve">
+            <source xml:lang="en">The required arguments are: {0}.</source>
+            <target xml:lang="pt-BR">Os argumentos necessários são: {0}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5605I" extraData="SPL_RUNTIME_STANDALONE_APPLICATION_OPTIONAL_ARGUMENT_HELP" resname="CDISR5605I" xml:space="preserve">
+            <source xml:lang="en">The optional arguments are: {0}.</source>
+            <target xml:lang="pt-BR">Os argumentos opcionais são: {0}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5606T" extraData="SPL_RUNTIME_STANDALONE_STREAMS_APPLICATION" resname="CDISR5606T" xml:space="preserve">
+            <!-- This message is emitted in response to running a standalone application with the h or help option.  It is emitted w/o any message ID -->
+            <source xml:lang="en">Standalone Streams Application</source>
+            <target xml:lang="pt-BR">Aplicativo Independente de Fluxos</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5607E" extraData="SPL_RUNTIME_JAVA_INVALID_WATERMARK_SOURCE" resname="CDISR5607E" xml:space="preserve">
+            <source xml:lang="en">A watermark was received from the unexpected source operator {0}, port {1}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operatorId"/>
+              <REPLACEMENT arg="{1}" value="portIndex"/>
+              <EXPLANATION>A watermark has been received from an unexpected source, identified by the specified operator identifier and port index.</EXPLANATION>
+              <USER_RESPONSE>Collect the log files by using the <cmdname>streamtool getlog</cmdname> command, and contact IBM Software Support.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Uma marca d''água foi recebida do operador de origem inesperada {0}, porta {1}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5608E" extraData="SPL_RUNTIME_JAVA_RETROGRADE_WATERMARK" resname="CDISR5608E" xml:space="preserve">
+            <source xml:lang="en">A watermark {0} was received which was earlier than the current watermark {1}.  The watermark was received from operator {2}, port {3}. </source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}", value="input watermark"/>
+              <REPLACEMENT arg="{1}", value="current watermark"/>
+              <REPLACEMENT arg="{2}" value="operatorId"/>
+              <REPLACEMENT arg="{3}" value="portIndex"/>
+              <EXPLANATION>A watermark has been received with an earlier value than the operator's current watermark.  Watermark values may only increase or stay the same.</EXPLANATION>
+              <USER_RESPONSE>Collect the log files by using the <cmdname>streamtool getlog</cmdname> command, and contact IBM Software Support.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">A marca d''água {0} foi recebida, o que aconteceu antes da marca d''água atual {1}. A marca d''água foi recebida do operador {2}, porta {3}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5609W" extraData="SPL_RUNTIME_JAVA_INPUTWATERMARK_NO_INPUT_PORTS" resname="CDISR5609W" xml:space="preserve">
+            <source xml:lang="en">Operator cannot generate watermarks.  It has 0 input ports and EventTimeContext watermark mode {0}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="watermark mode"/>
+              <EXPLANATION>The operator cannot generate watermarks based on input watermarks, because it has no input ports.</EXPLANATION>
+              <USER_RESPONSE>Change the watermark mode to manual or outputEventTime.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">O operador não pode gerar marcas d''água. Ele possui 0 portas de entrada e o modo de marca d''água EventTimeContext {0}.</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLJavaMessages_CDISR5610W" extraData="SPL_RUNTIME_JAVA_WATERMARK_LAG_IGNORED" resname="CDISR5610W" xml:space="preserve">
+            <source xml:lang="en">Watermark lag ignored for operator annotated with EventTimeContext watermark mode {0}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="watermark mode"/>
+              <EXPLANATION>The lag is used only when the watermark mode is outputEventTime.</EXPLANATION>
+              <USER_RESPONSE>Remove the lag value from the eventTime annotation, or change the watermark mode to outputEventTime.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="pt-BR">Atraso de marca d''água ignorado para o operador anotado com o modo de marca d''água EventTimeContext {0}.</target>
+          </trans-unit>
+
+        </group>
+
+
+        <!-- =============================================================== -->
+        <!-- TRNOTE Do not translate the following group                     -->
+        <!-- =============================================================== -->
+        <group id="Example" restype="table" xml:space="preserve">
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5186E" extraData="SPL_EXAMPLE_TEST_MESSAGE" resname="CDISR5186E" xml:space="preserve">
+            <source xml:lang="en">This is a test message - String: {0} - Integer: {1,number,0} - Formatted Integer: {2,number} - Real: {3,number,integer.##########} - Formatted Real: {4,number} - Date: {5,date} - Time: {6,time} - DateTime: {7,date} {7,time}.</source>
+            <target xml:lang="pt-BR">Esta é uma mensagem de teste - String: {0} - Integer: {1,number,0} - Formatted Integer: {2,number} - Real: {3,number,integer.##########} - Formatted Real: {4,number} - Date: {5,date} - Time: {6,time} - DateTime: {7,date} {7,time}.</target>
+          </trans-unit>
+        </group>
+      </body>
+  </file>
+</xliff>

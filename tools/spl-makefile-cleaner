@@ -1,0 +1,73 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use warnings;
+use Getopt::Std;
+use Cwd qw(realpath abs_path getcwd);
+use File::Temp qw/ tempfile tempdir /;
+
+use FindBin;
+use File::Basename;
+use lib $FindBin::Bin;
+
+my $help;
+my %opts;
+
+##### MAIN
+$help="usage: $0 -i <in-file-name> -o <out-file-name>
+    -i     spl-sample input makefile to be cleaned up
+    -o     spl-sample output makefile that is cleaned up
+";
+
+getopts('hi:o:',\%opts) or die("\n$help\n");
+if($opts{'h'}) {print $help; exit 0;}
+
+my $smkfile = $opts{'i'};
+my $tmkfile = $opts{'o'};
+die "source makefile is not specified\n" unless($smkfile);
+die "target makefile is not specified\n" unless($tmkfile);
+
+my ($fh, $tmpfile) = tempfile(UNLINK => 1, SUFFIX => ".stf");
+open(TMPFILE, ">$tmpfile") or die "cannot open file for writing: $!";
+open(SMKFILE, "<$smkfile") or die "cannot open file for reading: $!";
+
+my $discard = 0;
+while(my $line=<SMKFILE>)
+{
+  if($discard > 0 and $discard <3) {
+    if($line =~ m/^\s*else/) {
+      $discard = $discard + 1;
+    }
+  } elsif($discard == 3) {
+    if($line =~ m/^\s*endif/) {
+      $discard = 0;
+    } else {
+      print TMPFILE $line;
+    }
+  } else {
+    if($line =~ m/^\s*ifeq\s*\(\$\(STREAMS\_INSTALL/) {
+      $discard = 1;
+    } else {
+      print TMPFILE $line;
+    }
+  }
+}
+close(SMKFILE);
+close(TMPFILE);
+system("cp $tmpfile $tmkfile");

@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<applicationSet xmlns="http://www.ibm.com/xmlns/prod/streams/application/v4200" name="apps.parallel::Parallel.appset" xmlns:tt="http://www.ibm.com/xmlns/prod/streams/spl/tupleType" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <description>apps.parallel::Parallel application set</description>
+
+  <splApplication adlPath="apps.parallel/apps.parallel.Parallel.adl" applicationDirectory="toolkits/streams.spl.apps" applicationScope="Default" avoidRuntimeYield="auto" buildId="" bundle="./apps.parallel.Parallel.sab" checkpointDirectory="/homes/hny7/scoschne/ghe/streams.spl.apps/data/ckpt" name="apps.parallel::Parallel" outputDirectory="apps.parallel" productVersion="4.3.0.0" standaloneApplicationDirectory="toolkits/streams.spl.apps" version="1.0.0">
+    <libraries/>
+    <hostpools>
+      <hostpool index="0" membershipMode="shared" name="$default"/>
+    </hostpools>
+    <tupleTypes>
+      <tupleType index="0">
+        <attribute name="i" type="uint64"/>
+        <tuple>
+          <tt:attr name="i" type="uint64"/>
+        </tuple>
+      </tupleType>
+    </tupleTypes>
+    <primitiveOperDefinitions>
+      <primitiveOperDefinition index="0" kind="spl.relational::Functor" runtimeType="SPL_CPlusPlus" toolkitIndex="1"/>
+      <primitiveOperDefinition index="1" kind="spl.utility::Beacon" runtimeType="SPL_CPlusPlus" toolkitIndex="1"/>
+      <primitiveOperDefinition index="2" kind="spl.utility::Custom" runtimeType="SPL_CPlusPlus" toolkitIndex="1"/>
+    </primitiveOperDefinitions>
+    <composites>
+      <sourceUris>
+        <uri index="0" path="file:///homes/hny7/scoschne/ghe/streams.spl.apps/apps.parallel/Parallel.spl"/>
+      </sourceUris>
+      <compositeOperDefinitions>
+        <compositeOperDefinition endLine="17" index="0" kind="apps.parallel::Work" numberOfInputPorts="1" numberOfOutputPorts="1" sourceIndex="0" startLine="3" toolkitIndex="0">
+          <description>apps.parallel::Work Composite</description>
+        </compositeOperDefinition>
+        <compositeOperDefinition endLine="28" index="1" kind="apps.parallel::Parallel" numberOfInputPorts="0" numberOfOutputPorts="0" sourceIndex="0" startLine="19" toolkitIndex="0">
+          <description>apps.parallel::Parallel Composite</description>
+        </compositeOperDefinition>
+      </compositeOperDefinitions>
+      <compositeOperInstances>
+        <compositeOperInstance definitionIndex="1" endLine="28" index="5" name="apps.parallel::Parallel" sourceIndex="0" startLine="19">
+          <compositeOperInstance definitionIndex="0" endLine="25" index="6" name="Result" sourceIndex="0" startLine="25">
+            <inputPorts>
+              <port index="0">
+                <incomingConnections>
+                  <connection operIndex="0" operName="Source" portIndex="0" portKind="output"/>
+                </incomingConnections>
+                <outgoingConnections>
+                  <connection operIndex="2" operName="Result.Region1" portIndex="0" portKind="input"/>
+                </outgoingConnections>
+              </port>
+            </inputPorts>
+            <outputPorts>
+              <port index="0">
+                <incomingConnections>
+                  <connection operIndex="4" operName="Result.Region3" portIndex="0" portKind="output"/>
+                </incomingConnections>
+                <outgoingConnections>
+                  <connection operIndex="1" operName="Sink" portIndex="0" portKind="input"/>
+                </outgoingConnections>
+              </port>
+            </outputPorts>
+            <primitiveOperInstance definitionIndex="0" endLine="10" index="2" name="Result.Region1" optimized="true" relocatable="true" restartable="true" singleThreadedOnOutputs="true" sourceIndex="0" startLine="9">
+              <inputPorts>
+                <port encoding="LE" index="0" isMutable="false" name="In" transport="TCP" tupleTypeIndex="0">
+                  <connections>
+                    <connection operIndex="6" operName="Result" portIndex="0" portKind="input"/>
+                  </connections>
+                </port>
+              </inputPorts>
+              <outputPorts>
+                <port encoding="LE" index="0" isMutable="true" name="Region1" streamName="Result.Region1" transport="TCP" tupleTypeIndex="0" viewable="true">
+                  <connections>
+                    <connection operIndex="3" operName="Result.Region2" portIndex="0" portKind="input"/>
+                  </connections>
+                </port>
+              </outputPorts>
+              <envVars>
+                <envVar name="JAVA_HOME" value="/opt/java-x86_64-80"/>
+              </envVars>
+              <resources>
+                <poolLocation poolIndex="0"/>
+              </resources>
+              <runtimeConstants/>
+              <sharedObject class="Result::Region1">
+                <wrapper>none</wrapper>
+                <uri>bin/Result.Region1.so</uri>
+              </sharedObject>
+              <tracing level="error"/>
+            </primitiveOperInstance>
+            <primitiveOperInstance definitionIndex="0" endLine="13" index="3" name="Result.Region2" optimized="true" relocatable="true" restartable="true" singleThreadedOnOutputs="true" sourceIndex="0" startLine="12">
+              <inputPorts>
+                <port encoding="LE" index="0" isMutable="false" name="Region1" transport="TCP" tupleTypeIndex="0">
+                  <connections>
+                    <connection operIndex="2" operName="Result.Region1" portIndex="0" portKind="output"/>
+                  </connections>
+                </port>
+              </inputPorts>
+              <outputPorts>
+                <port encoding="LE" index="0" isMutable="true" name="Region2" streamName="Result.Region2" transport="TCP" tupleTypeIndex="0" viewable="true">
+                  <connections>
+                    <connection operIndex="4" operName="Result.Region3" portIndex="0" portKind="input"/>
+                  </connections>
+                </port>
+              </outputPorts>
+              <envVars>
+                <envVar name="JAVA_HOME" value="/opt/java-x86_64-80"/>
+              </envVars>
+              <resources>
+                <poolLocation poolIndex="0"/>
+              </resources>
+              <runtimeConstants/>
+              <sharedObject class="Result::Region1">
+                <wrapper>none</wrapper>
+                <uri>bin/Result.Region1.so</uri>
+              </sharedObject>
+              <tracing level="error"/>
+            </primitiveOperInstance>
+            <primitiveOperInstance definitionIndex="0" endLine="16" index="4" name="Result.Region3" optimized="true" relocatable="true" restartable="true" singleThreadedOnOutputs="true" sourceIndex="0" startLine="15">
+              <inputPorts>
+                <port encoding="LE" index="0" isMutable="false" name="Region2" transport="TCP" tupleTypeIndex="0">
+                  <connections>
+                    <connection operIndex="3" operName="Result.Region2" portIndex="0" portKind="output"/>
+                  </connections>
+                </port>
+              </inputPorts>
+              <outputPorts>
+                <port encoding="LE" index="0" isMutable="true" name="Region3" streamName="Result" transport="TCP" tupleTypeIndex="0" viewable="true">
+                  <connections>
+                    <connection operIndex="6" operName="Result" portIndex="0" portKind="output"/>
+                  </connections>
+                </port>
+              </outputPorts>
+              <envVars>
+                <envVar name="JAVA_HOME" value="/opt/java-x86_64-80"/>
+              </envVars>
+              <resources>
+                <poolLocation poolIndex="0"/>
+              </resources>
+              <runtimeConstants/>
+              <sharedObject class="Result::Region1">
+                <wrapper>none</wrapper>
+                <uri>bin/Result.Region1.so</uri>
+              </sharedObject>
+              <tracing level="error"/>
+            </primitiveOperInstance>
+          </compositeOperInstance>
+          <primitiveOperInstance definitionIndex="1" endLine="23" index="0" name="Source" optimized="true" relocatable="true" restartable="true" singleThreadedOnOutputs="true" sourceIndex="0" startLine="21">
+            <outputPorts>
+              <port encoding="LE" index="0" isMutable="false" name="Source" streamName="Source" transport="TCP" tupleTypeIndex="0" viewable="true">
+                <connections>
+                  <connection operIndex="6" operName="Result" portIndex="0" portKind="input"/>
+                </connections>
+              </port>
+            </outputPorts>
+            <envVars>
+              <envVar name="JAVA_HOME" value="/opt/java-x86_64-80"/>
+            </envVars>
+            <resources>
+              <poolLocation poolIndex="0"/>
+            </resources>
+            <runtimeConstants/>
+            <sharedObject class="Source">
+              <wrapper>none</wrapper>
+              <uri>bin/Source.so</uri>
+            </sharedObject>
+            <tracing level="error"/>
+          </primitiveOperInstance>
+          <primitiveOperInstance definitionIndex="2" endLine="27" index="1" name="Sink" optimized="true" relocatable="true" restartable="true" singleThreadedOnOutputs="true" sourceIndex="0" startLine="27">
+            <inputPorts>
+              <port encoding="LE" index="0" isControl="true" isMutable="false" name="Result" transport="TCP" tupleTypeIndex="0">
+                <connections>
+                  <connection operIndex="6" operName="Result" portIndex="0" portKind="output"/>
+                </connections>
+              </port>
+            </inputPorts>
+            <envVars>
+              <envVar name="JAVA_HOME" value="/opt/java-x86_64-80"/>
+            </envVars>
+            <resources>
+              <poolLocation poolIndex="0"/>
+            </resources>
+            <runtimeConstants/>
+            <sharedObject class="Sink">
+              <wrapper>none</wrapper>
+              <uri>bin/Sink.so</uri>
+            </sharedObject>
+            <tracing level="error"/>
+          </primitiveOperInstance>
+        </compositeOperInstance>
+      </compositeOperInstances>
+    </composites>
+    <toolkits>
+      <toolkit index="0" name="streams.spl.apps" uri="file:///homes/hny7/scoschne/ghe/streams.spl.apps" version="1.0.0"/>
+      <toolkit index="1" name="spl" uri="file:///homes/hny7/scoschne/InfoSphere_Streams/4.3.0.0/toolkits/spl" version="1.4.0"/>
+    </toolkits>
+    <parallelRegions>
+      <parallelRegion index="0" name="Result.Region1">
+        <parallelOperator operIndex="2">
+          <splitter iportIndex="0" kind="RoundRobin"/>
+        </parallelOperator>
+        <parallelWidth>
+          <submissionTimeParameterIndexForWidth>0</submissionTimeParameterIndexForWidth>
+        </parallelWidth>
+      </parallelRegion>
+      <parallelRegion index="1" name="Result.Region2">
+        <parallelOperator operIndex="3">
+          <splitter iportIndex="0" kind="RoundRobin"/>
+        </parallelOperator>
+        <parallelWidth>
+          <submissionTimeParameterIndexForWidth>1</submissionTimeParameterIndexForWidth>
+        </parallelWidth>
+      </parallelRegion>
+      <parallelRegion index="2" name="Result.Region3">
+        <parallelOperator operIndex="4">
+          <splitter iportIndex="0" kind="RoundRobin"/>
+        </parallelOperator>
+        <parallelWidth>
+          <submissionTimeParameterIndexForWidth>2</submissionTimeParameterIndexForWidth>
+        </parallelWidth>
+      </parallelRegion>
+    </parallelRegions>
+    <submissionTimeValues>
+      <submissionTimeValue compositeName="apps.parallel::Work" defaultValue="&quot;1&quot;" index="2" kind="named" name="width3" required="false"/>
+      <submissionTimeValue compositeName="apps.parallel::Work" defaultValue="&quot;1&quot;" index="1" kind="named" name="width2" required="false"/>
+      <submissionTimeValue compositeName="apps.parallel::Work" defaultValue="&quot;1&quot;" index="0" kind="named" name="width1" required="false"/>
+    </submissionTimeValues>
+  </splApplication>
+
+</applicationSet>

@@ -1,0 +1,215 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Decompress.html">
+The `Decompress` operator decompresses data in blob input and generates blob output that contains the decompressed data.
+The input data must be in a format that can be decompressed, and that comprises a complete compressed stream on completion of the decompression.
+
+By default, window punctuation is not forwarded, and, on receipt of a final marker, any data that has not yet been decompressed
+is decompressed and output, followed by a window punctuation.
+
+# Checkpointed data
+
+When the `Decompress` operator is checkpointed, logic state variables (if present) are saved in the checkpoint.
+
+# Behavior in a consistent region
+
+The `Decompress` operator can be used in a consistent region.  It cannot be used as the start of the region.
+In a consistent region, a `Decompress` operator stores its state when a checkpoint is taken.
+When the region is reset, the operator restores the state from the checkpoint.
+
+In a consistent region, it is required that between drains the input contains one or more entire compressed streams, from start to end.
+For example, this input could contain an entire file that was created by a standard compression utility.
+The drain action completes processing the data received and decompressing it.
+The drain includes outputting a window punctuation if it follows decompressed data, unless the `flushPerTuple` parameter is set.
+The first tuple following a start, drain or reset must begin a new compressed stream.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Decompress` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Decompress` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Exceptions
+
+The `Decompress` operator throws an exception in the following cases:
+* The input data are not in the correct format.
+  If the exception is caught, the decompression operator is reset to its initial state before any more input tuples are processed.
+* A shutdown occurred during a drain operation, causing the drain to be imcomplete.
+
+# Examples
+
+This example uses the `Decompress` operator.
+
+    composite Main {
+      type A = int32 a, rstring b;
+      graph
+        stream&lt;blob b&gt; X = FileSource() {
+          param file      : "compress.in";
+                format    : block;
+                blockSize : 4096u;
+        }
+        stream&lt;blob b&gt; B = Decompress (X) {
+          param compression : gzip;
+        }
+        stream&lt;A&gt; C = Parse (B) {
+          param format : txt;
+        }
+    }
+
+    // This example is equivalent to the following SPL program:
+    composite Main {
+      type A = int32 a, rstring b;
+      graph
+        stream&lt;A&gt; C = FileSource() {
+          param file        : "compress.in";
+                format      : txt;
+                compression : gzip;
+        }
+    }
+
+</description>
+      <iconUri size="16">decompress_16.gif</iconUri>
+      <iconUri size="32">decompress_32.gif</iconUri>
+      <customLiterals>
+        <enumeration>
+          <name>CompressionAlg</name>
+          <value>zlib</value>
+          <value>gzip</value>
+          <value>bzip2</value>
+        </enumeration>
+      </customLiterals>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Decompress">
+          <description>Basic Decompress template</description>
+          <template>(stream&lt;blob&gt; ${outputStream} = Decompress(${inputStream})   {
+            param
+                compression : ${algorithm};
+                decompressInput : ${inputAttribute};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>compression</name>
+        <description>
+Specifies the decompression mode.
+The operator decompresses the input using the specified algorithm and outputs the result.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>CompressionAlg</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>decompressionInput</name>
+        <description>
+Specifies the name of the attribute of the input tuple that contains the data to be decompressed.
+The attribute must be of type `blob`.
+If this parameter is not specified, the input stream must consist of a single blob attribute.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <type>blob</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>flushOnPunct</name>
+        <description>
+Specifies when the decompression is completed.
+
+If the parameter value is `true`, the decompression is completed when a window punctuation is received.
+Before the punctuation the data are decompressed and output in chunks and not all input data may have been decompressed.
+On receipt of the window punctuation, any remaining input data are decompressed and output.
+A window punctuation is output following the data, provided input tuples had been received prior to the input punctuation.
+The input data before the punctuation must form a complete compressed stream.
+The decompression operator is reset to its initial state before any more input tuples are processed.
+On receipt of a final punctuation, any remaining input data are decompressed and output, without a following window punctuation.
+
+If the parameter is not specified or the value is `false`,
+the decompression is completed as specified by the `flushPerTuple` parameter, or
+when a final punctuation is received,
+Do not set both the `flushOnPunct` and the `flushPerTuple` parameters to `true`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>flushPerTuple</name>
+        <description>
+Specifies when the decompression is completed.
+
+If the parameter value is `true`, the decompression is completed when a tuple is received,
+and a single tuple is output for each input tuple.
+Each input tuple must form a complete compressed stream.
+The decompression operator is reset to its initial state before the next tuple is processed.
+Any input window punctuation is forwarded to the output.
+
+If the parameter is not specified or the value is `false`,
+the decompression is completed as specified by the `flushOnPunct` parameter, or
+when a final punctuation is received,
+Do not set both the `flushOnPunct` and the `flushPerTuple` parameters to `true`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Decompress` operator is configurable with a single input port, which ingests tuples that contain data to be decompressed.
+</description>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Decompress operator` is configurable with a single output port, which produces tuples that contain decompressed data.
+The output stream from the `Decompress` operator must have only one attribute and that attribute must have type blob.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

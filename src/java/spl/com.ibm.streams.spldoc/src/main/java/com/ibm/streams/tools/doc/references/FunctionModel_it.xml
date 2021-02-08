@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<reference id="spldoc_reference_function_model">
+<title>Modello di funzione SPL</title>
+<refbody>
+<section id="overview">
+<p>
+Il file del modello di funzione Š strutturato come una sequenza di uno o pi— elementi functionSet.
+L'elemento functionSet rappresenta la serie di funzioni native dichiarate internamente o incluse da un file di intestazione C++.
+</p>
+</section>
+<section id="functionset">
+<dl>
+  <dlentry id="functionset__headerfilename">
+    <dt>Nome file di intestazione</dt>
+    <dd>Contiene il nome del file di intestazione che dichiara le funzioni C++ o include altri file di intestazione che le dichiarano.
+    </dd>
+  </dlentry>
+  <dlentry id="functionset__cppnamespacename">
+    <dt>Nome namespace CPP (facoltativo)</dt>
+    <dd>Il secondo elemento (facoltativo) Š denominato cppNamespacename, che fornisce il namespace C++ per le funzioni. Se l'elemento cppNamespacename non Š presente, viene utilizzato il namespace SPL, con "."
+convertito in "::".
+    </dd>
+  </dlentry>
+  <dlentry id="functionset__functions">
+    <dt>Funzioni</dt>
+    <dd>Una sequenza di uno o pi— elementi di funzione, ognuno che rappresenta una firma
+di funzione nativa in formato SPL.
+      <dl>
+        <dlentry id="functionset__functions__description">
+          <dt>Descrizione</dt>
+          <dd>Una descrizione della funzione</dd>
+        </dlentry>
+        <dlentry id="functionset__functions__prototype">
+          <dt>Prototipo</dt>
+          <dd>Il prototipo della funzione nativa.  I prototipi della funzione nativa sono
+dichiarati con la sintassi SPL, che Š descritta in  <i>IBM Streams Processing Language Specification.</i></dd>
+        </dlentry>
+        <dlentry id="functionset__functions__cppname">
+          <dt>Nome CPP (facoltativo)</dt>
+          <dd>Specifica il nome C++ della funzione. Se non Š presente, viene utilizzato il nome
+funzione SPL.
+          </dd>
+        </dlentry>
+      </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="functionset__dependencies">
+    <dt>Dipendenze (facoltativo)</dt>
+    <dd>Una sequenza di uno o pi— elementi di libreria, ognuno che rappresenta una dipendenza di
+libreria.
+Il formato dell'elemento di libreria Š esattamente lo stesso di quello utilizzato per i modelli di
+operatore.
+     <dl>
+        <dlentry id="functionset__dependencies__description">
+          <dt>Descrizione (facoltativo)</dt>
+          <dd>Una descrizione della libreria
+          </dd>
+        </dlentry>
+        <dlentry id="functionset__dependencies__managedlibrary">
+          <dt>Libreria gestita</dt>
+          <dd>Specifica i dettagli delle singole risorse della libreria. I percorsi possono
+contenere variabili di ambiente incorporate tra i simboli @ (ad esempio: <tt>@FOO_FFT_HOME@/lib</tt>), che verr… risolto completamente dal compilatore SPL in fase di compilazione.
+            <dl>
+              <dlentry id="functionset__dependencies__managedlibrary_lib">
+                <dt>lib (facoltativo)</dt>
+                <dd>Specifica un nome da passare all'argomento <tt>-l</tt> del compilatore C++ (ad
+esempio <tt>fft</tt> verr… convertito in <tt>-lfft</tt> quando passato al linker)
+                </dd>
+              </dlentry>
+              <dlentry id="functionset__dependencies__managedlibrary_libPath">
+                <dt>libPath (facoltativo)</dt>
+                <dd>Specifica un percorso da passare all'argomento <tt>-L</tt> del compilatore C++.
+                </dd>
+              </dlentry>
+              <dlentry id="functionset__dependencies__managedlibrary_includePath">
+                <dt>includePath (facoltativo)</dt>
+                <dd>Specifica un percorso da passare all'argomento <tt>-I</tt> del compilatore C++.
+                </dd>
+              </dlentry>
+              <dlentry id="functionset__dependencies__managedlibrary_command">
+                <dt>command (facoltativo)</dt>
+                <dd>Un percorso per il programma che verr… eseguito per richiamare le informazioni
+<tt>includePath, libPath</tt> e <tt>lib</tt>. Se il percorso per il programma Š relativo, si
+presume che la root sia la directory del modello di operatore. Il programma viene eseguito tre
+volte, ogni volta con un argomento diverso, cioŠ <tt>lib, libPath</tt>e <tt>includePath</tt>. L'output standard da queste esecuzioni verr… letto e ogni
+riga (con spazi rimossi) verr… aggiunta a uno degli elementi <tt>lib, libPath</tt>e <tt>includePath</tt> , in base al tipo di esecuzione. Una riga che inizia con # verr… ignorata. Si presume che i percorsi relativi abbiano come root la
+directory in cui si trova il documento XML del modello di operatore.
+                </dd>
+              </dlentry>
+            </dl>
+          </dd>
+        </dlentry>
+    </dl>
+    </dd>
+  </dlentry>
+</dl>
+</section>
+<section id="example">
+  <title outputclass="splhead-1">Esempio</title>
+  <!-- START NON-TRANSLATABLE -->
+  <pre>
+  &lt;functionModel
+   xmlns="http://www.ibm.com/xmlns/prod/streams/spl/function"
+   xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/function functionModel.xsd"&gt;
+  &lt;functionSet&gt;
+    &lt;!-- header file to include from within C++ code --&gt;
+    &lt;headerFileName&gt;Sample.h&lt;/headerFileName&gt;
+    &lt;!-- functions lists the SPL prototypes of the functions implemented in this library --&gt;
+    &lt;functions&gt;
+      &lt;!-- use of CDATA allows easy use of &lt; in the prototypyes --&gt;
+      &lt;function&gt;
+        &lt;description&gt;Increment all list elements by a given amount&lt;/description&gt;
+        &lt;prototype cppName="increment_by"&gt;&lt;![CDATA[ void incrementBy(mutable list&lt;int32&gt; l, int32 incr) ]]&gt;&lt;/prototype&gt;
+      &lt;/function&gt;
+      &lt;function&gt;
+        &lt;description&gt;Join two lists&lt;/description&gt;
+        &lt;prototype&gt;&lt;![CDATA[ list&lt;int32&gt; joinLists(list&lt;int32&gt; a, list&lt;int32&gt; b) ]]&gt;&lt;/prototype&gt;
+      &lt;/function&gt;
+    &lt;/functions&gt;
+    &lt;dependencies&gt;
+      &lt;!-- This library can have several dependencies. We only use one here --&gt;
+      &lt;library&gt;
+        &lt;!-- A description for this library --&gt;
+        &lt;cmn:description&gt;Sample-Functions&lt;/cmn:description&gt;
+        &lt;cmn:managedLibrary&gt;
+          &lt;!-- the name of the library for linking. Will be used as -lSample --&gt;
+          &lt;cmn:lib&gt;Sample&lt;/cmn:lib&gt;
+          &lt;!-- Where to find the library. Relative to the current directory.
+               Will be used as -L&lt;dir&gt;/lib --&gt;
+          &lt;cmn:libPath&gt;lib&lt;/cmn:libPath&gt;
+          &lt;!-- Where to find the include file. Relative to the current directory.
+               Will be used as -I&lt;dir&gt; --&gt;
+          &lt;cmn:includePath&gt;./&lt;/cmn:includePath&gt;
+        &lt;/cmn:managedLibrary&gt;
+      &lt;/library&gt;
+    &lt;/dependencies&gt;
+  &lt;/functionSet&gt;
+&lt;/functionModel&gt;
+</pre>
+<!-- END NON-TRANSLATABLE -->
+</section>
+</refbody>
+</reference>

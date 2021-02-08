@@ -1,0 +1,24 @@
+# fixlib.py runs the changes described in this file into your library
+# Edit this to specify the changes needed for your Javadocs.
+# Syntax: The following set of lines may be repeated as often as needed:
+#    # optional-comment
+#    Pat: regular-expression-for-matching
+#    Rep: replacement-value-with-group-variables
+# See the Python reference for regular expressions for the syntax of these expressions.
+# For example:
+#    # Updates the copyright footers
+#    Pat: Copyright &copy; 2008 ([\s\w]+), <em>([\s\w\.,]+)</em>
+#    Rep: Copyright &copy; 2008, 2010 &1, <em>&2.</em>
+# Regular expressions must be valid for Python.
+# Expressions are expected to be case-sensitive unless you prefix them with (?i),
+# for example, (?i)END OF BOTTOM NAVBAR
+# Expressions are expected to span a single line unless you prefix them with (?m),
+# for example, (?im)end of one line\nand the beginning of the next
+
+# Fix the css to avoid duplicate current id values
+Pat: DIV.tabs LI#current (A|SPAN)
+Rep: DIV.tabs LI.current \1
+
+# Add a style for small
+Pat: .directory img { vertical-align: -30%; }(\s*)
+Rep: .directory img { vertical-align: -30%; }\1span.small { font-size: 80%; }\1span.strong { font-weight: bold; }\1

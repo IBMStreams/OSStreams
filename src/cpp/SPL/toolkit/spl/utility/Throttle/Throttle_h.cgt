@@ -1,0 +1,59 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use ThrottleCommon;
+    ThrottleCommon::verify($model);
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+%>
+
+#include <SPL/Runtime/Operator/EventTime/WatermarkHandler.h>
+
+<%SPL::CodeGen::headerPrologue($model);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR<%if ($ckptKind ne "none") {%>, public StateHandler<%}%>, WatermarkHandler
+{
+public:
+    MY_OPERATOR();
+
+    virtual void process(Punctuation const & punct, uint32_t port);
+    virtual void process(Tuple const & tuple, uint32_t port);
+    virtual void processWatermark(Punctuation const & wm, uint32_t port);
+
+private:
+    // A sync point is a periodically increasing point starting from the
+    // init time, and is a multiple of period/2
+    struct SyncPoint {
+        uint64_t time;
+        uint64_t count;
+    };
+
+    template<class T> inline void handleOne(T & tupleOrPunct);
+
+    SyncPoint _first;            // second closest sync point to current time
+    SyncPoint _last;             // closest sync point to current time
+    uint64_t _currentCount;      // number of tuples/puncts seen
+    uint64_t _halfFull;          // 1/2 the number of tuples per period
+
+    uint64_t _initTime;          // start time in nano-secs
+    uint64_t _period;            // period in nano-secs
+    uint64_t _periodDiv2;        // 1/2 period in nano-secs
+    double   _rate;              // desired maximum tuple rate
+    Mutex _mutex;
+
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

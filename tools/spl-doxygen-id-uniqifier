@@ -1,0 +1,71 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use File::Basename;
+use File::Temp qw/ tempfile /;
+use Cwd qw(realpath);
+use Getopt::Std;
+
+sub badUsage($)
+{
+    my ($rc) = @_;
+    my $name=basename($0);
+    print "Usage: $name [-h] -d <directory> \n";
+    print "    -h             Print this help information\n";
+    print "    -d <directory> Directory of html files to fix\n";
+    exit($rc);
+}
+
+my %opts;
+getopts('hd:', \%opts);
+badUsage(0) if $opts{'h'};
+
+my $dir = $opts{d};
+badUsage(1) if not defined($dir);
+
+die "Not a directory: $dir" unless(-d $dir);
+
+my ($tmpFileHandle, $tmpFileName) = tempfile("/tmp/tmpfileXXXXXX", UNLINK => 1);
+close($tmpFileHandle);
+
+my @files=<$dir/search/*.html>;
+if(-e "$dir/inherits.html") {
+    push @files, "$dir/inherits.html"
+}
+foreach my $file (@files) {
+    my %ids = ();
+    open(INFILE,"<$file") or die "Cannot open '$file' for reading";
+    open(TMPFILE,">$tmpFileName") or die "Cannot open '$tmpFileName' for writing";
+    while(<INFILE>) {
+        if(/\sid="([^\"]*)"/) {
+            my $id = $1;
+            if(defined $ids{$id}) {
+               my $count = ++$ids{$id};
+               s/\sid="([^\"]*)"/ id="${id}_${count}"/;
+            } else {
+               $ids{$id} = 0;
+            }
+        }
+        print TMPFILE $_;
+    }
+    close(INFILE);
+    close(TMPFILE);
+    system("cp $tmpFileName $file") == 0 or
+        die "Cannot copy $tmpFileName over $file!";
+}

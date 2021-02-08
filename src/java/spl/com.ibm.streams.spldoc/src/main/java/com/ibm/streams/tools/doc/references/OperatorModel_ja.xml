@@ -1,0 +1,521 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<reference id="spldoc_reference_operator_model">
+<title>SPL オペレーター・モデル</title>
+<refbody>
+<section id="overview">
+<p>
+オペレーター・モデルを使用して、C++ プリミティブ・オペレーターまたは Java プリミティブ・オペレーターを記述できます。
+Java オペレーター・モデルに指定できるエレメントのセットは、JVM 関連構成に使用される特殊なエレメントを除き、
+C++ オペレーター・モデルに指定できるエレメントの厳密なサブセットです。</p>
+</section>
+<section id="context">
+<title outputclass="splhead-1">コンテキスト</title>
+<p>
+context エレメントは、オペレーターの特定のパラメーターまたはポートとは関連付けられていない、オペレーター全体に適用されるプロパティーについて記述します。
+オペレーター・モデル内の他の場所で参照された共通定義も含みます。</p>
+<dl>
+  <dlentry id="context__description">
+    <dt>説明</dt>
+    <dd>description エレメント (オプション) はオペレーターの概要を示します。</dd>
+  </dlentry>
+  <dlentry id="context__metrics">
+    <dt>メトリック</dt>
+    <dd>オプションの metrics エレメントは、オペレーターによって公開されたメトリックのリストを含みます。
+metric エレメントのリストとして構造化され、各 metric エレメントは、name、description、および kind で構成されます。
+<dl>
+        <dlentry id="context__metrics_kind_counter">
+          <dt>Kind: Counter</dt>
+          <dd>非減少または非増加のいずれかの値を持つメトリックを表します。</dd>
+        </dlentry>
+        <dlentry id="context__metrics_kind_gauge">
+          <dt>Kind: Gauge</dt>
+          <dd>値を自由に変更できる、つまり増加も減少も可能なメトリックを表します。</dd>
+        </dlentry>
+        <dlentry id="context__metrics_kind_time">
+          <dt>Kind: Time</dt>
+          <dd>特定時点を指すメトリックを表します。</dd>
+        </dlentry>
+      </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="context__customliterals">
+    <dt>カスタム・リテラル</dt>
+    <dd>オプションの customLiterals エレメントは、オペレーターのパラメーター構成に出現する可能性のある識別子を収集します。
+それは enumeration エレメントのリストとして構造化されます。
+例えば、ソース・オペレーターでは、さまざまなソース・フォーマットをサポートできます。その場合、値 <tt>{csv, xml, bin}</tt> を含む FileFormat という列挙を使用できます。
+</dd>
+  </dlentry>
+  <dlentry id="context__customoutputfunctions">
+    <dt>カスタム出力関数 (C++ のみ)</dt>
+    <dd>オプションの customOutputFunctions エレメントは、出力属性割り当てでオペレーターによって使用される出力関数プロトタイプを収集します。
+customOutputFunction エレメントのリストとして構造化され、各列挙には、名前と出力関数プロトタイプのリストが含まれます。
+例えば、Aggregate オペレーターが関係集計をサポートする場合、RelationalAggs という列挙型を指定することができ、そこに <tt>{Min, Max, Avg, Sum など}</tt> の出力関数を含めることができます。
+</dd>
+  </dlentry>
+  <dlentry id="context__dependencies">
+    <dt>依存関係 (オプション)</dt>
+    <dd>library エレメントを 1 つ以上含むシーケンスで、各エレメントはライブラリーの依存関係を表します。library エレメントのフォーマットは、オペレーター・モデルに使用されるものと正確に同じです。
+<dl>
+        <dlentry id="context__dependencies__description">
+          <dt>説明 (オプション)</dt>
+          <dd>ライブラリーの説明</dd>
+        </dlentry>
+        <dlentry id="context__dependencies__managedlibrary">
+          <dt>管理対象ライブラリー</dt>
+          <dd>個々のライブラリー成果物の詳細を指定します。パスには、@ 記号の間に埋め込まれた環境変数を含めることができ
+(例: <tt>@FOO_FFT_HOME@/lib</tt>)、コンパイル時に SPL コンパイラーによって完全に解決されます。
+<dl>
+              <dlentry id="context__dependencies__managedlibrary__lib">
+                <dt>lib (オプション)</dt>
+                <dd>C++ コンパイラーの <tt>-l</tt> 引数に渡される名前を指定します (リンカーに渡されるときに <tt>-lfft</tt> に変換される <tt>fft</tt> など)。
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__libpath">
+                <dt>libPath (オプション)</dt>
+                <dd>C++ コンパイラーの <tt>-L</tt> 引数に渡されるパスを指定します。</dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__includepath">
+                <dt>includePath (オプション)</dt>
+                <dd>C++ コンパイラーの <tt>-I</tt> 引数に渡されるパスを指定します。</dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__command">
+                <dt>コマンド (オプション)</dt>
+                <dd><tt>includePath、libPath</tt>、および <tt>lib</tt> の情報を取得するために実行されるプログラムへのパス。
+プログラムへのパスが相対的である場合、パスは演算子モデルのディレクトリーでルート化されると想定されます。プログラムは、<tt>lib、
+libPath</tt>、<tt>includePath</tt> の引数をそれぞれ使用して、3 回実行されます。これらの実行による標準出力が読み取られ、各行 (空白文字は切り取られる) が、実行のタイプに応じて、<tt>lib、libPath</tt>、および <tt>includePath</tt> のいずれかのエレメントに追加されます。
+# で始まる行は無視されます。相対パスは、
+演算子モデルの XML 文書があるディレクトリーでルート化されると想定されます。
+                </dd>
+              </dlentry>
+            </dl>
+          </dd>
+        </dlentry>
+    </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="context__providessinglethreadedexecutioncontext">
+    <dt>単一スレッドの実行コンテキストを提供 (C++ のみ)</dt>
+    <dd><p><tt>providesSingleThreadedContext</tt> エレメントは、実行のフローに関する、オペレーターのスレッド化セマンティクスを記述します。
+以下の場合に限り、オペレーターは単一スレッドの実行コンテキストを提供します。<ul>
+        <li>それは submit の同時呼び出しを実行しない。ただし、その process メソッドが同時に呼び出される場合を除く。</li>
+        <li>サブミットをトリガーしたプロセス呼び出しが完了する前にサブミット呼び出しが完了する。</li>
+      </ul>
+    </p>
+    <p>ソースおよび非ソース両方のオペレーターに process メソッドがあり、上記の定義がグローバルに当てはまります。
+この定義に基づいて、時間ベース・イベントによってトリガーされるサブミット呼び出しなど、プロセス呼び出しによってトリガーされないサブミット呼び出しがオペレーターにある場合、そのオペレーターは単一スレッド実行コンテキストを提供しません。
+なお、この定義では、サブミットをトリガーしたプロセス呼び出しを実行するのと同じスレッドの下でサブミット呼び出しを実行する必要はありません (通常は同じスレッドの下で実行されます)。
+</p>
+    <p>このプロパティーには、次のような有効な値があります。<ul>
+  <li><tt>Never:</tt> このオペレーターのインスタンスが単一スレッドの実行コンテキストを提供することは決してありません。</li>
+  <li><tt>Always:</tt> このオペレーターのインスタンスは、常に単一スレッドの実行コンテキストを提供します。</li>
+  <li><tt>WindowBound:</tt> 時間をベースにしたウィンドウ排除ポリシーまたは時間をベースにしたウィンドウ・トリガー・ポリシーを指定しない、このオペレーターのインスタンスは、単一スレッドの実行コンテキストを提供します。</li>
+  <li><tt>WindowEvictionBound:</tt> 時間をベースにしたウィンドウ排除ポリシーを指定しない、このオペレーターのインスタンスは、単一スレッドの実行コンテキストを提供します。</li>
+  <li><tt>WindowTriggerBound:</tt> 時間をベースにしたウィンドウ・トリガー・ポリシーを指定しない、このオペレーターのインスタンスは、単一スレッドの実行コンテキストを提供します。</li>
+  <li><tt>WindowPartitionEvictionBound:</tt> このオペレーターのインスタンスは、スレッドを使用してパーティション排除を実装します。
+この設定は、タプルが onWindowPartitionEvictionSelection イベントからサブミットされる場合に使用します。</li>
+</ul>
+    </p>
+<p>
+例として、<tt>フィルター</tt>･オペレーターについて考えます。process メソッドが同時に呼び出されていない限り、
+<tt>フィルター</tt>・オペレーターは同時サブミット呼び出しを行いません。サブミット呼び出しは、着信タプルによってトリガーされます。
+プロセス呼び出しを介してタプルを受信すると、受信したタプルがフィルター条件をパスした場合、サブミット呼び出しを行います。そのサブミット呼び出しは、それをトリガーしたプロセス呼び出しが完了すると完了します。
+結果として、<tt>フィルター</tt>・オペレーターのすべてのインスタンスが単一スレッド・コンテキストを提供することになるため、<tt>「Always」</tt>設定が適切です。</p>
+<p>
+実装に関する注: <tt>providesSingleThreadedContext</tt> エレメントは、SPL ランタイムにおいて不必要なスレッド同期を防止できるようにするために使用されます。
+この設定値が Never であれば、すべてのオペレーターで安全ですが、オペレーターが単一スレッドのコンテキストを提供するときに同期のオーバーヘッドを削減する最適化も行われなくなります。
+オペレーターにより実装されるスレッド化セマンティクスと矛盾する、Never 以外の値を指定すると、未定義の動作が発生します。</p>
+    </dd>
+  </dlentry>
+  <dlentry id="context__incrementalcompilationstrategy">
+    <dt>増分コンパイル方式 (C++ のみ)</dt>
+    <dd><p>コンパイラーがオペレーターの増分コンパイルを管理する方法を指定します。
+選択項目は次のとおりです。
+<ul>
+         <li><tt>SourceDependent</tt>: このモードでは、オペレーター・ソースが、SPL ソース、またはそのオペレーターのコード生成プログラムに関して古くなった場合にのみ、コンパイラーがオペレーター・ソースを再生成します。
+これがデフォルト・モードです。</li>
+         <li><tt>ResultDependent:</tt> このモードでは、コンパイラーは常にオペレーター・ソースを生成しますが、ソース・ファイルの更新は、コンパイル前に存在していたものと異なる場合にのみ行われます。
+オペレーターのコード生成プログラムが、SPL ソースで提供されるパラメーター化によって取り込まれない外部構成に依存している場合には、このモードを使用します。</li>
+       </ul>
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__allowCustomLogic">
+    <dt>カスタム・ロジックを許可 (C++ のみ)</dt>
+    <dd><p>このエレメントはオプションであり、オペレーターを使用して
+<tt>onTuple</tt> 処理または <tt>onPunct</tt> 処理のいずれかの状態をロジック節で指定することを許可するかどうか指定します。false に設定した場合、そのオペレーターにロジック節は指定できません。このエレメントが指定されないデフォルトの状態では、true です。</p></dd>
+   </dlentry>
+   <dlentry id="context__codetemplate">
+    <dt>コード・テンプレート</dt>
+    <dd><p>このエレメントはオプションであり、オペレーターの 1 つ以上のコード・テンプレートを指定します。
+これらは、IDE のコンテキスト依存のコンテンツ・アシスト・メニューと SPLDOC 文書に表示されます。
+各コード・テンプレートには、その名前を指定する name 属性、それを説明する description エレメント、テンプレートの定形文面コードを含むストリングである value エレメントがあります。
+テンプレートが IDE で使用される場合、ソース・コードに定形文面コードが組み込まれます。
+コードの ${name} の形式の部分は、ユーザーによるカスタマイズが必要な部分であることを示すために使用されます。
+IDE は ${} 内で指定される識別子を使用してカスタマイズ可能な部分を示します。
+Barrier オペレーターの一例を以下に示します。</p>
+<p>
+<!-- START NON-TRANSLATABLE -->
+<codeblock>
+&lt;codeTemplates>
+  &lt;codeTemplate name="Barrier">
+    &lt;description>Basic Barrier template&lt;/description>
+    &lt;template>
+      &lt;![CDATA[
+        stream&lt;${schema}> ${outputStream} = Barrier(${inputStream1};${inputStream2})
+        {
+          param
+            ${parameter}: ${parameterExpression};
+          output
+            ${outputStream}: ${outputExpression};
+          ${cursor}
+        }
+      ]]&gt;
+    &lt;template>
+  &lt;/codeTemplate>
+&lt;/codeTemplates>
+</codeblock>
+<!-- END NON-TRANSLATABLE -->
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__splexpressiontree">
+    <dt>SPL 式ツリー (C++ のみ)</dt>
+    <dd><p>汎用 C++ プリミティブ・オペレーターで使用するための SPL 式ツリーの生成を制御するオプション・エレメント。</p>
+      <ul>
+      <li><tt>param</tt> - <tt>true</tt> に設定すると、パラメーターについて SPL 式ツリーが生成されます。</li>
+      <li><tt>output</tt> - <tt>true</tt> に設定すると、出力について SPL 式ツリーが生成されます。</li>
+      <li><tt>cppCode</tt> - <tt>true</tt> に設定すると、生成されるオペレーター・インスタンス XML 内の各ノードは、テンプレートを使用して C++ コードで拡張されます。
+この C++ コードは、SPL 式の C++ コードを生成するために使用できます。例えば、SPL コードの場合、次のとおりです。
+<p>
+<codeblock>
+param predicates : {a = "a" == In.letter, b = "b" == In.letter};
+</codeblock>
+</p>
+<p>
+生成される SPL 式ツリーには、以下が含まれます。</p>
+<p>
+<!-- START NON-TRANSLATABLE -->
+<codeblock>
+&lt;expressionTree cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})">
+  &lt;literal cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})" type="1">
+    &lt;tuple count="2" cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})" type="1">
+      &lt;attr id="a">
+        &lt;value cppCode="({Lhs} == {Rhs})" type="2">
+          &lt;expn cppCode="({Lhs} == {Rhs})">
+            &lt;binary cppCode="({Lhs} == {Rhs})" op="==" type="2">
+              &lt;lhs cppCode="SPL::rstring("a")">
+                &lt;literal cppCode="SPL::rstring("a")" type="0">"a"&lt;/literal>
+              &lt;/lhs>
+              &lt;rhs cppCode="iport$0.get_letter()">
+                &lt;attribute attribute="letter" cppCode="iport$0.get_letter()" type="0">
+                  &lt;lhs cppCode="iport$0">
+                    &lt;stream cppCode="iport$0" name="In" port="0" type="3"/>
+                  &lt;/lhs>
+                &lt;/attribute>
+              &lt;/rhs>
+            &lt;/binary>
+          &lt;/expn>
+        &lt;/value>
+      &lt;/attr>
+</codeblock>
+<!-- END NON-TRANSLATABLE -->
+</p>
+<p>
+テンプレート (例えば、<tt>{Lhs}, {attr:0}</tt>) は、コード置換が適切に定義されることを確実にするために使用されます。
+</p>
+<p>
+これらの式は、SPL 式を表しますが、
+簡単にウォークできる形式で使用可能です。Perl オブジェクト は <tt>SPL::Operator::Instance::ExpressionTree</tt> から派生し、種類、タイプ、および、式のフィールドにアクセスするためのメソッドを備えています。
+<tt>ExpressionTreeVisitor</tt> は、式ツリーのウォークを簡単にするために提供されるビジター・パターンです。 詳しくは、<i>IBM Streams Processing Language コード生成 API 資料</i> を参照してください。
+</p>
+      </li>
+      </ul>
+    </dd>
+   </dlentry>
+   <dlentry id="context__capability">
+    <dt>オペレーティング・システム機能 (C++ のみ)</dt>
+    <dd><p>このオプションのエレメント・リストは、オペレーターの特権を指定します。
+IBM Streams は、capability エレメントを使用して Linux 機能モデルをサポートします。
+オペレーターが必要とする正確な特権を指定するために、任意の数のエレメントを含めることができます。
+例えば、<tt>&lt;capability&gt;CAP_NET_RAW+eip&lt;/capability&gt;</tt> では、ロー・ソケットへのアクセス許可がオペレーターに必要であることを示します。
+IBM Streams インスタンスは、特殊なオペレーティング・システムの機能を使用して PE プロセスを実行できるように構成する必要があります。
+</p></dd>
+   </dlentry>
+</dl>
+</section>
+
+<section id="input_port_set">
+<title outputclass="splhead-1">入力ポート・セット</title>
+<p>
+入力ポートはポート・セット単位で定義されます。ポート・セットとは、同じ構成を共有する固定数のポートです。
+これにより、異なるポートでの同じ構成の反復を回避できます。
+ポート・セットはオープンにすることができ、その場合、同じ構成の 1 つ以上のポートを含めることができます。
+inputPorts エレメントは、ゼロ個以上の inputPortSet エレメントを含み、その後にオプションの inputPortOpenSet エレメントが続きます。
+</p>
+<dl>
+  <dlentry id="input_port_set__cardinality">
+    <dt>カーディナリティー</dt>
+    <dd>ポート・セットを示すポートの数を定義します。このプロパティーは、開いているポート・セット以外に適用されます。</dd>
+  </dlentry>
+  <dlentry  id="input_port_set__optional">
+    <dt>オプション</dt>
+    <dd>入力ポート・セットがオプションかどうかを指定するブール値。
+    </dd>
+  </dlentry>
+    <dlentry  id="input_port_set__controlport">
+    <dt>制御ポート</dt>
+    <dd>オプションの controlPort エレメントは、このポートで
+受け取ったタプルはオペレーターを制御するためのみに使用され、このポートでタプルが処理される際にタプルはサブミットされないということを
+コンパイラーに通知します。指定されていない場合、値は false です。SPL コンパイラーは、 オペレーター・グラフ内にループが検出された場合は、デッドロックまたは無限反復につながる可能性があるため、警告を出します。
+controlPort を true に設定すると、コンパイラーに、このポートが以降はタプルをサブミットしないことと、これは予期された (かつ無害な) フィードバック・ループであることが通知されるので、このポートについて警告は出されなくなります。</dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowingmode">
+    <dt>ウィンドウ操作モード</dt>
+    <dd>windowingMode エレメントは、ポートの有効なウィンドウ構成を指定します。
+オプションには、NonWindowed、Windowed、および OptionallyWindowed があります。
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowpunctuationinputmode">
+    <dt>ウィンドウ・パンクチュエーション入力モード</dt>
+    <dd>
+windowPunctuationInputMode エレメントは、入力ポートのパンクチュエーションのセマンティクスを指定します。有効なオプションは以下のとおりです。<ul>
+<li><tt>Expecting</tt> - このポートは、オペレーターが正しく機能するために、ウィンドウ・パンクチュエーションを予期します。したがって、パンクチュエーションを付けたストリームを入力しておく必要があります。</li>
+<li><tt>Oblivious</tt> - このポートは、オペレーターが正しく動作するために、パンクチュエーションは必要ありません。したがって、それに付加できるコネクションの制限はありません。</li>
+<li><tt>WindowBound</tt> - このポートは、パンクチュエーション・ベースのウィンドウがある場合、Expecting ポートとなります。それ以外の場合は Oblivious ポートとなります。</li>
+</ul>
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowexpressionmode">
+    <dt>ウィンドウ式モード</dt>
+    <dd>このエレメントは、どんなタイプのウィンドウ式が有効かをコンパイラーに通知します。指定されていない場合、デフォルトは <tt>Constant</tt> です。
+    <ul>
+      <li><tt>Constant</tt> - <tt>count</tt>、<tt>time</tt>、および <tt>delta</tt> 内の式は、
+    コンパイル時、または入力タプル属性を参照しないランタイム式が有効の場合、
+    評価可能な定数でなければなりません。</li>
+      <li><tt>AttributeFree</tt> - 式は入力タプル属性を参照できません。
+時間の <tt>((int32) getSubmissionTimeValue("timeParam"))</tt> のような式を使用できます。
+delta の場合、2 番目の引数のみが、属性なしのランタイム式であることが許可されます。
+1 番目の引数が入力ストリームからの属性であることに変わりはありません。</li>
+    </ul>
+   </dd><!-- windowexpressionmode -->
+  </dlentry>
+  <dlentry id="input_port_set_rewriteallowedforwindowexpression">
+    <dt>ウィンドウ式の書き換えを許可 (C++ のみ)</dt>
+    <dd>true に設定すると、このブール・エレメントは、<tt>rewriteAllowed</tt> エレメントが、パラメーター値に含まれている式を書き換えるのと同様に、ウィンドウ式をコンパイラーが書き換えてもよいことをコンパイラーに指示します。
+rewriteAllowed エレメントの詳細については、
+<tt>Parameters</tt> を参照してください。<tt>rewriteAllowedForWindowExpression</tt> エレメントが指定されていない場合、値はデフォルトで false に設定されます。
+C++ プリミティブ・オペレーターが値をリテラルとして検査する必要がある場合、
+<tt>rewriteAllowedForWindowExpression</tt> は false である (または省略される) 必要があります。
+    </dd>
+  </dlentry>
+  <dlentry id="input_port_set_tuplemutationallowed">
+    <dt>タプル変更許可</dt>
+    <dd>tupleMutationAllowed エレメントは
+入力ポートに付加された処理ロジック (オペレーターの process 関数と、SPL コードで指定された onTuple 節の一部として実行される
+処理にそれぞれ関連付けられた両方のロジックを含む) が着信タプルを変異できるかどうかを定義します。受信したタプルを変更する必要があるオペレーターの場合に true に設定できます。
+</dd>
+  </dlentry>
+</dl>
+
+</section>
+<section  id="output_port_set">
+  <title outputclass="splhead-1">出力ポート・セット</title>
+  <p>
+出力ポートは、入力ポートと同様に、ポート・セット単位で定義されます。
+ポート・セットとは、同じ構成を共有する固定数のポートです。
+これにより、異なるポートでの同じ構成の反復を回避できます。
+ポート・セットはオープンにすることができ、その場合、同じ構成の 1 つ以上のポートを含めることができます。
+outputPorts エレメントは、ゼロ個以上の outputPortSet エレメントを含み、 その後にオプションの outputPortOpenSet エレメントが続きます。
+</p>
+  <dl>
+  <dlentry  id="output_port_set__cardinality">
+    <dt>カーディナリティー</dt>
+    <dd>ポート・セットを示すポートの数を定義します。このプロパティーは、開いているポート・セット以外に適用されます。</dd>
+  </dlentry>
+  <dlentry id="output_port_set__optional">
+    <dt>オプション</dt>
+    <dd>出力ポート・セットがオプションかどうかを指定するブール値。
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set_expressionmode">
+    <dt>式モード (C++ のみ)</dt>
+    <dd>
+expressionMode エレメントは、このポートに行われる属性割り当ての有効な構文を記述します。
+CustomLiteral の expressionMode 値は出力ポートでは無効であり、その結果、コンパイル・エラーになることに注意してください。
+式モードの有効値は次のようになります。<ul>
+<li><tt>Attribute:</tt> これは、このポートの出力属性への割り当てが、ストリーム属性である必要があることを意味しています。
+例えば、output <tt>Out : x = In.y;</tt> (<tt>x = In.y.z</tt> は無効)。</li>
+<li><tt>AttributeFree:</tt> このポートの出力属性への割り当てが、どの入力ストリーム属性も参照できないことを意味しています。
+例えば、output <tt>Out : x = 3 + random(3);</tt> (<tt>x = In.x + 3</tt> は無効)。</li>
+<li><tt>Constant:</tt> このポートの出力属性への割り当てが、コンパイル時に定数に評価可能である必要があることを意味しています。
+例えば、output <tt>Out : x = 3 + pow(2, 3);</tt> (<tt>x = random(3)</tt> は無効)。</li>
+<li><tt>Expression:</tt> 正しいタイプのどの SPL 式でも、このポートの出力属性への割り当てとして使用できる、最もフレキシブルな式モードです。例えば、output<tt> Out : x = A.y + B.z;</tt> などです。</li>
+<li><tt>Nonexistent:</tt> 出力属性の割り当てをこのポートの SPL ソースで指定できないことを意味しています。</li>
+</ul>
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set__autoassignment">
+    <dt>自動割り当て</dt>
+    <dd>
+<tt>autoAssignment</tt> エレメントは、割り当てられていない属性を、入力ポートの属性から自動的に割り当てるかどうかを定義します。
+true に設定した場合、SPL コンパイラーは、割り当てられていない出力属性が output セクションに明示的に割り当てられたかのように、オペレーターの起動を (コンパイル時に) 書き換えます。
+割り当てがない出力属性ごとに、
+同じ名前とタイプを持つ入力属性、または
+同じ名前とタイプ <tt>T</tt> を持つ入力属性
+(出力属性タイプは <tt>optional&lt;T&gt;</tt>)
+が割り当てられます。
+そのような入力属性がない、または複数存在する場合は、コンパイル時にエラーが報告されます。
+expressionMode 値の Constant は、autoAssignment 値の true と非互換であることに注意してください。
+この組み合わせは、コンパイル・エラーになります。</dd>
+  </dlentry>
+  <dlentry id="output_port_set__completeassignment">
+    <dt>割り当ての完了</dt>
+    <dd>
+<tt>completeAssignment</tt> エレメントは、オペレーターが正しく起動するには、すべての出力ポートの属性が割り当て済みである必要があるかどうかを定義します。
+これはコンパイル時にチェックされます。
+オペレーターがオペレーター・モデルでこのエレメントを true に設定していて、さらにこのオペレーターの特定のインスタンスの自動割り当てステップ (要求があれば) の後にすべての出力属性が割り当て済みではない場合、エラーが報告されます。</dd>
+  </dlentry>
+  <dlentry id="output_port_set__rewriteallowed">
+    <dt>書き換えを許可 (C++ のみ)</dt>
+    <dd>
+<tt>rewriteAllowed</tt> エレメントは、コンパイラーがこのポートの出力属性の割り当てに出現する式を書き換えできるかどうかを指定します。</dd>
+  </dlentry>
+  <dlentry id="output_port_set__outputfunctions">
+    <dt>出力関数</dt>
+    <dd>
+outputFunctions エレメントは、出力属性の割り当てに出現できる有効なカスタム出力関数を定義します。
+これは、オプションです。これがある場合は、次の 2 つのサブエレメントを含みます。1 つは type エレメントで、RelationalAggs にあるようにカスタム出力関数型の名前を定義します。もう 1 つは default エレメントで、出力属性の自動割り当ての実行時に使用されるデフォルト出力関数を定義します。
+この値は、(RelationalAggs の Last にあるように) 使用されているカスタム出力関数型の有効な関数名とする必要があります。
+ユーザー・コードが出力関数を期待するポートに出力関数なしで出力属性割り当てを指定する場合、 デフォルトの出力関数が自動的に挿入されることに注意してください。</dd>
+  </dlentry>
+    <dlentry id="output_port_set__finalpunctuationoutputscope">
+    <dt>最終パンクチュエーション・ポート範囲</dt>
+    <dd>
+<tt>finalPunctuationPortScope</tt> エレメント (オプション) は、最終パンクチュエーションの転送の際に SPL 言語のランタイムが使用する入力ポートのセットを指定します。
+デフォルトでは、入力ポートと出力ポートの両方があるオペレーターは、入力ポートから出力ポートまで、自動的に最終パンクチュエーションが転送されます。
+これは、最終パンクチュエーションがすべての入力ポートに受信された時に、最終パンクチュエーションを出力ポートに生成することで実現されます。
+finalPunctuationPortScope は、最終パンクチュエーションの転送に使用する入力ポートのセットを制限するのに使用できます。
+このエレメントは、転送するために使用する入力ポートのセットを空のセットに設定して、最終パンクチュエーションの自動転送をオフにするために使用することもできます。
+この場合、オペレーターの開発者は出力ポートが最終パンクチュエーションを取得することを保証する責任があります。</dd>
+  </dlentry>
+  <dlentry id="output_port_set__windowpunctuationoutputmode">
+    <dt>ウィンドウ・パンクチュエーション出力モード</dt>
+    <dd>
+windowPunctuationOutputMode は、出力ポートのウィンドウ・パンクチュエーションのセマンティクスを指定します。
+オプションは、以下のとおりです。<ul>
+<li><tt>Generating</tt> - このポートは、ウィンドウ・パンクチュエーションを生成します。</li>
+<li><tt>Free</tt> - このポートには、ウィンドウ・パンクチュエーションがありません。</li>
+<li><tt>Preserving</tt> - このポートは、受信したウィンドウ・パンクチュエーションを保持します。
+オペレーターが複数の入力ポートを有する場合、どの入力ポートのパンクチュエーションが保持されているかを識別するために windowPunctuationInputPort エレメントを指定する必要があります。</li>
+</ul>
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__tuplemutationallowed">
+    <dt>タプル変更許可</dt>
+    <dd>
+<tt>tupleMutationAllowed</tt> エレメントは、このオペレーターがダウン
+ストリームのオペレーターに対して、submit 呼び出しを介してポートに
+サブミットされる出力タプルを変異する許可を与えるかどうかを定義します。
+true に設定されている場合、オペレーターの処理ロジックでは、当該ポートにサブミットしたタプルがサブミット呼び出しの結果として変更されることを予期する必要があります。</dd>
+  </dlentry>
+  <dlentry id="output_port_set__windowpunctuationinputport">
+    <dt>ウィンドウ・パンクチュエーション入力ポート</dt>
+    <dd>
+前述のとおり、<tt>windowPunctuationInputPort</tt> エレメントは、パンクチュエーションを保持する出力ポートに入力ポートを関連付けます。
+このエレメントは、出力ポートのウィンドウ・パンクチュエーション・モードが Preserving の場合のみ指定できます。
+windowPunctuationInputPort は
+ -1 に設定することが可能です。これは、windowPunctuationInputPort エレメントの欠落と同じ意味になります。
+ウィンドウ・パンクチュエーションのパンクチュエーションの転送が、SPL 言語のランタイムによって自動実行されないこと (最終パンクチュエーションとは異なる)、およびオペレーターによって実装されている振る舞いについて SPL コンパイラーに通知するのにオペレーター・モデルが使用されていることに注意することは重要です。
+詳しくは、<i>IBM Streams Processing Language ツールキット開発リファレンス</i> を参照してください。</dd>
+  </dlentry>
+  <dlentry id="output_port_set__outputassignmentportscope">
+    <dt>出力割り当てポート範囲</dt>
+    <dd>
+<tt>outputAssignmentPortScope</tt> は、オプションでどの入力ポートの属性がこのポートの出力割り当てに出現できるかを制限します。
+スコープが指定されている場合、スコープで指定されたポートからの属性のみが、ポートの出力割り当てに出現できます。</dd>
+  </dlentry>
+</dl>
+</section>
+
+<section id="parameters">
+<title outputclass="splhead-1">パラメーター</title>
+<p>
+parameters エレメントは、オペレーターを構成することができる有効なパラメーターを記述します。
+また、このようなパラメーター構成の有効な構文も記述します。
+</p>
+<dl>
+  <dlentry id="parameters__allowany">
+    <dt>すべて許可</dt>
+    <dd>このエレメントは、オペレーターが無制限で任意のパラメーターを取ることができるかどうかを決定するブール・フラグです。
+オペレーターは任意のパラメーターを取ることができ、さらに追加パラメーターおよび関連制約事項も指定できます。</dd><!-- Allow Any -->
+  </dlentry>
+  <dlentry id="parameters__parameter">
+    <dt>パラメーター</dt>
+    <dd><p>各 parameter エレメントには複数のサブエレメントがあります。</p>
+      <dl>
+       <dlentry id="parameters__parameter__name">
+         <dt>名前</dt>
+         <dd><tt>name</tt> エレメントは、SPL ソース・コードに出現するパラメーターの名前です。
+例えば、<tt>Functor</tt> オペレーターは <tt>filter</tt> パラメーターを持つことができます。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__description">
+         <dt>説明</dt>
+         <dd>このパラメーターの説明 (オプション)。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__optional">
+         <dt>オプション</dt>
+         <dd>このパラメーターがオプションかどうかを指定するブール値。
+値 false は、パラメーターが SPL ソース・コード内に指定される必要があることを示唆します。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__rewriteallowed">
+         <dt>書き換えを許可 (C++ のみ)</dt>
+         <dd>このブール・パラメーターは、このパラメーターの値に含まれている式をコンパイラーが書き換えることを許可します。
+この書き換えは、リテラル (コンパイル時の評価ステップの結果としてのリテラルも含む) を、実行時に
+値がロードされる変数に置換することによって行われます。
+これにより、コンパイラーはパラメーター構成がわずかに異なるオペレーターに関しては、コーディングの生成を少なくすることができます。
+場合によっては、 見つかった特定の値に基づいて異なるコードを生成する、またはコンパイル時の妥当性検査を実行するために、オペレーターのコード生成プログラムがパラメーター値を詳しく調べたいことがあります。
+例えば、<tt>format: csv</tt> で、Source オペレーターに特化したコードが生成される可能性があります。
+このような場合、式の書き換えはオフにする必要があります。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__expressionmode">
+         <dt>式モード</dt>
+         <dd>
+           <ul>
+             <li><tt>Attribute</tt> - パラメーター値をストリーム属性に制限します。</li>
+             <li><tt>AttributeFree</tt> - パラメーター値は、ストリーム属性への参照を含まない式です。</li>
+             <li><tt>Constant (C++ のみ)</tt> - パラメーター値がコンパイル時に定数に評価可能である必要があります。</li>
+             <li><tt>CustomLiteral</tt> - パラメーター値を、モデルの context セクションに定義されたカスタム・リテラル列挙の 1 つの有効な値に制限します。</li>
+             <li><tt>Expression (C++ のみ)</tt> 正しいタイプのどの SPL 式でもパラメーター値として使用できる、最もフレキシブルな式モードです。</li>
+           </ul>
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__type">
+         <dt>タイプ</dt>
+         <dd>パラメーターの <tt>type</tt> は、パラメーター値の SPL タイプ (<tt>list&lt;ustring></tt> など)
+またはカスタム・リテラル名 (<tt>SourceFormat</tt> など) です。type は省略可能です。その場合、どの SPL タイプでも一致します。
+パラメーターの type サブエレメントは空の値にすることが可能です。これは、type エレメントの欠落と同じ意味になります。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__cardinality">
+         <dt>カーディナリティー</dt>
+         <dd>パラメーターが受け入れる値の最大数です。省略された場合、または値が -1 の場合、値の数は無制限であると想定されます。
+パラメーター値の数は cardinality と一致する必要があります。cardinality サブエレメントは値 -1 にすることができます。
+これは、cardinality エレメントの欠落と同じ意味になります。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__portScope">
+         <dt>ポート・スコープ (C++ のみ)</dt>
+         <dd>このエレメントは、パラメーター値に使用されるストリーム属性を特定の入力ポートまたは入力ポートのリストに制限するのに使用されます。
+ポートの索引は 0 から始まります。省略された場合、ストリーム属性には制限がありません。</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__customOutputFunction">
+         <dt>カスタム出力関数 (C++ のみ)</dt>
+         <dd>パラメーターのこのエレメントはオプションであり、
+context エレメント内に定義されたカスタム出力関数セットの名前を指定し、
+そのセット内に定義された関数をパラメーターのコンパイル時に可視にします。
+output 節で使用される場合と同じようにカスタム出力関数をパラメーターと共に含んでいる、正しい C++ コードを生成するのは、
+オペレーターの責任です。</dd>
+       </dlentry>
+      </dl>
+    </dd><!-- Parameter -->
+  </dlentry>
+</dl> <!-- Parameters -->
+</section>
+</refbody>
+</reference>

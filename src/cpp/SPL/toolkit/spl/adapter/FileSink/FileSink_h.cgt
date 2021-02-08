@@ -1,0 +1,168 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use FileSinkCommon;
+    FileSinkCommon::verify($model);
+    my $name =  $model->getParameterByName("file");
+    my $format = $model->getParameterByName("format");
+    my $compression = $model->getParameterByName("compression");
+    my $hasDelayField = $model->getParameterByName("hasDelayField");
+    my $flush = $model->getParameterByName("flush");
+    my $flushOnPunctuation = $model->getParameterByName("flushOnPunctuation");
+    my $writePunctuations = $model->getParameterByName("writePunctuations");
+    my $encoding = $model->getParameterByName("encoding");
+    my $closeMode = $model->getParameterByName("closeMode");
+    my $moveFileToDirectory = $model->getParameterByName("moveFileToDirectory");
+    my $append = $model->getParameterByName("append");
+
+    # Apply defaults
+    $format = $format ? $format->getValueAt(0)->getSPLExpression() : "csv";
+    $compression = $compression->getValueAt(0)->getSPLExpression() if $compression;
+    $flushOnPunctuation = $flushOnPunctuation ? $flushOnPunctuation->getValueAt(0)->getSPLExpression() eq "true" : 1;
+    $hasDelayField = $hasDelayField ? ($hasDelayField->getValueAt(0)->getCppExpression() eq "true") : 0;
+    $writePunctuations = $writePunctuations ? ($writePunctuations->getValueAt(0)->getSPLExpression() eq "true") : 0;
+    my $binary = $format eq "bin" || $format eq "block";
+    $closeMode = $closeMode ? $closeMode->getValueAt(0)->getSPLExpression() : "never";
+    my $processPunct = $writePunctuations || $flushOnPunctuation ||
+              $closeMode eq "punct" || $model->getNumberOfOutputPorts() == 1;
+
+    # CC related configs
+    my $writeStateHandlerCallbacks = $model->getParameterByName("writeStateHandlerCallbacks");
+    $writeStateHandlerCallbacks = $writeStateHandlerCallbacks ? ($writeStateHandlerCallbacks->getValueAt(0)->getSPLExpression() eq "true") : 0;
+
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $truncateOnReset = $model->getParameterByName("truncateOnReset");
+    if ($isInConsistentRegion) {
+        # truncateOnReset true by default
+        $truncateOnReset = $truncateOnReset ? ($truncateOnReset->getValueAt(0)->getSPLExpression eq "true") : 1;
+    } else {
+        $truncateOnReset = 0;
+    }
+
+    my @includes;
+    push @includes, "#include <sys/types.h>";
+    push @includes, "#include <sys/stat.h>";
+    push @includes, "#include <fcntl.h>";
+    push @includes, "#include <fstream>";
+    push @includes, "#include <boost/iostreams/filter/$compression.hpp>" if $compression;
+    push @includes, "#include <boost/iostreams/stream.hpp>";
+    push @includes, "#include <boost/iostreams/filtering_streambuf.hpp>";
+    push @includes, "#include <SPL/Runtime/Serialization/StreamByteBuffer.h>" if $binary;
+    push @includes, "#include <SPL/Runtime/Common/Metric.h>";
+    push @includes, "#include <boost/iostreams/device/file_descriptor.hpp>";
+    push @includes, "#include <SPL/Toolkit/FromUTF8.h>" if $encoding;
+    push @includes, "#include <SPL/Toolkit/Utility.h>" if $moveFileToDirectory;
+    if ($isInConsistentRegion) {
+        push @includes, "#include <SPL/Runtime/Operator/State/StateHandler.h>";
+        push @includes, "#include <SPL/Runtime/Operator/State/ConsistentRegionContext.h>";
+    }
+%>
+
+
+<%SPL::CodeGen::headerPrologue($model,\@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR<%if ($isInConsistentRegion or $ckptKind ne "none") {%>, public StateHandler<%}%>
+{
+  public:
+    MY_OPERATOR();
+
+    virtual void prepareToShutdown();
+
+    void process(Tuple const & tuple, uint32_t port);
+
+    <%if ($processPunct) {%>
+        void process(Punctuation const & punct, uint32_t port);
+    <%}%>
+    <% if ($isInConsistentRegion) {%>
+        virtual void drain();
+        virtual void checkpoint(Checkpoint & ckpt);
+        virtual void reset(Checkpoint & ckpt);
+        virtual void retireCheckpoint(int64_t id);
+        virtual void resetToInitialState();
+    <%}%>
+  private:
+    class Helper {
+        public:
+            Helper (const std::string& fName, bool restoring
+                    <%print ", const std::string& encoding" if $encoding;%>
+                    <%print ", bool append" if $append;%>);
+            <%if ($binary) {%>
+                std::iostream& fs() { return _fs; }
+                SPL::StreamByteBuffer& sbfs() { return _sbfs; }
+                SPL::StreamByteBuffer& writeTo() { return _sbfs; }
+            <%} else {%>
+                std::ostream& fs() { return _fs; }
+                std::ostream& writeTo() { return _fs; }
+            <%}%>
+            void flush() { _fs.flush(); }
+            int fd() { return _fd; }
+            boost::iostreams::filtering_streambuf<boost::iostreams::output>& filt_str()
+                { return _filt_str; }
+        private:
+            std::auto_ptr<boost::iostreams::file_descriptor_sink> _fd_sink;
+            std::<%($binary) ? print "iostream" : print "ostream";%> _fs;
+            boost::iostreams::filtering_streambuf<boost::iostreams::output> _filt_str;
+            <%print "SPL::StreamByteBuffer _sbfs;" if $binary;%>
+            <%print "FromUTF8Filter _fromUTF8;" if $encoding;%>
+            int _fd;
+    };
+
+
+    <%if ($closeMode eq "time") {%>
+        virtual void process(uint32_t index);
+        virtual void allPortsReady();
+    <%}%>
+    <% if ($isInConsistentRegion) {%>
+        void rollbackFile();
+        void resetCounters();
+    <%}%>
+
+    std::string genFilename();
+    std::string makeAbsolute(const std::string & path);
+    void openFile(bool restoring);
+    void closeFile();
+    Mutex _mutex;
+    volatile bool _shutdown;
+    std::string _pathName;
+    std::string _pattern;
+    Metric& _numFilesOpenedMetric;
+    Metric& _numTupleWriteErrorsMetric;
+    std::auto_ptr<Helper> _f;
+    uint32_t _fileGeneration;
+    <%print "std::string _encoding;" if $encoding;%>
+    <%print "double _lastTimeStamp;" if $hasDelayField;%>
+    <%print "uint64_t _tuplesUntilFlush, _flushCount;" if $flush;%>
+    <%print "uint64_t _tuplesUntilClose, _tupleCount;" if $closeMode eq "count";%>
+    <%print "uint64_t _maxFileSize;" if $closeMode eq "size";%>
+    <%if ($closeMode eq "time") {%>
+        double _secondsToClose;
+        CV _openCV;
+    <%}%>
+    <%print "SPL::AtomicRenamer _renamer;" if $moveFileToDirectory;%>
+    <%print "bool _append;" if $append;%>
+
+    <% if ($isInConsistentRegion) {%>
+        ConsistentRegionContext *_ccContext;
+    <%}%>
+
+    // Position of the file on a checkpoint/restore
+    uint64_t _ckptOffset;
+    bool _resetting;
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

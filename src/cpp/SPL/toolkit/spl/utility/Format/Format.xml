@@ -1,0 +1,242 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Format.html">
+The `Format` operator is similar to the `FileSink`, `TCPSink`, and `UDPSink` operators,
+in that it converts SPL tuples into formatted data.
+The `Format` operator writes data in many formats (such as line or bin),
+therefore the output of the operator is generated as a blob attribute.
+
+# Checkpointed data
+
+When the `Format` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Format` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+In a consistent region, a `Functor` operator stores its state when a checkpoint is taken.
+When the region is reset, the operator restores the state from the checkpoint.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Format` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Format` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `Format` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring s, float64 d, rstring q&gt; A = Beacon() {
+          param iterations : 100u;
+          output A         : s = "hi", q = "ho", d = 6.7;
+        }
+    /*
+     * format the input tuple (except for attribute s, which is passed separately)
+    */
+       stream&lt;blob b, rstring inputData&gt; B = Format (A) {
+          param suppress : s;
+          // 'b' will contain '6.7,"ho"\n"'
+          // inputData is set from attribute s
+          output B       : b = Output(), inputData = s;
+        }
+        // Strip down to just the blob and print some of the input tuple.
+        stream &lt;blob b&gt; JustBlob = Functor (B) {
+          logic onTuple B : { println (inputData); }
+          JustBlob        : b = b;
+        }
+        // Write out the formatted data to a file
+        () as Nul = FileSink (JustBlob) {
+          param file   : "out";
+                format : block;
+        }
+    }
+
+</description>
+      <iconUri size="16">format_16.gif</iconUri>
+      <iconUri size="32">format_32.gif</iconUri>
+      <customLiterals>
+        <enumeration>
+          <name>DataFormat</name>
+          <value>csv</value>
+          <value>txt</value>
+          <value>bin</value>
+          <value>block</value>
+          <value>line</value>
+        </enumeration>
+      </customLiterals>
+      <customOutputFunctions>
+        <customOutputFunction>
+          <name>OutputFunctions</name>
+          <function>
+            <description>
+The output attribute is set to the value of formatting the input tuple as specified by the **format** parameter.
+</description>
+            <prototype><![CDATA[blob Output()]]></prototype>
+          </function>
+          <function>
+            <description>Returns the input argument.</description>
+            <prototype><![CDATA[<any T> T AsIs(T v)]]></prototype>
+          </function>
+        </customOutputFunction>
+      </customOutputFunctions>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Format">
+          <description>Basic Format template</description>
+          <template>(stream&lt;${schema}&gt; ${outputStream} = Format(${inputStream})   {
+            param
+                format : "${format}";
+            output
+                ${outputStream} : ${outputAttribute} = ${value};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>format</name>
+        <description>
+Specifies the format of the data.
+For more information, see the **format** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>CustomLiteral</expressionMode>
+        <type>DataFormat</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>eolMarker</name>
+        <description>
+Specifies the end of line marker.
+For more information, see the **eolMarker** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>writePunctuations</name>
+        <description>
+Specifies whether to write punctuations to output.
+For more information, see the **writePunctuations** parameter in the [spl.adapter::FileSink] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>hasDelayField</name>
+        <description>
+Specifies whether the format contains inter-arrival delays as the first field.
+For more information, see the **hasDelayField** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>separator</name>
+        <description>
+Specifies the separator character for the csv format.
+For more information, see the **separator** parameter in the [spl.adapter::FileSource] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>quoteStrings</name>
+        <description>
+Specifies whether to generate quoted strings for csv format.
+For more information, see the **quoteStrings** parameter in the [spl.adapter::FileSink] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>suppress</name>
+        <description>
+Specifies the input attributes to be omitted from formatted output.
+For more information, see the **suppress** parameter in the [spl.adapter::FileSink] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Attribute</expressionMode>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Format` operator is configurable with a single input port, which ingests tuples to be formatted.
+The input stream to the `Format` operator must meet all the requirements of the input stream of the `FileSink` operator,
+with respect to the **format** parameter.
+For example, if the **format** is `line`, the input stream must have one attribute of type rstring that is sent to the output.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Format` operator is configurable with a single output port, which produces formatted tuples.
+
+If the **writePunctuations** parameter value is `true`, punctuation is encoded in the output blob in the same manner as `FileSink`.
+The assignments in the output clause must not reference any input attributes
+because there is no input tuple present when a punctuation arrives.
+
+If the **writePunctuations** parameter is not specified or its value is `false`, punctuation is preserved in the output stream.
+</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <outputFunctions>
+          <default>AsIs</default>
+          <type>OutputFunctions</type>
+        </outputFunctions>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

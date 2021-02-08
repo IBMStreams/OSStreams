@@ -1,0 +1,98 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    my $inputPort = $model->getInputPortAt(0);
+    my $outputPort = $model->getOutputPortAt(0);
+    my $inTupleType = $inputPort->getCppTupleType();
+    my $outTupleType = $outputPort->getCppTupleType();
+    SPL::CodeGen::exitln(SPL::Msg::STDTK_OUTPUT_SCHEMA_NOT_MATCHING_INPUT(0, 0),
+                      $outputPort->getSourceLocation()) if($inTupleType ne $outTupleType);
+
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my @includes;
+    if ($isInConsistentRegion) {
+        if ($isInConsistentRegion->isStartOfRegion()) {
+            SPL::CodeGen::exitln(SPL::Msg::OP_CANNOT_START_CR($model->getContext()->getKind()),
+                $model->getContext()->getSourceLocation());
+        }
+        push @includes, "#include <SPL/Runtime/Operator/State/ConsistentRegionContext.h>";
+        push @includes, "#include <SPL/Runtime/Operator/State/StateHandler.h>";
+    }
+    push @includes, "#include <SPL/Runtime/Operator/Port/Punctuation.h>";
+    push @includes, "#include <SPL/Runtime/Operator/EventTime/WatermarkHandler.h>";
+%>
+
+<%SPL::CodeGen::headerPrologue($model, \@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR<%if ($isInConsistentRegion or $ckptKind ne "none") {%>, public StateHandler<%}%>, public WatermarkHandler
+{
+public:
+    MY_OPERATOR();
+    ~MY_OPERATOR();
+
+    virtual void process(Punctuation const & punct, uint32_t port);
+    virtual void process(Tuple const & tuple, uint32_t port);
+    virtual void processWatermark(Punctuation const & wm, uint32_t port);
+    virtual void process(uint32_t index);
+
+    virtual void allPortsReady();
+    virtual void prepareToShutdown();
+
+    <% if ($isInConsistentRegion) { %>
+        virtual void drain();
+    <% }
+       if ($isInConsistentRegion or $ckptKind ne "none") { %>
+        virtual void reset(Checkpoint & ckpt);
+        virtual void resetToInitialState();
+    <% } %>
+
+private:
+    void clearQueue();
+
+    class DataType {
+    public:
+      DataType(Tuple * t) : tuple(t), punct(Punctuation::Invalid)  {}
+      DataType(Punctuation p) : tuple(NULL), punct(p) {}
+
+      bool isTuple() { return tuple != NULL; }
+      bool isPunct() { return punct != Punctuation::Invalid; }
+
+      Tuple* tuple;
+      Punctuation punct;
+    };
+
+    typedef std::pair<DataType,double> DelayType;
+
+    void process (DataType& item);
+
+    double                 _delay;             // desired tuple/punct delay time
+    uint32_t               _maxSize;           // maximum buffer size
+    uint32_t               _currentSize;       // current buffer size
+    Mutex                  _mutex;
+    CV                     _prodCV;
+    CV                     _consCV;
+    CV                     _flushCV;
+    std::list<DelayType>   _queue;
+    volatile bool          _shuttingDown;
+
+    <% if ($isInConsistentRegion) { %>
+        ConsistentRegionContext *_crContext;
+    <% } %>
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

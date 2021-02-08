@@ -1,0 +1,480 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use FindBin;
+use lib "${FindBin::Bin}";
+use lib "${FindBin::Bin}/../..";
+use lib "${FindBin::Bin}/../../../bin";
+use Getopt::Long qw(:config no_ignore_case bundling);
+use SPL::Msg;
+use SPL::Helper;
+use File::Basename;
+use File::Temp qw(tempdir tempfile);
+use File::stat;
+use Cwd qw(realpath);
+use XML::Simple;
+$XML::Simple::PREFERRED_PARSER = "XML::Parser";
+use sigtrap qw{handler cleanup normal-signals error-signals};
+use Data::Dumper;
+use List::Util qw(max);
+
+sub createTempDir($);
+sub createDir($);
+sub runConverter($$$$);
+sub runGenRB($$$);
+sub runPKGData($);
+sub needsUpdate($$$$$);
+sub updateBundle($$$$$$$$);
+sub updateHeader($$$$$$);
+sub computeLangFiles($);
+sub genTxtFiles($$$$$);
+sub genResFiles($$);
+sub computePaths($);
+sub genResourceBundle($$$$$);
+sub removeTempDir($);
+sub createIncludeDir($);
+sub genHeader($$$$$$);
+sub genPerlModule($$$$$$$);
+sub buildVarList($);
+sub emitDefine($$$$$$$);
+sub emitSub($$$$$$$$);
+
+# Parse the options
+my %opts=();
+my @options = ('help|h', 'dir=s', 'name=s', 'tname=s', 'default=s');
+SPLGetOptionsLong(\&SPL::Msg::SMR_USAGE, \%opts, @options);
+
+($opts{dir} ne "" && $opts{name} ne "" && $opts{default} ne "" && $opts{tname} ne "") or  SPLUsage(\&SPL::Msg::SMR_USAGE, 1);
+
+my $nlDir = $opts{dir} . "/impl/nl";
+my $includeDir = $nlDir . "/include";
+
+my ($defaultLangFile, @langFiles) = computeLangFiles($opts{default});
+SPLDie(1, SPL::Msg::DEFAULT_LANGUAGE_NOT_FOUND($opts{name}, $opts{default})) if ($defaultLangFile eq "");
+
+my $resourceBundleName = $nlDir . "/$opts{name}.dat";
+
+# Check if we need to update anything
+my ($bundleNeedsUpdate, $headerNeedsUpdate) = needsUpdate($resourceBundleName, $defaultLangFile, $includeDir, $opts{name}, \@langFiles);
+exit(0) unless ($bundleNeedsUpdate || $headerNeedsUpdate);
+
+my ($classPath, $genrb, $pkgData, $schemaPath) = computePaths($0);
+
+updateBundle($classPath, $genrb, $pkgData, $nlDir, $resourceBundleName, $defaultLangFile, $schemaPath, \@langFiles) if ($bundleNeedsUpdate);
+
+updateHeader($opts{dir}, $includeDir, $opts{default}, $defaultLangFile, $opts{name}, $opts{tname}) if ($headerNeedsUpdate);
+
+exit(0);
+
+sub buildVarList($)
+{
+    my ($messageText) = @_;
+
+    my @varList = ();
+    my $start = index($messageText, "{", 0);
+    while ($start != -1) {
+        my $end = index($messageText, "}", $start);
+        my $formatString = substr($messageText, $start, $end - $start + 1);
+        $formatString =~ /\{\s*(\d+).*\}/;
+        SPLDie(1, SPL::Msg::UNSUPPORTED_FORMAT_STRING($formatString)) if (!defined($1));
+        $varList[$1] = 1;
+        $start = index($messageText, "{", $end);
+    }
+
+    return @varList;
+}
+
+sub emitSub($$$$$$$$)
+{
+    my ($fh, $messageText, $extraData, $resname, $toolkitName, $bundleName, $defaultLang, $toolkitDir) = @_;
+    my @varList = buildVarList($messageText);
+    my $parmCount = scalar @varList;
+    my $proto = "";
+    for (my $i = 0; $i < $parmCount; ++$i) {
+        $proto .= "\$";
+    }
+
+    my $sub = <<END;
+
+sub ${extraData}($proto)
+{
+   my \$defaultText = <<'::STOP::';
+$messageText
+::STOP::
+    return SPL::Helper::SPLFormattedMessageWithResname(\$toolkitRoot, "${toolkitName}", "${bundleName}", "${defaultLang}", "${resname}", \\\$defaultText, \@_);
+}
+
+END
+   print $fh $sub;
+}
+
+sub genPerlModule($$$$$$$)
+{
+    my ($toolkitDir, $includeDir, $bundleName, $toolkitName, $defaultLang, $defaultLangFile, $xml) = @_;
+    my $module = "${includeDir}/${bundleName}.pm";
+    my $escapedModule = SPL::Helper::SPLEscapePath($module);
+    if (-e $module) {
+        system("chmod +w ${escapedModule}");
+    }
+
+    my ($fh, $filename) = tempfile(UNLINK => 1, SUFFIX => ".pm");
+    my $escapedFilename = SPL::Helper::SPLEscapePath($filename);
+    print $fh "# This is a generated module.  Any modifications will be lost.\n";
+    print $fh "package ${bundleName};\n";
+    print $fh "use strict;\n";
+    print $fh "use Cwd qw(abs_path);\n";
+    print $fh "use File::Basename;\n";
+    print $fh "unshift(\@INC, \$ENV{STREAMS_INSTALL} . \"/system/impl/bin\") if (\$ENV{STREAMS_INSTALL});\n";
+    print $fh "require SPL::Helper;\n";
+    print $fh "my \$toolkitRoot = dirname(abs_path(__FILE__)) . \'/../../..\';\n";
+
+    foreach my $file (@{$xml->{'xliff'}->{'file'}}) {
+        foreach my $group (@{$file->{'body'}->{'group'}}) {
+            foreach my $transUnit (@{$group->{'trans-unit'}}) {
+                my $id = $transUnit->{'id'};  # id must exist or it will fail earlier (schema failure)
+                my $messageText = $transUnit->{'source'}; # message text must exist or it will fail earlier (schema failure)
+                my $extraData = $transUnit->{'extraData'}; # Optional in xliff
+                if (!defined($extraData) || $extraData eq '') { SPLDie(1, SPL::Msg::MISSING_XLF_ATTRIBUTE($defaultLangFile, 'extraData', $id)); }
+                my $resname = $transUnit->{'resname'}; # Optional in xliff
+                if (!defined($resname) || $resname eq '') { SPLDie(1, SPL::Msg::MISSING_XLF_ATTRIBUTE($defaultLangFile, 'resname', $id)); }
+                emitSub($fh, $messageText, $extraData, $resname, $toolkitName, $bundleName, $defaultLang, $toolkitDir);
+            }
+        }
+    }
+
+    print $fh "1;\n";
+
+    close ($fh);
+    my $rc = system ("cmp -s ${escapedFilename} ${escapedModule}");
+    $rc = $rc >> 8;
+    if ($rc != 0) {
+        system("cp ${escapedFilename} ${escapedModule}");
+        system("chmod go+r ${escapedModule}");
+        system("chmod -w ${escapedModule}");
+    }
+}
+
+sub emitDefine($$$$$$$)
+{
+    my ($fh, $messageText, $extraData, $resname, $toolkitName, $bundleName, $defaultLang) = @_;
+
+    my @varList = buildVarList($messageText);
+    my $templateArgs = "";
+    my $macroParams = "";
+    my $macroArgs = "";
+    my $count = scalar @varList;
+    if ($count > 0) {
+        $templateArgs = "<";
+        $macroParams = "(";
+        for (my $i = 0; $i < $count; ++$i) {
+            SPLDie(1, SPL::Msg::INVALID_SUB_INDEX($resname)) if (!defined($varList[$i]));
+            if ($i != 0) {
+                $macroParams .= ", ";
+                $templateArgs .= ",";
+            }
+            $templateArgs .= "typeof(p${i})";
+            $macroParams .= "p${i}";
+            $macroArgs .= ", p${i}";
+        }
+        $macroParams .= ")";
+        $templateArgs .= ">";
+    }
+
+    print $fh "#define ", uc($extraData), "${macroParams} \\\n";
+    print $fh "   (::SPL::FormattableMessage${count}${templateArgs}(\"$toolkitName\", \"${bundleName}\", \"${defaultLang}\", \"${resname}\", \"${messageText}\", true${macroArgs}))\n\n";
+}
+
+sub genHeader($$$$$$)
+{
+    my ($includeDir, $bundleName, $toolkitName, $defaultLang, $defaultLangFile, $xml) = @_;
+    my $header = "${includeDir}/${bundleName}.h";
+    my $escapedHeader = SPL::Helper::SPLEscapePath($header);
+    if (-e $header) {
+        system("chmod +w ${escapedHeader}");
+    }
+    my $guard = "NL_" . uc($bundleName) . "_H";
+
+    my ($fh, $filename) = tempfile(UNLINK => 1, SUFFIX => ".h");
+    my $escapedFilename = SPL::Helper::SPLEscapePath($filename);
+    print $fh "// This is a generated header.  Any modifications will be lost.\n";
+    print $fh "#ifndef ${guard}\n";
+    print $fh "#define ${guard}\n\n";
+    print $fh "#include <SPL/Runtime/Utility/FormattableMessage.h>\n\n";
+
+    foreach my $file (@{$xml->{'xliff'}->{'file'}}) {
+        foreach my $group (@{$file->{'body'}->{'group'}}) {
+            foreach my $transUnit (@{$group->{'trans-unit'}}) {
+                my $id = $transUnit->{'id'};  # id must exist or it will fail earlier (schema failure)
+                my $extraData = $transUnit->{'extraData'}; # Optional in xliff
+                if (!defined($extraData) || $extraData eq '') { SPLDie(1, SPL::Msg::MISSING_XLF_ATTRIBUTE($defaultLangFile, 'extraData', $id)); }
+                my $resname = $transUnit->{'resname'}; # Optional in xliff
+                if (!defined($resname) || $resname eq '') { SPLDie(1, SPL::Msg::MISSING_XLF_ATTRIBUTE($defaultLangFile, 'resname', $id)); }
+
+                my $messageText = $transUnit->{'source'}; # message text must exist or it will fail earlier (schema failure)
+
+                $messageText =~ s/"/\\"/g;      # Escape all double quotes
+                $messageText =~ s/\n/\\n/g;     # Escape all newlines
+                emitDefine($fh, $messageText, $extraData, $resname, $toolkitName, $bundleName, $defaultLang);
+            }
+        }
+    }
+
+    print $fh "#endif  // ${guard}\n";
+
+    close ($fh);
+    my $rc = system ("cmp -s ${escapedFilename} ${escapedHeader}");
+    $rc = $rc >> 8;
+    if ($rc != 0) {
+        system("cp ${escapedFilename} ${escapedHeader}");
+        system("chmod go+r ${escapedHeader}");
+        system("chmod -w ${escapedHeader}");
+    }
+}
+
+sub updateHeader($$$$$$)
+{
+    my ($toolkitDir, $includeDir, $defaultLang, $defaultLangFile, $bundleName, $toolkitName) = @_;
+    createIncludeDir($includeDir);
+    my $xmlSimple = new XML::Simple;
+    my $xml = $xmlSimple->XMLin($defaultLangFile, KeepRoot => 1, KeyAttr => [], ForceArray => ['file', 'group', 'trans-unit']);
+    genHeader($includeDir, $bundleName, $toolkitName, $defaultLang, $defaultLangFile, $xml);
+    genPerlModule( $toolkitDir, $includeDir, $bundleName, $toolkitName, $defaultLang, $defaultLangFile, $xml);
+}
+
+sub updateBundle($$$$$$$$)
+{
+    my ($classPath, $genrb, $pkgData, $nlDir, $resourceBundleName, $defaultLangFile, $schemaPath, $langFiles) = @_;
+    my $tempDir = $nlDir . "/temp";
+    createTempDir($tempDir);
+    removeResourceBundle("${nlDir}/${resourceBundleName}.dat");
+    genTxtFiles($classPath, $tempDir, $defaultLangFile, $schemaPath, $langFiles);
+    my @txtFiles = genResFiles($genrb, $tempDir);
+    genResourceBundle($pkgData, $tempDir, $nlDir, $resourceBundleName, \@txtFiles);
+    removeTempDir($tempDir);
+}
+
+sub genResourceBundle($$$$$)
+{
+    my ($pkgData, $tempDir, $nlDir, $resourceBundleName, $txtFiles) = @_;
+    my $resFile = "$tempDir/res.lst";
+    open(RESLIST, ">$resFile") or SPLDie(1, SPL::Msg::CANNOT_OPEN_FILE_FOR_WRITING($resFile));
+    print RESLIST "root.res";
+    foreach my $file (@$txtFiles) {
+        $file =~ s/(.*)(?:\.txt)$/$1\.res/g;
+        next if ($file eq "root.res");
+        print RESLIST " ${file}";
+    }
+    print RESLIST "\n";
+    close(RESLIST);
+    my $bundleName = basename($resourceBundleName);
+    $bundleName =~ s/(.*)(?:\.dat)$/$1/g;
+    my $escapedTempDir = SPL::Helper::SPLEscapePath($tempDir);
+    my $cmd = "${pkgData} -s ${escapedTempDir} -T ${escapedTempDir} -d ";
+    $cmd .= SPL::Helper::SPLEscapePath($nlDir);
+    $cmd .= " -p ";
+    $cmd .= SPL::Helper::SPLEscapePath($bundleName);
+    $cmd .= " ";
+    $cmd .= SPL::Helper::SPLEscapePath($resFile);
+    $cmd .= " >> ${escapedTempDir}/gen.log 2>&1";
+    # dependency-scan: ignore the following line
+    my $rc = system($cmd);
+    $rc = $rc >> 8;
+    SPLDie(1, SPL::Msg::FAILED_TO_GEN_RESOURCE_BUNDLE($bundleName)) if ($rc);
+}
+
+sub genTxtFiles($$$$$)
+{
+    my ($classPath, $tempDir, $defaultLangFile, $schemaPath, $langFiles) = @_;
+    foreach my $langFile (@$langFiles) {
+        # Copy the file, patching the schema location if necessary
+        my $fileName = basename($langFile);
+        my $tempFile = "${tempDir}/${fileName}";
+        my $rc = system("sed -e 's:_path_/xliff:${schemaPath}/xliff:' " . SPL::Helper::SPLEscapePath($langFile) . " >" . SPL::Helper::SPLEscapePath($tempFile));
+        $rc = $rc >> 8;
+        SPLDie(1, SPL::Msg::FAILED_TO_COPY_PATCH_XLF_FILE($langFile)) if ($rc);
+        my $isRoot = ($langFile eq $defaultLangFile) ? 1 : 0;
+        # The convertor is run twice for the default language file
+        # Once to add it as the specified language and once as root
+        if ($isRoot) {
+            runConverter($classPath, $tempDir, $tempFile, 1);
+        }
+        runConverter($classPath, $tempDir, $tempFile, 0);
+    }
+}
+
+sub runConverter($$$$)
+{
+    my ($classPath, $tempDir, $file, $isRoot) = @_;
+    my $options = ($isRoot) ? "-c -r" : "-t";
+    my $srcFile = basename($file);
+    my $srcPath = dirname($file);
+    my $converter = "com.ibm.icu.dev.tool.com.ibm.icu.dev.tool.localeconverter.XLIFF2ICUConverter";
+    my $cmdArgs = "-cp ${classPath} ${converter} ${options} -d ";
+    $cmdArgs .= SPL::Helper::SPLEscapePath($tempDir);
+    $cmdArgs .= " -s ";
+    $cmdArgs .= SPL::Helper::SPLEscapePath($srcPath);
+    $cmdArgs .= " ${srcFile} >> ";
+    $cmdArgs .= SPL::Helper::SPLEscapePath($tempDir);
+    $cmdArgs .= "/gen.log 2>&1";
+    my $javaPath = SPL::Helper::SPLGetJavaPath();
+    my $rc = system("${javaPath}/java $cmdArgs");
+    $rc = $rc >> 8;
+    SPLDie(1, SPL::Msg::FAILED_TO_CONVERT_XLF_FILE($srcFile)) if ($rc);
+}
+
+sub genResFiles($$)
+{
+    my ($genrb, $tempDir) = @_;
+    # run genrb on all the txt files in the temp dir
+    my @txtFiles = ();
+    opendir(DIR, $tempDir);
+    while (my $f = readdir(DIR)) {
+        push(@txtFiles, $f) if ($f =~ /.*\.txt/);
+    }
+    closedir(DIR);
+    foreach my $txtFile (@txtFiles) {
+        runGenRB($genrb, $tempDir, $txtFile);
+    }
+    return @txtFiles;
+}
+
+sub runGenRB($$$)
+{
+    my ($genrb, $tempDir, $file) = @_;
+    my $escapedTempDir = SPL::Helper::SPLEscapePath($tempDir);
+    my $cmd = "${genrb} -s ${escapedTempDir} -d ${escapedTempDir} ${file} >> ${escapedTempDir}/gen.log 2>&1";
+    # dependency-scan: ignore the following line
+    my $rc = system($cmd);
+    $rc = $rc >> 8;
+    SPLDie(1, SPL::Msg::FAILED_TO_RUN_GENRB($file)) if ($rc);
+}
+
+sub createIncludeDir($)
+{
+    my ($includeDir) = @_;
+    if (!-e $includeDir) {
+        createDir($includeDir);
+    }
+}
+
+sub createTempDir($)
+{
+    my ($tempDir) = @_;
+    removeTempDir($tempDir);
+    createDir($tempDir);
+}
+
+sub removeTempDir($)
+{
+    my ($tempDir) = @_;
+    if (-e $tempDir) {
+       my $rc = system("rm -fr " . SPL::Helper::SPLEscapePath($tempDir));
+       $rc = $rc >> 8;
+       SPLDie(1, SPL::Msg::CANNOT_REMOVE_DIRECTORY($tempDir, $rc)) if ($rc);
+    }
+}
+
+sub createDir($)
+{
+    my ($dir) = @_;
+    my $rc = system("mkdir " . SPL::Helper::SPLEscapePath($dir));
+    $rc = $rc >> 8;
+    SPLDie(1, SPL::Msg::CANNOT_CREATE_DIRECTORY($dir)) if ($rc);
+}
+
+sub computeLangFiles($)
+{
+    my ($defaultLang) = @_;
+    my @langFiles = ();
+    my $defaultLangFile = "";
+
+    foreach my $file (@ARGV) {
+        my $fqFile = $nlDir . "/" . $file;
+        SPLDie(1, SPL::Msg::FILE_NOT_FOUND($fqFile)) if (!-e $fqFile);
+        push(@langFiles, $fqFile);
+        if ($defaultLangFile eq "" && $file eq $defaultLang) {
+            $defaultLangFile = $fqFile;
+        }
+    }
+    return ($defaultLangFile, @langFiles);
+}
+
+sub removeResourceBundle($)
+{
+    my ($resourceBundleName) = @_;
+    if (-e $resourceBundleName) {
+        my $rc = system("rm -f " . SPL::Helper::SPLEscapePath($resourceBundleName));
+        $rc = $rc >> 8;
+        SPLDie(1, SPL::Msg::CANNOT_REMOVE_FILE($resourceBundleName, $rc)) if ($rc);
+    }
+}
+
+sub computePaths($)
+{
+    my ($thisScript) = @_;
+    my $dist = realpath(dirname($thisScript));
+    my $classPath = $dist . "/../../../ext/lib/xliff.jar";
+    my $genrb = "/usr/local/bin/genrb";
+    my $pkgData = "/usr/local/bin/pkgdata";
+    my $schemaPath = $dist . "/../../../ext/etc/xliff";
+    return ($classPath, $genrb, $pkgData, $schemaPath);
+}
+
+sub needsUpdate($$$$$)
+{
+    my ($resourceBundleName, $defaultLangFile, $includeDir, $headerName, $langFiles) = @_;
+    my $bundleNeedsUpdate = 0;
+    my $headerNeedsUpdate = 0;
+
+    # If the resource bundle doesn't exist then it needs update (dah)
+    if (!-e $resourceBundleName) {
+        $bundleNeedsUpdate = 1;
+    } else {
+        # Ensure that the resource bundle file is newer than all of the lang files
+        my $sb = stat($resourceBundleName);
+        my $bundleTime = $sb->mtime;
+        foreach my $file (@$langFiles) {
+            $sb = stat($file);
+            if ($sb->mtime > $bundleTime) {
+                $bundleNeedsUpdate = 1;
+                last;
+            }
+        }
+    }
+
+    my $sb = stat($defaultLangFile);
+    my $langFileTime = $sb->mtime;
+    my $headerFile = "${includeDir}/${headerName}.h";
+    if (!-e $headerFile) {
+        $headerNeedsUpdate = 1;
+    } else {
+        $sb = stat($headerFile);
+        $headerNeedsUpdate = 1 if ($langFileTime > $sb->mtime);
+    }
+
+    my $perlFile = "${includeDir}/${headerName}.pm";
+    if (!-e $perlFile) {
+        $headerNeedsUpdate = 1;
+    } else {
+        $sb = stat($perlFile);
+        $headerNeedsUpdate = 1 if ($langFileTime > $sb->mtime);
+    }
+
+    return ($bundleNeedsUpdate, $headerNeedsUpdate);
+}

@@ -1,0 +1,168 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use SortCommon;
+    SortCommon::verify($model);
+
+    my $hasGlobalOrder = 1;
+    my @localOrders = ();
+    my $globalOrder = "ascending";
+    my $orderParam = $model->getParameterByName("order");
+    my $sortByParam = $model->getParameterByName("sortBy");
+    if($orderParam) {
+        my $numOrderValues = $orderParam->getNumberOfValues();
+        my $numSortByValues = $sortByParam->getNumberOfValues();
+        if($numOrderValues==1) {
+            $hasGlobalOrder = 1;
+            $globalOrder = $orderParam->getValueAt(0)->getSPLExpression();
+        } else {
+            $hasGlobalOrder = 0;
+            foreach my $value (@{$orderParam->getValues()}) {
+                push @localOrders, $value->getSPLExpression();
+            }
+        }
+    }
+
+    my $partitionByParam = $model->getParameterByName("partitionBy");
+    my @partitionByTypes = SPL::CodeGen::getParameterCppTypes($partitionByParam);
+    my $inputPort = $model->getInputPortAt(0);
+    my $inTupleName = $inputPort->getCppTupleName();
+    my $window = $inputPort->getWindow();
+    my $windowCppType = '';
+    my $windowEventCppType = '';
+    my $windowEventCppFullType = '';
+    my $partitionCppType = ($partitionByParam)
+        ? SPL::CodeGen::emitClass($model, 'PartitionByType', @partitionByTypes) : "int32_t";
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+    if ($isInConsistentRegion || $ckptKind ne "none") {
+        if ($window->isTumbling()) {
+            $windowCppType = ($partitionByParam)
+                ? SPL::CodeGen::getWindowCppType($window, "IPort0Type*", 'PartitionByType', 'SPL::IncrDeque')
+                : SPL::CodeGen::getWindowCppType($window, "IPort0Type*", '', 'SPL::IncrDeque');
+            $windowEventCppType = ($partitionByParam)
+                ? SPL::CodeGen::getWindowEventCppType($window, "IPort0Type*", 'PartitionByType', 'SPL::IncrDeque')
+                : SPL::CodeGen::getWindowEventCppType($window, "IPort0Type*", '', 'SPL::IncrDeque');
+            $windowEventCppFullType = ($partitionByParam)
+                ? SPL::CodeGen::getWindowEventCppType($window, $inputPort->getCppTupleType() . "*", $partitionCppType, 'SPL::IncrDeque')
+                : SPL::CodeGen::getWindowEventCppType($window, $inputPort->getCppTupleType() . "*", '', 'SPL::IncrDeque');
+        } else {
+            $windowCppType = ($partitionByParam)
+                ? SPL::CodeGen::getWindowCppType($window, "IPort0Type*", 'PartitionByType', 'std::deque')
+                : SPL::CodeGen::getWindowCppType($window, "IPort0Type*");
+            $windowEventCppType = ($partitionByParam)
+                ? SPL::CodeGen::getWindowEventCppType($window, "IPort0Type*", 'PartitionByType', 'std::deque')
+                : SPL::CodeGen::getWindowEventCppType($window, "IPort0Type*");
+            $windowEventCppFullType = ($partitionByParam)
+                ? SPL::CodeGen::getWindowEventCppType($window, $inputPort->getCppTupleType() . "*", $partitionCppType, 'std::deque')
+                : SPL::CodeGen::getWindowEventCppType($window, $inputPort->getCppTupleType() . "*");
+        }
+    } else { # not consistent region or checkpointing
+        my $cppTupleType = "IPort0Type*";
+        my $cppTupleFullType = $inputPort->getCppTupleType() . "*";
+        if ($window->isTimeInterval()) {
+            $cppTupleType = "boost::shared_ptr<IPort0Type> ";
+            $cppTupleFullType = "boost::shared_ptr<" . $inputPort->getCppTupleType() . "> ";
+        }
+        $windowCppType = ($partitionByParam)
+            ? SPL::CodeGen::getWindowCppType($window, $cppTupleType, 'PartitionByType')
+            : SPL::CodeGen::getWindowCppType($window, $cppTupleType);
+        $windowEventCppType = ($partitionByParam)
+            ? SPL::CodeGen::getWindowEventCppType($window, $cppTupleType, 'PartitionByType')
+            : SPL::CodeGen::getWindowEventCppType($window, $cppTupleType);
+        $windowEventCppFullType = ($partitionByParam)
+            ? SPL::CodeGen::getWindowEventCppType($window, $cppTupleFullType, $partitionCppType)
+            : SPL::CodeGen::getWindowEventCppType($window, $cppTupleFullType);
+    }
+    my $isPunctWindow = ($window->isTumbling() and ($window->getEvictionPolicyType() ==
+                                                    $SPL::Operator::Instance::Window::PUNCT));
+    my @includes;
+    if ($isInConsistentRegion) {
+        push @includes, "#include <SPL/Runtime/Operator/State/ConsistentRegionContext.h>";
+    }
+    push @includes, "#include <SPL/Runtime/Common/Metric.h>";
+    push @includes, "#include <SPL/Runtime/Function/SPLCast.h>";
+    push @includes, "#include <boost/shared_ptr.hpp>";
+%>
+
+<%SPL::CodeGen::headerPrologue($model, \@includes);%>
+class MY_OPERATOR : public MY_BASE_OPERATOR,
+                    public <%=$windowEventCppFullType%>,
+                    public StateHandler
+{
+public:
+    typedef <%=$partitionCppType%> PartitionByType;
+    typedef <%=$windowCppType%> WindowType;
+    typedef <%=$windowEventCppType%> WindowEventType;
+    MY_OPERATOR();
+    ~MY_OPERATOR();
+    void process(Tuple const & tuple, uint32_t port);
+<%if($isPunctWindow){%>
+    void process(Punctuation const & punct, uint32_t port);
+<%}%>
+<%if($isPunctWindow){%>
+    void onEmptyWindowPunctEvent(WindowEventType::WindowType & window);
+<%}%>
+<%if($window->isTumbling()){%>
+    void beforeWindowFlushEvent(WindowEventType::WindowType & window,
+                                WindowEventType::PartitionType const & partition);
+<%} elsif ($window->isTimeInterval()) {%>
+    void onWindowTriggerEvent(WindowEventType::WindowType & window,
+                              WindowEventType::PartitionType const & partition);
+    void beforeWindowFlushEvent(WindowEventType::WindowType & window,
+ WindowEventType::PartitionType const & partition);
+
+<%} else {%>
+    void afterTupleInsertionEvent(WindowEventType::WindowType & window,
+                                  WindowEventType::TupleType & tuple,
+                                  WindowEventType::PartitionType const & partition);
+
+    void beforeTupleEvictionEvent(WindowEventType::WindowType & window,
+                                  WindowEventType::TupleType & tuple,
+                                  WindowEventType::PartitionType const & partition);
+    void process(Punctuation const & punct, uint32_t port);
+<%}%>
+<%if ($window->hasPartitionEvictionPolicy()) {%>
+    void onWindowPartitionEviction(WindowEventType::WindowType & window,
+                                   WindowEventType::PartitionIterator const& begin,
+                                   WindowEventType::PartitionIterator const& end);
+<%}%>
+
+    // StateHandler implementation
+    void drain();
+    void checkpoint(Checkpoint & ckpt);
+    void reset(Checkpoint & ckpt);
+    void resetToInitialState();
+
+private:
+    bool compareTuples(WindowType::TupleType const & lhs, WindowType::TupleType const & rhs);
+    struct TupleComparer
+    {
+        TupleComparer(MY_OPERATOR & oper) : _oper(oper) {}
+        bool operator ()(WindowType::TupleType const & lhs, WindowType::TupleType const & rhs)
+        {
+            return _oper.compareTuples(lhs, rhs);
+        }
+        MY_OPERATOR & _oper;
+    };
+
+    WindowType _window;
+    Mutex _mutex;
+    Metric& _partitionCount;
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

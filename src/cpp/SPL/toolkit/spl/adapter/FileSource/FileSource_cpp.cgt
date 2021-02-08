@@ -1,0 +1,558 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    unshift @INC, dirname($model->getContext()->getOperatorDirectory()) . "/Common";
+    require AdapterHelper;
+    use FileSourceCommon;
+    FileSourceCommon::verify($model);
+    my $file =  $model->getParameterByName("file");
+    my $format = $model->getParameterByName("format");
+    my $hasDelayField = $model->getParameterByName("hasDelayField");
+    my $parsing = $model->getParameterByName("parsing");
+    my $eolMarker = $model->getParameterByName("eolMarker");
+    my $blockSize = $model->getParameterByName("blockSize");
+    my $compression = $model->getParameterByName("compression");
+    my $separator = $model->getParameterByName("separator");
+    my $encoding = $model->getParameterByName("encoding");
+    my $hotFile = $model->getParameterByName("hotFile");
+    my $ignoreOpenErrors = $model->getParameterByName("ignoreOpenErrors");
+    my $initDelay = $model->getParameterByName("initDelay");
+    my $moveFileToDirectory = $model->getParameterByName("moveFileToDirectory");
+    my $deleteFile = $model->getParameterByName("deleteFile");
+    my $defaultTuple = $model->getParameterByName("defaultTuple");
+    my $hasHeaderLine = $model->getParameterByName("hasHeaderLine");
+    my $readPunctuations = $model->getParameterByName("readPunctuations");
+    my $ignoreExtraCSVValues = $model->getParameterByName("ignoreExtraCSVValues");
+    my $outputPort = $model->getOutputPortAt(0);
+
+    my $submitFileStatus = $model->getNumberOfOutputPorts() == 2;
+
+    my $crContext = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $generateConsistentRegionSupport = $crContext ? 1 : 0;
+    my $isStart = $crContext ? $crContext->isStartOfRegion() : 0;
+    my $isTrigger = $crContext ? $crContext->isTriggerOperator() : 0;
+    my $needsCRPermit = $file ? 1 : 0;
+
+    my $fileStatusFileNameFirst;
+    my $fileStatusCppType;
+    if ($submitFileStatus) {
+        my $op = $model->getOutputPortAt(1);
+        $fileStatusCppType = $op->getCppTupleType();
+        my $a0 = $op->getAttributeAt(0);
+        my $a1 = $op->getAttributeAt(1);
+        $fileStatusFileNameFirst = SPL::CodeGen::Type::isRString($a0->getSPLType());
+    }
+
+    my $tupleType = $outputPort->getCppTupleType();
+    my $firstInputAttr;
+    my $inputTupleType;
+    if (!$file) {
+        my $inputPort = $model->getInputPortAt(0);
+        $firstInputAttr = $inputPort->getAttributeAt(0)->getName();
+        $inputTupleType = $inputPort->getCppTupleType();
+    }
+    my $inputPort;
+
+    # Apply defaults
+    $format = $format ? $format->getValueAt(0)->getSPLExpression() : "csv";;
+    $hotFile = $hotFile ? $hotFile->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    my $readPunctuations = $model->getParameterByName("readPunctuations");
+    $ignoreExtraCSVValues = $ignoreExtraCSVValues ? $ignoreExtraCSVValues->getValueAt(0)->getSPLExpression() eq "true" : 0;
+
+    my ($eolChar1, $eolChar2) = ('\n', undef);
+    ($eolChar1, $eolChar2) = AdapterHelper::extractEolChars ($eolMarker) if ($eolMarker);
+
+    $hasDelayField = $hasDelayField ? $hasDelayField->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    $parsing = $parsing ? $parsing->getValueAt(0)->getSPLExpression() : "strict";
+    $deleteFile = $deleteFile ? $deleteFile->getValueAt(0)->getSPLExpression() eq "true" : 0;
+
+    # other corrections
+    my $hasHeaderExpn = $hasHeaderLine->getValueAt(0) if $hasHeaderLine;
+    $hasHeaderLine = $hasHeaderLine->getValueAt(0)->getCppExpression() if $hasHeaderLine;
+    $blockSize = $blockSize->getValueAt(0)->getCppExpression() if $blockSize;
+    $compression = $compression->getValueAt(0)->getSPLExpression() if $compression;
+    $initDelay = $initDelay->getValueAt(0)->getCppExpression() if $initDelay;
+    $file = $file->getValueAt(0)->getCppExpression() if $file;
+    $encoding = $encoding->getValueAt(0)->getCppExpression() if $encoding;
+    $ignoreOpenErrors = $ignoreOpenErrors->getValueAt(0)->getCppExpression() if $ignoreOpenErrors;
+    my $binary = $format eq "bin" || $format eq "block";
+    $moveFileToDirectory = $moveFileToDirectory->getValueAt(0)->getCppExpression() if $moveFileToDirectory;
+    $defaultTuple = $defaultTuple->getValueAt(0)->getCppExpression() if ($defaultTuple);
+
+    # compute which attributes we will generate
+    my $numAttrs = $outputPort->getNumberOfAttributes();
+    my $hasAssignments = 0;
+    my @genAttrs;
+    for (my $i = 0; $i < $numAttrs; $i++) {
+        my $attr = $outputPort->getAttributeAt($i);
+        if ($attr->hasAssignment()) {
+            $hasAssignments = 1;
+            next;
+        }
+        push @genAttrs, $attr;
+    }
+
+    # this is how many are left
+    $numAttrs = scalar(@genAttrs);
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fstream>
+#include <signal.h>
+<%if ($format eq "block" && !$blockSize) {%>
+#include <list>
+<%}%>
+<%if ($compression) {%>
+    #include <boost/iostreams/filter/<%=$compression%>.hpp>
+<%}%>
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
+<%if ($moveFileToDirectory) {%>
+    #include <boost/filesystem/operations.hpp>
+    #include <boost/filesystem/exception.hpp>
+<%}%>
+<%if ($binary) {%>
+    #include <SPL/Runtime/Serialization/StreamByteBuffer.h>
+<%}%>
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Toolkit/IOHelper.h>
+#include <SPL/Toolkit/RuntimeException.h>
+<%if ($encoding) {%>
+    #include <SPL/Toolkit/ToUTF8.h>
+<%}%>
+#include <SPL/Runtime/Operator/OperatorMetrics.h>
+#include <SPL/Runtime/Utility/LogTraceMessage.h>
+
+using namespace std;
+using namespace boost::iostreams;
+
+#define DEV_NULL "/dev/null"
+
+@include "../Common/GenerateSourceReadLoopErrorChecks.cgt"
+
+string MY_OPERATOR::makeAbsolute(const string & fileName)
+{
+    namespace bf = boost::filesystem;
+    bf::path file(fileName);
+    if (!file.is_absolute()) {
+        // getDataDirectory will throw an exception if there is no data directory
+        file = getPE().getDataDirectory();
+        file /= fileName;
+    }
+    return file.string();
+}
+
+
+MY_OPERATOR::MY_OPERATOR()
+    : MY_BASE_OPERATOR(), _fd(-1),
+        <%if ($moveFileToDirectory) {%>
+            _renamer (getPE(), SPL::rstring(makeAbsolute(<%=$moveFileToDirectory%>))),
+        <%}%>
+        <%if (defined $defaultTuple) {%>
+           _defaultTuple (<%=$defaultTuple%>),
+        <%}%>
+        <%if ($encoding) {%>
+           _encoding(<%=$encoding%>),
+        <%}%>
+        <%if ($ignoreOpenErrors) {%>
+            _ignoreOpenErrors(<%=$ignoreOpenErrors%>),
+        <%}%>
+        <%if (!$file) {%>
+           _firstTime(true),
+        <%}%>
+	<%unless ($hotFile) {%>
+	  _fd_src(),
+	<%}%>
+	_filt_str(),
+	_fs(),
+        <%if ($readPunctuations) {%>
+           _sawFinal(false),
+        <%}%>
+        _numFilesOpenedMetric(getContext().getMetrics().getCustomMetricByName("nFilesOpened")),
+        _numInvalidTuples(getContext().getMetrics().getCustomMetricByName("nInvalidTuples"))
+        <%if ($generateConsistentRegionSupport) {%>
+	,_crContext()
+        <%}%>
+        ,_position(0)
+        <%if ($generateConsistentRegionSupport) {%>
+	,_crMutex()
+        <%}%>
+	,_reset(false)
+	,_initialized(false)
+        <%if ($hasHeaderLine) {%>
+        ,_headerLineCount()
+        <%}%>
+{
+    _numFilesOpenedMetric.setValueNoLock(0);
+    _numInvalidTuples.setValueNoLock(0);
+    <%if ($generateConsistentRegionSupport) {%>
+        _crContext = static_cast<ConsistentRegionContext *>
+            (getContext().getOptionalContext(CONSISTENT_REGION));
+    <%}%>
+<%if ($file){%>
+       try {
+           SPLAPPTRC(L_DEBUG, "Register tag data for governance", SPL_OPER_DBG);
+           std::map<string,string> props;
+           props["inputOperatorType"]="FileSource";
+           namespace bf = boost::filesystem;
+           bf::path absPath(makeAbsolute(<%=$file%>));
+           props["srcName"]=absPath.filename().string();
+           props["srcType"]="data_file";
+           props["p1srcName"]=absPath.parent_path().string();
+           props["srcParent"]="p1";
+           props["p1parentType"]="parent_folder_or_host";
+           props["p1srcType"]="data_file_folder";
+           props["registerType"] = "input";
+          setTagData("OperatorIGC", props);
+     } catch (std::exception const & e) {
+         SPLAPPTRC(L_DEBUG, "Exception received when registering tag data: " << e.what(), SPL_OPER_DBG);
+     }
+ <%}%>
+}
+
+<%if ($hasHeaderLine) {%>
+void MY_OPERATOR::initHeaderLineCount () {
+        <%if (SPL::CodeGen::Type::isBoolean($hasHeaderExpn->getSPLType())) {%>
+            if (<%=$hasHeaderLine%>) {
+	        _headerLineCount = 1;
+            }
+        <%} else {%>
+            {
+                _headerLineCount = <%=$hasHeaderLine%>;
+            }
+        <%}%>
+}
+<%}%>
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    if (_fd >= 0) {
+        ::close(_fd);
+        _fd = -1;
+    }
+}
+
+void MY_OPERATOR::initialize()
+{
+    <%if ($initDelay) {%>
+        SPLAPPTRC(L_DEBUG, "starting init delay", SPL_OPER_DBG);
+        getPE().blockUntilShutdownRequest(<%=$initDelay%>);
+        SPLAPPTRC(L_DEBUG, "finished init delay", SPL_OPER_DBG);
+    <%}%>
+
+}
+
+<%if ($submitFileStatus) {%>
+    void MY_OPERATOR::sendStatus (const std::string& fName, int32 error)
+    {
+        <% if ($fileStatusFileNameFirst) {%>
+            <%=$fileStatusCppType%> t (fName, error);
+        <%} else {%>
+            <%=$fileStatusCppType%> t (error, fName);
+        <%}%>
+        submit (t, 1);
+    }
+<%}%>
+
+void MY_OPERATOR::punctAndStatus(const string& pathName)
+{
+  SPLAPPTRC(L_DEBUG, "punctAndStatus", SPL_OPER_DBG);
+  <%if ($generateConsistentRegionSupport && (!$readPunctuations || $submitFileStatus)) {%>
+    <%if ($needsCRPermit) {%>
+      ConsistentRegionPermit crm(_crContext);
+    <%}%>
+    <%if ($isStart) {%>
+      AutoMutex am(_crMutex);
+
+      if (!_reset)
+      {
+    <%}%>
+  <%}%>
+
+  <%if (!$readPunctuations) {%>
+      submit (Punctuation::WindowMarker, 0);
+  <%}%>
+  <%if ($submitFileStatus) {%>
+      sendStatus (pathName, 0);
+  <%}%>
+  <%if ($generateConsistentRegionSupport && (!$readPunctuations || $submitFileStatus) && $isStart) {%>
+    }
+  <%}%>
+}
+
+void MY_OPERATOR::processOneFile (const string& path)
+{
+    <%=$tupleType%> tuple$;
+    <%print "double delay;" if $hasDelayField;%>
+    <%if ($hasHeaderLine) {%>
+      initHeaderLineCount();
+    <%}%>
+    namespace bf = boost::filesystem;
+    bf::path absPath(path);
+    if (!absPath.is_absolute()) {
+        absPath = getPE().getDataDirectory();
+        absPath /= path;
+    }
+    string pathName = absPath.string();
+    SPLAPPTRC(L_DEBUG, "Using '" << pathName << "' as the workload file...", SPL_OPER_DBG);
+
+    int fd = ::open (pathName.c_str(), O_RDONLY | O_LARGEFILE);
+    if (fd < 0) {
+        int errnum = errno;
+        <%if ($submitFileStatus) {%>
+            sendStatus (pathName, errnum);
+        <%}%>
+        <%if ($ignoreOpenErrors) {%>
+            if (_ignoreOpenErrors) {
+                SPLAPPTRC(L_ERROR, SPL_APPLICATION_RUNTIME_FAILED_OPEN_INPUT_FILE(pathName, RuntimeUtility::getErrorNoStr(errnum)), SPL_OPER_DBG);
+                return;
+            }
+        <%}%>
+        SPLLOGMSG(L_ERROR, SPL_APPLICATION_RUNTIME_FAILED_OPEN_INPUT_FILE(pathName, RuntimeUtility::getErrorNoStr(errnum)), SPL_OPER_DBG);
+        SPLTRACEMSGANDTHROW(SPLRuntimeFileSourceOperator, L_ERROR, SPL_APPLICATION_RUNTIME_FAILED_OPEN_INPUT_FILE(pathName, RuntimeUtility::getErrorNoStr(errnum)), SPL_OPER_DBG);
+    }
+    SPLAPPTRC(L_DEBUG, "File opened.", SPL_OPER_DBG);
+    <%if ($generateConsistentRegionSupport) {%>
+    _initialized = true;
+    <%}%>
+    <%if ($hotFile) {%>
+        SPL::HotFile fd_src (getPE(), *this, fd);
+    <%} else {%>
+ 	_fd_src.reset(new file_descriptor_source(fd, close_handle));
+	file_descriptor_source& fd_src = *_fd_src;
+    <%}%>
+    _numFilesOpenedMetric.incrementValueNoLock();
+    _filt_str.reset(new filtering_streambuf<input>);
+    filtering_streambuf<input>& filt_str = *_filt_str;
+    <%if ($encoding) {%>
+        ToUTF8Filter toUTF8(_encoding);
+        filt_str.push (toUTF8);
+    <%}%>
+    <%if ($compression) {%>
+        filt_str.push (<%=$compression%>_decompressor());
+    <%}%>
+    filt_str.push (fd_src);
+    <%if ($binary) {%>
+        _fs.reset(new iostream(&filt_str));
+	iostream& fs = *_fs;
+        SPL::StreamByteBuffer sbfs(fs);
+    <%} else {%>
+	_fs.reset (new istream(&filt_str));
+	istream& fs = *_fs;
+    <%}%>
+    fs.imbue(locale::classic());
+
+    _fd = fd;
+    _tupleNumber = 0;
+
+@include "../Common/GenerateSourceReadLoop.cgt"
+
+<%if ($deleteFile || $moveFileToDirectory) {%>
+    if (getPE().getShutdownRequested()) {
+        punctAndStatus(pathName);
+        return; // don't take action if we have shut down
+    }
+<%}%>
+<%if ($deleteFile) {%>
+    SPLAPPTRC(L_DEBUG, "Deleting file '" << pathName << '\'', SPL_OPER_DBG);
+    if (::unlink (pathName.c_str()) < 0) {
+        int errnum = errno;
+        SPLAPPTRC(L_DEBUG, "Error deleting file : " << RuntimeUtility::getErrorNoStr(errnum), SPL_OPER_DBG);
+    }
+<%} elsif ($moveFileToDirectory) {%>
+    try {
+        _renamer.rename (pathName);
+    } catch (const bf::filesystem_error& error) {
+        SPLAPPTRC(L_DEBUG, "Error moving file : " << error.what(), SPL_OPER_DBG);
+    } catch (const SPL::SPLRuntimeOperatorException& error) {
+        SPLAPPTRC(L_DEBUG, "Error moving file : " << error.getExplanation(), SPL_OPER_DBG);
+    }
+<%}%>
+    punctAndStatus(pathName);
+
+<%if ($generateConsistentRegionSupport) {%>
+    {
+        AutoMutex cm(_crMutex);
+<%}%>
+    if (_fd < 0) {
+        // We closed it already.  Prevent an error message
+        int newFd = ::open (DEV_NULL, O_RDONLY);
+        ::dup2 (newFd, _fd);
+        ::close(newFd);
+    }
+    _fd = -1; // no longer using this
+
+    _fs.reset();
+    <%unless ($hotFile) {%>
+    _fd_src.reset();
+    <%}%>
+    _filt_str.reset();
+
+<%if ($generateConsistentRegionSupport) {%>
+     }
+<%}%>
+}
+
+<%if ($file) {%>
+void MY_OPERATOR::process(uint32_t)
+{
+    SPLAPPTRC(L_DEBUG, "FileSource startup...", SPL_OPER_DBG);
+    initialize();
+
+<%if ($generateConsistentRegionSupport) {%>
+    bool done = false;
+    while (!done)
+    {
+      boolean doProcess = false;
+      {
+        AutoMutex am(_crMutex);
+	doProcess = (_reset || _position != EOF);
+        SPLAPPTRC(L_DEBUG, "doProcess " << doProcess << " _reset " << _reset << " _position != EOF " << (_position != EOF), SPL_OPER_DBG);
+      }
+      if (doProcess) {
+<%}%>
+        processOneFile (<%=$file%>);
+<%if ($isStart) {%>
+
+        {
+	  // Drain after processing the file.
+	  ConsistentRegionPermit crp(_crContext);
+	  bool doMakeConsistent = false;
+	  {
+	    AutoMutex am(_crMutex);
+            doMakeConsistent = (!_reset);
+	  }
+	  if (doMakeConsistent) {
+	    SPLAPPTRC(L_DEBUG, "Making consistent", SPL_OPER_DBG);
+      	    done = _crContext->makeConsistent();
+	    if (done) {
+              SPLAPPTRC(L_DEBUG, "Final makeConsistent succeeded.", SPL_OPER_DBG);
+	    }
+	    else {
+              SPLAPPTRC(L_DEBUG, "Final makeConsistent failed.", SPL_OPER_DBG);
+	    }
+	  }
+    	}
+
+<%}%>
+
+<%if ($generateConsistentRegionSupport) {%>
+        if (!done) {
+	  done = (getPE().getShutdownRequested());
+	}
+      }
+      else {
+        done = (getPE().blockUntilShutdownRequest((double) .000050));
+      }
+    }
+<%}%>
+
+    SPLAPPTRC(L_DEBUG, "FileSource exiting...", SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads (1);
+}
+
+<%} else {%>
+void MY_OPERATOR::process (Tuple const& tuple, uint32_t port)
+{
+    AutoPortMutex am(_mutex, *this);
+    const <%=$inputTupleType%>& t = static_cast<const <%=$inputTupleType%>&>(tuple);
+    if (_firstTime) {
+        _firstTime = false;
+        initialize();
+    }
+<%if ($generateConsistentRegionSupport) {%>
+    {
+        AutoMutex cm(_crMutex);
+        _position = 0;
+    }
+<%}%>
+
+    <%if ($readPunctuations) {%>
+        if (!_sawFinal)
+    <%}%>
+    processOneFile (t.get_<%=$firstInputAttr%>());
+}
+<%}%>
+
+
+<%if ($generateConsistentRegionSupport) {%>
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt)
+{
+    SPLAPPTRC(L_DEBUG, "checkpoint " << ckpt.getSequenceId(), SPL_OPER_DBG);
+    <%if ($file) { %>
+    AutoMutex am(_crMutex);
+    if (!_initialized) {
+      _position = 0;
+    }
+    else if (!_fs.get() || _fs->fail()) {
+      _position = EOF;
+    }
+    else if (SPL::safePeek(*_fs) == EOF) {
+      _position = EOF;
+    }
+    else {
+      _position = _fs->tellg();
+    }
+    SPLAPPTRC(L_DEBUG, "Saving position " << _position, SPL_OPER_DBG);
+    ckpt << _position;
+    <%if ($hasHeaderLine) {%>
+    ckpt << _headerLineCount;
+    <%}%>
+    <%}%>
+}
+
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    SPLAPPTRC(L_DEBUG, "reset " << ckpt.getSequenceId(), SPL_OPER_DBG);
+    <%if ($file) { %>
+    AutoMutex am(_crMutex);
+    ckpt >> _position;
+    SPLAPPTRC(L_DEBUG, "Restored position " << _position, SPL_OPER_DBG);
+    <%if ($hasHeaderLine) {%>
+    ckpt >> _headerLineCount;
+    <%}%>
+    _reset = true;
+    <%}%>
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    SPLAPPTRC(L_DEBUG, "resetToInitialState", SPL_OPER_DBG);
+    <%if ($file) { %>
+    AutoMutex am(_crMutex);
+    _position = 0;
+    SPLAPPTRC(L_DEBUG, "Restored position " << _position, SPL_OPER_DBG);
+    <%if ($hasHeaderLine) {%>
+      initHeaderLineCount();
+    <%}%>
+    _reset = true;
+    <%}%>
+}
+<% } %>
+
+
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

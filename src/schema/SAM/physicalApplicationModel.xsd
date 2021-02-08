@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/application/physical"
+  xmlns:mr="http://www.ibm.com/xmlns/prod/streams/runtime/utils"
+  xmlns:base="http://www.ibm.com/xmlns/prod/streams/application"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/application/physical"
+  elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/application" schemaLocation="applicationModel.xsd"/>
+
+  <xs:complexType name="physPEType">
+    <xs:complexContent>
+      <xs:extension base="base:peType">
+        <xs:sequence>
+          <xs:element name="toolkitsMap" type="toolkitsMapType"/>
+        </xs:sequence>
+        <xs:attribute name="logicalIndex" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="channelIndex" use="optional" type="xs:int"/>
+        <xs:attribute name="regionIndex" use="optional" type="xs:unsignedLong"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="toolkitsMapType">
+    <xs:sequence>
+      <xs:element name="toolkitMap" type="toolkitMapType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="toolkitMapType">
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="name" use="required" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="physParallelRegionType">
+    <xs:attribute name="globalChannelIndex" use="required" type="xs:int"/>
+    <xs:attribute name="localChannelIndex" use="required" type="xs:int"/>
+    <xs:attribute name="globalMaxChannels" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="localMaxChannels" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="regionIndex" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+  <xs:complexType name="physParallelRegionsType">
+    <xs:sequence>
+       <xs:element name="parallelRegion" type="physParallelRegionType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="physOperInstanceType">
+    <xs:complexContent>
+      <xs:extension base="base:operInstanceType">
+        <xs:sequence>
+          <xs:element name="splAnnotation" type="base:splAnnotationType" minOccurs="0" maxOccurs="unbounded"/>
+          <xs:element name="annotation" type="base:annotationType" minOccurs="0" maxOccurs="unbounded"/>
+          <xs:element name="jvmArguments" type="jvmArgumentsType" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="parallelRegions" type="physParallelRegionsType" minOccurs="0" maxOccurs="1"/>
+        </xs:sequence>
+        <xs:attribute name="logicalName" use="required" type="xs:string"/>
+        <xs:attribute name="logicalIndex" use="required" type="xs:unsignedLong"/>
+        <!--xs:attribute name="channelIndex" use="optional" type="xs:int"/-->
+        <!--xs:attribute name="maxChannels" use="optional" type="xs:unsignedLong"/-->
+        <!--xs:attribute name="regionIndex" use="optional" type="xs:unsignedLong"/-->
+        <xs:attribute name="toolkitIndex" use="required" type="xs:unsignedLong"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- jvmArgumentsType -->
+  <xs:complexType name="jvmArgumentsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a set of 0 or more jvm arguments. The existence of this
+        data structure indicates that the operator requires a jvm to function.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="jvmArgument" type="jvmArgumentType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- jvmArgumentType -->
+  <xs:simpleType name="jvmArgumentType">
+    <xs:annotation>
+      <xs:documentation>
+        This type defines the content of a jvmArguments element
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string"/>
+  </xs:simpleType>
+
+  <xs:complexType name="physPropertyBasedImportType">
+    <xs:complexContent>
+      <xs:extension base="base:propertyBasedImportType">
+        <xs:attribute name="logicalSubscription" use="required" type="xs:string"/>
+        <xs:attribute name="logicalImportOperName" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="physExportedStreamType">
+    <xs:complexContent>
+      <xs:extension base="base:exportedStreamType">
+        <xs:attribute name="logicalExportOperName" use="required" type="xs:string"/>
+        <xs:attribute name="logicalName" use="optional" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="physStreamPropertyType">
+    <xs:complexContent>
+      <xs:extension base="base:streamPropertyType">
+      <xs:sequence>
+        <xs:element name="logicalValue" minOccurs="1" maxOccurs="unbounded" type="xs:string"/>
+      </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="physImportedStreamsType">
+    <xs:complexContent>
+      <xs:extension base="base:importedStreamsType">
+        <xs:attribute name="logicalFilter" type="xs:string" use="optional"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="physNameBasedImportType">
+    <xs:complexContent>
+      <xs:extension base="base:nameBasedImportType">
+        <xs:attribute name="logicalImportOperName" use="required" type="xs:string"/>
+        <xs:attribute name="logicalStreamName" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="physOperInstanceOutputPortType">
+    <xs:complexContent>
+      <xs:extension base="base:operInstanceOutputPortType">
+        <xs:attribute name="logicalStreamName" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="physApplicationSetType">
+    <xs:complexContent>
+      <xs:extension base="base:applicationSetType">
+        <xs:sequence>
+          <xs:element name="physicalApplication" type="base:applicationType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+</xs:schema>

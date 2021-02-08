@@ -1,0 +1,132 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.relational$Functor.html">
+The `Functor` operator is used to transform input tuples into output ones, and optionally filter them as in a `Filter` operator.
+If you do not filter an input tuple, any incoming tuple results in a tuple on each output port.
+
+# Checkpointed data
+
+When the `Functor` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Functor` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+In a consistent region, a `Functor` operator stores its state when a checkpoint is taken.
+When the region is reset, the operator restores the state from the checkpoint.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Functor` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Functor` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Windowing
+
+The `Functor` operator does not accept any window configurations.
+
+# Assignments
+
+The `Functor` operator allows assignments to output attributes.
+The output tuple attributes whose assignments are not specified are automatically forwarded from the input ones.
+After the automatic forwarding, the `Functor` operator expects all output tuple attributes to be completely assigned.
+
+# Examples
+
+This example uses the `Functor` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring name, uint32 age, uint64 salary&gt; Beat = Beacon() {}
+        stream&lt;rstring name, uint32 age, rstring login,
+               tuple&lt;boolean young, boolean rich&gt; info&gt; Annotated = Functor(Beat)
+        {
+          param filter : age &gt;= 18u;
+          output Annotated : login = lower(name),
+                             info  = { young = (age&lt;=30u), rich = (salary&gt;1000000ul) };
+        }
+        (stream&lt;rstring name, uint32 age&gt; Age;
+         stream&lt;rstring name, uint64 salary&gt; Salary) = Functor(Beat)
+        {
+          param filter : age &gt;= 18u;
+        }
+    }
+
+</description>
+      <iconUri size="16">functor_16.gif</iconUri>
+      <iconUri size="32">functor_32.gif</iconUri>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Functor">
+          <description>Basic Functor template</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = Functor(${inputStream}) {
+            param
+                filter : ${filterExpression};
+            output
+                ${outputStream} : ${outputAttribute} = ${value};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>filter</name>
+        <description>
+Specifies the condition that determines which input tuples are to be operated on by the `Functor` operator.
+It takes a single expression of type boolean as its value.
+When not specified, it is assumed to be `true`, that is, tuples are transformed, but no filtering is performed.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Functor` operator is configurable with a single input port, which ingests tuples to be manipulated.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Functor` operator is configurable with one or more output ports.
+This port produces generated tuples.</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+      <outputPortOpenSet>
+        <description>Additional ports produce generated tuples.</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+      </outputPortOpenSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

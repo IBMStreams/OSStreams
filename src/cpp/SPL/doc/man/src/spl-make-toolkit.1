@@ -1,0 +1,47 @@
+.TH spl-make-toolkit 1  "November 28, 2010" "version 2.0" "USER COMMANDS"
+.SH NAME
+spl-make-toolkit \- index an SPL toolkit
+.SH SYNOPSIS
+.B spl-make-toolkit [options] -i <toolkit-dir>
+.SH DESCRIPTION
+.BR "spl-make-toolkit" " creates a toolkit model (toolkit.xml) from the contents of a toolkit directory."
+.SH OPTIONS
+.TP
+\-h, \-\-help 
+Display help and exit.
+.TP
+\-c, \-\-clean
+.RB "Clean compiler generated " ".pm" " files and " "toolkit.xml" "."
+.TP
+\-d, \-\-description=VALUE
+Use the given description for the toolkit. Overrides the value given in info.xml.
+.TP
+\-i, \-\-directory=VALUE
+Set the toolkit directory to be used to the specified path.
+.TP
+\-m, \-\-make-operator
+.RB "Run " "spl-make-operator" " on primitive operators."
+.TP
+\-n, \-\-name=VALUE
+Use the given name for the toolkit. Overrides the value given in info.xml.
+.TP
+\-r, \-\-product-version=VALUE   
+Use the given required product version for the toolkit. Overrides the value given in info.xml.
+.TP
+\-s, \-\-silent
+.RB "Pass --silent to " "spl-make-operator" ". This option is only meaningful for -m."
+.TP
+ \-v, \-\-version=VALUE           
+Use the given version for the toolkit. Overrides the value given in info.xml.
+.TP
+\-\-no-mixed-mode-preprocessing
+.RB "Do not pre-process mixed-mode (" ".splmm" ") files."
+.TP
+\-\-verbose-model-errors 
+Display enhanced operator or function model errors.
+.SH EXIT STATUS
+.BR "spl-make-toolkit" " returns a zero exist status if the indexing succeeds. Non zero is returned in case of failure."
+
+.SH SEE ALSO
+.BR "sc" " (1)"
+

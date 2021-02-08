@@ -1,0 +1,289 @@
+<?xml version="1.0"?>
+
+<!--
+This file describes the annotations that the SPL compiler supports.  The
+following is a short description of what all the elements and attributes mean.
+Each annotation element introduces an annotation that may appear in the SPL
+source code.  The attribute name specifies the spelling of the attributes token
+and is preceeded by @ in the code, for example @parallel.
+Annotations are specified as a set of key/value pairs.  The key element identifies
+the name of the key, whether or not it is optional or required, and the type that the
+value must be.  Each key/value can be thought of as a SPL tuple, although there is
+not a single tuple type that can represent all key values as some parts of it may be optional.
+-->
+
+
+<annotations
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/annotations"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/annotations SPLAnnotations.xsd">
+
+  <annotation name="spl_tag" maxOccurs="1">
+    <key name="name" required="true">
+      <valueType><rstring/></valueType>
+    </key>
+  </annotation>
+
+  <annotation name="spl_category" maxOccurs="1">
+    <key name="name" required="true">
+      <valueType><rstring/></valueType>
+    </key>
+  </annotation>
+
+  <annotation name="spl_note" maxOccurs="unbounded">
+    <key name="id" required="true">
+      <valueType><rstring/></valueType>
+    </key>
+    <key name="text" required="true">
+      <valueType><rstring/></valueType>
+    </key>
+  </annotation>
+
+  <annotation name="catch" maxOccurs="1" propagateToInstanceModel="true">
+    <key name="exception" required="true">
+      <valueType>
+        <enum>
+          <enumerator>streams</enumerator>
+          <enumerator>std</enumerator>
+          <enumerator>all</enumerator>
+          <enumerator>none</enumerator>
+        </enum>
+      </valueType>
+    </key>
+    <key name="tupleTrace" required="false">
+      <valueType><boolean/></valueType>
+    </key>
+    <key name="stackTrace" required="false">
+      <valueType><boolean/></valueType>
+    </key>
+  </annotation>
+
+  <annotation name="threading" maxOccurs="1">
+    <key name="model" required="true">
+      <valueType>
+        <enum>
+          <enumerator>dedicated</enumerator>
+          <enumerator>automatic</enumerator>
+          <enumerator>manual</enumerator>
+          <enumerator>dynamic</enumerator>
+        </enum>
+      </valueType>
+    </key>
+    <key name="threads" required="false">
+      <valueType><int32/></valueType>
+    </key>
+    <key name="elastic" required="false">
+      <valueType><boolean/></valueType>
+    </key>
+  </annotation>
+
+  <annotation name="parallel" maxOccurs="1">
+    <key name="width" required="true" submissionTimeValueAllowed="true">
+      <valueType><int32/></valueType>
+    </key>
+    <key name="partitionBy" required="false">
+      <valueType>
+        <list>
+          <tuple>
+            <attribute name="port" required="true"><enum values="inputPortNames"/></attribute>
+            <attribute name="attributes" required="false"><enum values="inputPortAttributes"/></attribute>
+          </tuple>
+        </list>
+      </valueType>
+    </key>
+    <key name="replicateHostTags" required="false">
+      <valueType>
+        <list><rstring/></list>
+      </valueType>
+    </key>
+    <key name="broadcast" required="false">
+      <valueType>
+        <list><rstring/></list>
+      </valueType>
+    </key>
+  </annotation>
+
+  <annotation name="consistent" maxOccurs="1">
+    <key name="trigger" required="true">
+      <valueType>
+        <enum>
+          <enumerator>periodic</enumerator>
+          <enumerator>operatorDriven</enumerator>
+        </enum>
+      </valueType>
+    </key>
+    <key name="period" required="false" submissionTimeValueAllowed="true">
+      <valueType><float64/></valueType>
+    </key>
+    <key name="drainTimeout" required="false" default="180.0" submissionTimeValueAllowed="true">
+      <valueType><float64/></valueType>
+    </key>
+    <key name="resetTimeout" required="false" default="180.0" submissionTimeValueAllowed="true">
+      <valueType><float64/></valueType>
+    </key>
+    <key name="maxConsecutiveResetAttempts" required="false" default="5" submissionTimeValueAllowed="true">
+      <valueType><uint32/></valueType>
+    </key>
+  </annotation>
+
+  <annotation name="autonomous" macroName="AUTONOMOUS" maxOccurs="1"/>
+
+  <annotation name="view" maxOccurs="unbounded">
+    <key name="name" required="true" submissionTimeValueAllowed="true">
+      <valueType><rstring/></valueType>
+    </key>
+    <key name="port" required="true">
+      <valueType><enum values="outputPortNames"/></valueType>
+    </key>
+    <key name="sampleSize" required="true">
+      <valueType><uint32/></valueType>
+    </key>
+    <key name="bufferSize" required="false">
+      <valueType><uint32/></valueType>
+    </key>
+    <key name="bufferTime" required="false">
+      <valueType><float64/></valueType>
+    </key>
+    <key name="description" required="false">
+      <valueType><rstring/></valueType>
+    </key>
+    <key name="attributes" required="false">
+      <valueType>
+        <list>
+          <enum values="outputPortAttributes"/>
+        </list>
+      </valueType>
+    </key>
+    <key name="filter" required="false">
+      <valueType>
+        <tuple>
+          <attribute name="attr" required="true"><enum values="outputPortAttributes"/></attribute>
+          <attribute name="expr" required="true"><rstring/></attribute>
+        </tuple>
+      </valueType>
+    </key>
+    <key name="activateOption" required="false">
+      <valueType>
+        <enum>
+          <enumerator>automatic</enumerator>
+          <enumerator>firstAccess</enumerator>
+        </enum>
+      </valueType>
+    </key>
+  </annotation>
+
+
+  <annotation name="eventTime" maxOccurs="1" internal="false" propagateToInstanceModel="true" codeGenDependsOnValue="true">
+    <key name="eventTimeAttribute" required="true">
+      <valueType>
+        <enum type="outputPortAttributes"/>
+      </valueType>
+    </key>
+    <key name="resolution" required="false" default="Milliseconds">
+      <valueType>
+        <enum>
+          <enumerator>Milliseconds</enumerator>
+          <enumerator>Microseconds</enumerator>
+          <enumerator>Nanoseconds</enumerator>
+        </enum>
+      </valueType>
+    </key>
+    <key name="minimumGap" required="false" default="0.1" submissionTimeValueAllowed="true">
+      <valueType><float64/></valueType>
+    </key>
+    <key name="lag" required="false" default="0.0" submissionTimeValueAllowed="true">
+      <valueType><float64/></valueType>
+    </key>
+  </annotation>
+
+  <!-- List internal annotations after this point -->
+  <!-- If you add an internal annotation, update
+       ADLGenerator::createSPLAnnotation to set it to internal.  It is not
+       actually driven by the internal="true" attribute here. -->
+  <annotation name="consistentRegion" macroName="CONSISTENT_REGION_ANNOTATION" maxOccurs="1" internal="true">
+    <key name="trigger" required="true">
+      <valueType>
+        <enum>
+          <enumerator>periodic</enumerator>
+          <enumerator>operatorDriven</enumerator>
+        </enum>
+      </valueType>
+    </key>
+    <key name="index" required="true">
+      <valueType><int32/></valueType>
+    </key>
+    <key name="period" required="true" submissionTimeValueAllowed="true">
+      <valueType><float64/></valueType>
+    </key>
+    <key name="drainTimeout" required="true" default="180.0" submissionTimeValueAllowed="true">
+      <valueType><float64/></valueType>
+    </key>
+    <key name="resetTimeout" required="true" default="180.0" submissionTimeValueAllowed="true">
+      <valueType><float64/></valueType>
+    </key>
+    <key name="maxConsecutiveResetAttempts" required="true" default="5" submissionTimeValueAllowed="true">
+      <valueType><uint32/></valueType>
+    </key>
+  </annotation>
+
+  <annotation name="consistentRegionEntry" macroName="CONSISTENT_REGION_ENTRY_ANNOTATION" maxOccurs="1" internal="true" propagateToInstanceModel="true">
+    <key name="index" macroName="CONSISTENT_INDEX" required="true">
+      <valueType><int32/></valueType>
+    </key>
+    <key name="logicalIndex" macroName="CONSISTENT_LOGICAL_INDEX" required="true">
+      <valueType><int32/></valueType>
+    </key>
+    <key name="isStartOfRegion" macroName="CONSISTENT_IS_START_REGION" required="true" codeGenDependsOnValue="true">
+      <valueType><boolean/></valueType>
+    </key>
+    <key name="isEndOfRegion" macroName="CONSISTENT_IS_END_REGION" required="true" codeGenDependsOnValue="true">
+      <valueType><boolean/></valueType>
+    </key>
+    <key name="isTriggerOperator" macroName="CONSISTENT_IS_TRIGGER_OPERATOR" required="true" codeGenDependsOnValue="true">
+      <valueType><boolean/></valueType>
+    </key>
+    <key name="autonomousInputPort" macroName="CONSISTENT_AUTONOMOUS_INPUT_PORT" required="false" codeGenDependsOnValue="true">
+      <valueType>
+        <list><uint32/></list>/>
+      </valueType>
+    </key>
+  </annotation>
+
+  <annotation name="logicClause" maxOccurs="1" internal="true" propagateToInstanceModel="false">
+    <key name="hasState" required="true">
+      <valueType><boolean/></valueType>
+    </key>
+    <key name="hasOnProcess" required="true">
+      <valueType><boolean/></valueType>
+    </key>
+    <key name="hasOnTuple" required="true">
+      <valueType><boolean/></valueType>
+    </key>
+    <key name="hasOnPunct" required="true">
+      <valueType><boolean/></valueType>
+    </key>
+  </annotation>
+
+
+  <annotation name="eventTimeContext" maxOccurs="1" internal="true" propagateToInstanceModel="true" codeGenDependsOnValue="true">
+    <key name="eventTimeAttribute" required="true">
+      <valueType><rstring/></valueType>
+    </key>
+    <key name="resolution" required="true" default="Milliseconds">
+      <valueType>
+        <enum>
+          <enumerator>Milliseconds</enumerator>
+          <enumerator>Microseconds</enumerator>
+          <enumerator>Nanoseconds</enumerator>
+        </enum>
+      </valueType>
+    </key>
+    <key name="inputPorts" required="true" codeGenDependsOnValue="true">
+      <valueType><list><list><uint32/></list></list></valueType>
+    </key>
+    <key name="outputPorts" required="true" codeGenDependsOnValue="true">
+      <valueType><list><uint32/></list></valueType>
+    </key>
+  </annotation>
+
+</annotations>

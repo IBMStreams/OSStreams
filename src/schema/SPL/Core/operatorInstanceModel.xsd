@@ -1,0 +1,587 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator/instance"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:common="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:tupleType="http://www.ibm.com/xmlns/prod/streams/spl/tupleType"
+  xmlns:annotation="http://www.ibm.com/xmlns/prod/streams/spl/annotation"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/operator/instance"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/common" schemaLocation="commonModel.xsd"/>
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/tupleType" schemaLocation="tupleTypeModel.xsd"/>
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/annotation" schemaLocation="annotationModel.xsd"/>
+
+<xs:element name="operatorInstanceModel" type="operatorInstanceModelType"/>
+
+<xs:complexType name="operatorInstanceModelType">
+  <xs:sequence>
+    <xs:element name="context" type="contextType"/>
+    <xs:element name="parameters" type="parametersType"/>
+    <xs:element name="inputPorts" type="inputPortsType"/>
+    <xs:element name="outputPorts" type="outputPortsType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="contextType">
+  <xs:sequence>
+    <xs:element name="kind" type="xs:string"/>
+    <xs:element name="class" type="xs:string"/>
+    <xs:element name="operatorModelDirectory" type="xs:string"/>
+    <xs:element name="applicationDirectory" type="xs:string"/>
+    <xs:element name="dataDirectory" type="xs:string"/>
+    <xs:element name="outputDirectory" type="xs:string"/>
+    <xs:element name="toolkits" type="toolkitsType"/>
+    <xs:element name="optimized" type="xs:boolean"/>
+    <xs:element name="verbose" type="xs:boolean"/>
+    <xs:element name="networkByteOrdering" type="xs:boolean"/>
+    <xs:element name="codeBeautification" type="xs:boolean"/>
+    <xs:element name="includes" type="includesType"/>
+    <xs:element name="stateVariables" type="stateVariablesType"/>
+    <xs:element name="runtimeConstants" type="runtimeConstantsType"/>
+    <xs:element name="sourceLocation" type="sourceLocationType"/>
+    <xs:element name="productVersion" type="common:versionType"/>
+    <xs:element name="types" type="typeTableType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="processLogic" type="xs:string" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="javaOperatorModelDirectory" type="xs:string" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="checkpointKind" type="checkpointKindType"/>
+    <xs:element name="annotations" type="annotationsType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for toolkit element -->
+<xs:complexType name="toolkitType">
+  <xs:sequence>
+    <xs:element name="name" type="xs:string"/>
+    <xs:element name="rootDirectory" type="xs:string"/>
+    <xs:element name="index" type="xs:long"/>
+  </xs:sequence>
+  <xs:attribute name="isCurrentToolkit" type="xs:boolean" use="required"/>
+</xs:complexType>
+
+<!-- Type for toolkits element -->
+<xs:complexType name="toolkitsType">
+  <xs:sequence>
+    <xs:element name="toolkit" type="toolkitType" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!--Type for annotations. -->
+<xs:complexType name="annotationsType">
+  <xs:sequence>
+    <xs:element name="annotation" type="annotation:annotationType" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for checkpoint kind. -->
+<xs:simpleType name="checkpointKindType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="none"/>
+    <xs:enumeration value="periodic"/>
+    <xs:enumeration value="operatorDriven"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="typeTableType">
+  <xs:sequence>
+    <xs:element name="type" type="typeEntryType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="typeEntryType">
+  <xs:attribute name="index" type="xs:long" use="required"/>
+  <xs:attribute name="type" type="xs:string" use="required"/>
+</xs:complexType>
+
+<xs:complexType name="includesType">
+  <xs:sequence>
+    <xs:element name="include" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="stateVariablesType">
+  <xs:sequence>
+    <xs:element name="stateVariable" type="stateVariableType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="stateVariableType">
+  <xs:sequence>
+    <xs:element name="name" type="xs:string"/>
+    <xs:element name="cppType" type="xs:string"/>
+    <xs:element name="splType" type="xs:string"/>
+    <xs:element name="value" type="expressionType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="sourceLocation" type="sourceLocationType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="runtimeConstantsType">
+  <xs:sequence>
+    <xs:element name="runtimeConstant" type="runtimeConstantType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="runtimeConstantType">
+  <xs:sequence>
+    <xs:element name="name" type="xs:string"/>
+    <xs:element name="cppType" type="xs:string"/>
+    <xs:element name="splType" type="xs:string"/>
+    <xs:element name="value" type="xs:string"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="parametersType">
+  <xs:sequence>
+    <xs:element name="parameter" type="parameterType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="parameterType">
+  <xs:sequence>
+    <xs:element name="name" type="xs:string"/>
+    <xs:element name="values" type="valuesType"/>
+    <xs:element name="sourceLocation" type="sourceLocationType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="valuesType">
+  <xs:sequence>
+    <xs:element name="value" type="expressionType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Type for parameter expression modes.  Matches operatorModel expressionMode -->
+<xs:simpleType name="expressionModeType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="Attribute"/>
+    <xs:enumeration value="AttributeFree"/>
+    <xs:enumeration value="Constant"/>
+    <xs:enumeration value="CustomLiteral"/>
+    <xs:enumeration value="Expression"/>
+    <xs:enumeration value="Nonexistent"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="expressionType">
+  <xs:sequence>
+    <xs:element name="cppType" type="xs:string"/>
+    <xs:element name="splType" type="xs:string"/>
+    <xs:element name="hasRuntimeConstant" type="xs:boolean"/>
+    <xs:element name="cppExpression" type="xs:string"/>
+    <xs:element name="splExpression" type="xs:string"/>
+    <xs:element name="hasFunctions" type="xs:boolean"/>
+    <xs:element name="hasSideEffects" type="xs:boolean"/>
+    <xs:element name="readsState" type="xs:boolean"/>
+    <xs:element name="hasNestedCustomOutputFunction" type="xs:boolean" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="hasStreamAttributes" type="xs:boolean"/>
+    <xs:element name="parameterExpressionMode" type="expressionModeType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="sourceLocation" type="sourceLocationType"/>
+    <xs:element name="expressionTree" type="expressionTreeType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="inputPortsType">
+  <xs:sequence>
+    <xs:element name="inputPort" type="inputPortType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="inputPortType">
+  <xs:complexContent>
+    <xs:extension base="portType">
+      <xs:sequence>
+        <xs:element name="history" type="xs:integer" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="window" type="windowType" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="tupleLogic" type="xs:string" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="punctLogic" type="xs:string" minOccurs="0" maxOccurs="1"/>
+        <!-- STREAMS_SPL_EVENTTIME_CUSTOM_SUPPORT -->
+        <!--
+        <xs:element name="watermarkLogic" type="xs:string" minOccurs="0" maxOccurs="1"/>
+        -->
+        <xs:element name="attributes" type="inputAttributesType"/>
+        <xs:element name="tuple" type="tupleType:tupleType"/>
+      </xs:sequence>
+      <xs:attribute name="isControlPort" type="xs:boolean"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="portType">
+  <xs:sequence>
+    <xs:element name="index" type="xs:integer"/>
+    <xs:element name="tupleCppName" type="xs:string"/>
+    <xs:element name="tupleCppType" type="xs:string"/>
+    <xs:element name="tupleSPLType" type="xs:string"/>
+    <xs:element name="facade" type="xs:boolean"/>
+    <xs:element name="mutationAllowed" type="xs:boolean"/>
+    <xs:element name="sourceLocation" type="sourceLocationType"/>
+    <xs:element name="annotations" type="annotationsType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="inputAttributesType">
+  <xs:sequence>
+    <xs:element name="attribute" type="inputAttributeType" minOccurs="1" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="inputAttributeType">
+  <xs:sequence>
+    <xs:element name="name" type="xs:string"/>
+    <xs:element name="cppType" type="xs:string"/>
+    <xs:element name="splType" type="xs:string"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="windowType">
+  <xs:sequence>
+    <xs:element name="partitioned" type="xs:boolean"/>
+    <xs:element name="partitionEviction" type="partitionEvictionType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="evictionPolicy" type="windowPolicyType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="triggerPolicy" type="windowPolicyType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="sourceLocation" type="sourceLocationType"/>
+    <xs:element name="eventTimePolicy" type="eventTimePolicyType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="partitionEvictionType">
+  <xs:sequence>
+    <xs:element name="kind" type="partitionEvictionKindType"/>
+    <xs:choice minOccurs="1" maxOccurs="1">
+      <xs:element name="age" type="expressionType"/>
+      <xs:element name="count" type="expressionType"/>
+    </xs:choice>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:simpleType name="partitionEvictionKindType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="partitionAge"/>
+    <xs:enumeration value="partitionCount"/>
+    <xs:enumeration value="tupleCount"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="windowPolicyType">
+  <xs:sequence>
+    <xs:element name="type" type="windowStyleType"/>
+    <xs:element name="size" type="expressionType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="attribute" type="expressionType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="eventTimePolicyType">
+  <xs:sequence>
+    <xs:element name="intervalDuration" type="expressionType" minOccurs="1" maxOccurs="1"/>
+    <xs:element name="creationPeriod" type="expressionType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="discardAge" type="expressionType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="intervalOffset" type="expressionType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+
+</xs:complexType>
+
+<xs:simpleType name="resolutionType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="Milliseconds"/>
+    <xs:enumeration value="Microseconds"/>
+    <xs:enumeration value="Nanoseconds"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="windowStyleType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="count"/>
+    <xs:enumeration value="time"/>
+    <xs:enumeration value="delta"/>
+    <xs:enumeration value="punct"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="outputPortsType">
+  <xs:sequence>
+    <xs:element name="outputPort" type="outputPortType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="portScopeType">
+  <xs:sequence>
+    <xs:element name="port" type="xs:integer" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="outputPortType">
+  <xs:complexContent>
+    <xs:extension base="portType">
+      <xs:sequence>
+        <xs:element name="attributes" type="outputAttributesType"/>
+        <xs:element name="tuple" type="tupleType:tupleType"/>
+        <xs:element name="finalPunctuationPortScope" type="portScopeType"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="outputAttributesType">
+  <xs:sequence>
+    <xs:element name="attribute" type="outputAttributeType" minOccurs="1" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="outputAttributeType">
+  <xs:complexContent>
+    <xs:extension base="inputAttributeType">
+      <xs:sequence>
+        <xs:element name="assignment" type="assignmentType" minOccurs="0" maxOccurs="1"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="assignmentType">
+  <xs:sequence>
+    <xs:element name="sourceLocation" type="sourceLocationType"/>
+    <xs:element name="outputFunction" type="xs:string" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="values" type="valuesType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="sourceLocationType">
+  <xs:sequence>
+    <xs:element name="file" type="xs:string"/>
+    <xs:element name="line" type="xs:integer"/>
+    <xs:element name="column" type="xs:integer"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="expressionTreeType">
+  <xs:choice minOccurs="1" maxOccurs="1">
+    <xs:element name="attribute" type="attributeType"/>
+    <xs:element name="binary" type="binaryType"/>
+    <xs:element name="call" type="callType"/>
+    <xs:element name="cast" type="expressionTreeType"/>
+    <xs:element name="conditional" type="conditionalType"/>
+    <xs:element name="enum" type="enumType"/>
+    <xs:element name="isPresent" type="isPresentType"/>
+    <xs:element name="literal" type="literalType"/>
+    <xs:element name="postfix" type="unaryType"/>
+    <xs:element name="prefix" type="unaryType"/>
+    <xs:element name="streamHistory" type="streamHistoryType"/>
+    <xs:element name="stream" type="streamType"/>
+    <xs:element name="subscript" type="subscriptType"/>
+    <xs:element name="symbol" type="symbolType"/>
+    <xs:element name="unary" type="unaryType"/>
+    <xs:element name="unwrap" type="unwrapType"/>
+    <xs:element name="unwrapOrElse" type="unwrapOrElseType"/>
+  </xs:choice>
+  <xs:attribute name="type" type="xs:long"/>
+  <xs:attribute name="cppCode" type="xs:string"/>
+</xs:complexType>
+
+<xs:complexType name="expnBase">
+  <!-- index into type table -->
+  <xs:attribute name="type" use="required" type="xs:long"/>
+  <xs:attribute name="cppCode" type="xs:string"/>
+</xs:complexType>
+
+<xs:complexType name="attributeType">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:sequence>
+        <xs:element name="lhs" type="expressionTreeType"/>
+      </xs:sequence>
+      <xs:attribute name="attribute" use="required" type="xs:string"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="binaryType">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:sequence>
+        <xs:element name="lhs" type="expressionTreeType"/>
+        <xs:element name="rhs" type="expressionTreeType"/>
+      </xs:sequence>
+      <xs:attribute name="op" use="required" type="xs:string"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="callType">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:sequence>
+        <xs:element name="args" type="argsType"/>
+      </xs:sequence>
+      <xs:attribute name="fcn" use="required" type="xs:string"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="argsType">
+  <xs:sequence>
+    <xs:element name="arg" type="expressionTreeType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+  <xs:attribute name="count" use="required" type="xs:long"/>
+</xs:complexType>
+
+<xs:complexType name="conditionalType">
+  <xs:complexContent>
+    <xs:extension base="binaryType">
+      <xs:sequence>
+        <xs:element name="condition" type="expressionTreeType"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="enumType">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:attribute name="id" use="required" type="xs:string"/>
+      <xs:attribute name="value" type="xs:long"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="isPresentType">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:sequence>
+        <xs:element name="expn" type="expressionTreeType"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="literalType" mixed="true">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:choice minOccurs="0">
+        <xs:element name="list" type="listOrSetType"/>
+        <xs:element name="set" type="listOrSetType"/>
+        <xs:element name="map" type="mapType"/>
+        <xs:element name="tuple" type="tupleType"/>
+        <xs:element name="expn" type="expressionTreeType"/>
+      </xs:choice>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="listOrSetType">
+  <xs:sequence>
+    <xs:element name="value" type="literalType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+  <xs:attribute name="count" use="required" type="xs:long"/>
+  <xs:attribute name="type" use="required" type="xs:long"/>
+  <xs:attribute name="cppCode" type="xs:string"/>
+</xs:complexType>
+
+<xs:complexType name="mapType">
+  <xs:sequence>
+    <xs:element name="value" type="mapElementType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+  <xs:attribute name="count" use="required" type="xs:long"/>
+  <xs:attribute name="type" use="required" type="xs:long"/>
+  <xs:attribute name="cppCode" type="xs:string"/>
+</xs:complexType>
+
+<xs:complexType name="mapElementType">
+  <xs:sequence>
+    <xs:element name="key" type="literalType"/>
+    <xs:element name="value" type="literalType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="tupleType">
+  <xs:sequence minOccurs="0" maxOccurs="unbounded">
+    <xs:element name="attr" type="tupleElementType"/>
+  </xs:sequence>
+  <xs:attribute name="count" use="required" type="xs:long"/>
+  <xs:attribute name="type" use="required" type="xs:long"/>
+  <xs:attribute name="cppCode" type="xs:string"/>
+</xs:complexType>
+
+<xs:complexType name="tupleElementType">
+  <xs:sequence>
+    <xs:element name="value" type="literalType"/>
+  </xs:sequence>
+  <xs:attribute name="id" use="required" type="xs:string"/>
+</xs:complexType>
+
+<xs:complexType name="streamHistoryType">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:sequence>
+        <xs:element name="stream" type="streamType"/>
+      </xs:sequence>
+      <xs:attribute name="depth" use="required" type="xs:long"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="streamType">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:attribute name="name" use="required" type="xs:string"/>
+      <xs:attribute name="port" use="required" type="xs:long"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="symbolType">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:attribute name="id" use="required" type="xs:string"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="subscriptType">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:sequence>
+        <xs:element name="expn" type="expressionTreeType"/>
+        <xs:element name="lower" type="expressionTreeType" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="upper" type="expressionTreeType" minOccurs="0" maxOccurs="1"/>
+      </xs:sequence>
+      <xs:attribute name="slice" use="required" type="xs:boolean"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="unaryType">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:sequence>
+        <xs:element name="expn" type="expressionTreeType"/>
+      </xs:sequence>
+      <xs:attribute name="op" use="required" type="xs:string"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="unwrapType">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:sequence>
+        <xs:element name="expn" type="expressionTreeType"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="unwrapOrElseType">
+  <xs:complexContent>
+    <xs:extension base="expnBase">
+      <xs:sequence>
+        <xs:element name="lhs" type="expressionTreeType"/>
+        <xs:element name="rhs" type="expressionTreeType"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+</xs:schema>

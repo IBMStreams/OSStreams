@@ -1,0 +1,51 @@
+<body>
+Encoding of tuples into alternate representations.
+<H2>Binary Tuple Representations</H2>
+
+<H3>SPL non-NBF native binary encoding</H3>
+<P>
+SPL native binary encoding of tuples is
+described in the <em>SPL Binary Encoding</em> section of the
+<em>SPL Compiler Usage Reference</em>. This format may be used
+to serialize tuples that may be later consumed by
+a C++ operator, such as writing them to a file for later processing.
+Since the format is native, tuples must be encoded and decoded on
+a platform architecture with the same byte order. For Java the byte
+order is defined by {@code java.nio.ByteOrder.nativeOrder()}.
+</P>
+<P> The byte representation of encoded tuples
+is compatible with the encoding provided by
+the C++ SPL Operator API {@code SPL::Tuple} functions
+{@code serialize(NativeByteBuffer)} and
+{@code deserialize(NativeByteBuffer)}.
+<BR>
+An instance of {@link com.ibm.streams.operator.encoding.BinaryEncoding} for SPL non-NBF native binary encoding
+is obtained from {@link com.ibm.streams.operator.StreamSchema#newNativeBinaryEncoding()}.
+<BR>
+<EM>The byte representation of encoded tuples is
+<b>not</b> compatible with standard Java serialization.</EM>
+
+</P>
+<H3>Java Serialization</H3>
+Instances of {@link com.ibm.streams.operator.Tuple} implement {@code java.io.Serializable}.
+Tuples are serialized using standard Java serialization which is platform independent.
+<BR>
+<EM>Note that a serialized tuple is is <b>not</b> compatible
+with SPL native binary encoding.</EM>
+<H2>Character Tuple Representations</H2>
+
+<H3>Character encoding</H3>
+<P>
+Encoding of tuples into a character encoding is described by
+{@link com.ibm.streams.operator.encoding.CharacterEncoding}
+</P>
+@see com.ibm.streams.operator.StreamSchema#newCharacterEncoding()
+@since InfoSphere&reg; Streams Version 4.0
+<H3>JSON encoding</H3>
+<P>
+Encoding of tuples as JSON <em>objects</em> is described by
+{@link com.ibm.streams.operator.encoding.JSONEncoding}
+</P>
+@see com.ibm.streams.operator.StreamSchema#newNativeBinaryEncoding()
+@since InfoSphere Streams 3.0
+</body>

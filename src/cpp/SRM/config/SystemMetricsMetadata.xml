@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<srm:systemMetricsMetadata xmlns:srm="http://www.ibm.com/xmlns/prod/streams/runtime/srm" xmlns="http://www.ibm.com/xmlns/prod/streams/application" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <!-- NOTE: System metrics for time should be in milliseconds.  -->
+  <srm:hostMetricsMetadata>
+    <srm:metric name="nProcessors" kind="Gauge">
+      <srm:description>Number of processors</srm:description>
+    </srm:metric>
+    <srm:metric name="cpuSpeed" kind="Gauge">
+      <srm:description>CPU speed in Linux kernel BogoMips</srm:description>
+    </srm:metric>
+    <srm:metric name="loadAverage" kind="Gauge">
+      <srm:description>Load average for the past minute. This is the system reported load average multiplied by 100</srm:description>
+    </srm:metric>
+    <!-- Following resource metrics are new for Streams v4.3 -->
+    <srm:metric name="cpuUtilization" kind="Gauge">
+      <srm:description>CPU utilization</srm:description>
+    </srm:metric>
+    <srm:metric name="memoryCapacity" kind="Gauge">
+      <srm:description>Memory capacity (KB)</srm:description>
+    </srm:metric>
+    <srm:metric name="memoryUtilization" kind="Gauge">
+      <srm:description>Memory utilization</srm:description>
+    </srm:metric>
+    <srm:metric name="appNetworkCapacity" kind="Gauge">
+      <srm:description>Application network capacity (MB/second)</srm:description>
+    </srm:metric>
+    <srm:metric name="appNetworkUtilization" kind="Gauge">
+      <srm:description>Application network utilization</srm:description>
+    </srm:metric>
+  </srm:hostMetricsMetadata>
+
+  <srm:peMetricsMetadata>
+    <srm:metric name="nCpuMilliseconds" kind="Gauge">
+      <srm:description>CPU time in milliseconds (user and kernel)</srm:description>
+    </srm:metric>
+    <srm:metric name="nMemoryConsumption" kind="Gauge">
+      <srm:description>Memory consumption in KB (resident, text, and data)</srm:description>
+    </srm:metric>
+    <srm:metric name="nResidentMemoryConsumption" kind="Gauge">
+      <srm:description>Resident memory consumption in KB</srm:description>
+    </srm:metric>
+  </srm:peMetricsMetadata>
+
+  <srm:peInputPortMetricsMetadata>
+    <srm:metric name="nTuplesProcessed" kind="Counter">
+      <srm:description>Number of tuples processed</srm:description>
+    </srm:metric>
+    <srm:metric name="nTupleBytesProcessed" kind="Counter">
+      <srm:description>Number of bytes processed</srm:description>
+    </srm:metric>
+    <srm:metric name="nWindowPunctsProcessed" kind="Counter">
+      <srm:description>Number of window punctuations processed</srm:description>
+    </srm:metric>
+    <srm:metric name="nFinalPunctsProcessed" kind="Counter">
+      <srm:description>Number of final punctuations processed</srm:description>
+    </srm:metric>
+  </srm:peInputPortMetricsMetadata>
+
+  <srm:peOutputPortMetricsMetadata>
+    <srm:metric name="nTuplesSubmitted" kind="Counter">
+      <srm:description>Number of tuples submitted</srm:description>
+    </srm:metric>
+    <srm:metric name="nTupleBytesSubmitted" kind="Counter">
+      <srm:description>Number of bytes submitted</srm:description>
+    </srm:metric>
+    <srm:metric name="nWindowPunctsSubmitted" kind="Counter">
+      <srm:description>Number of window punctuations submitted</srm:description>
+    </srm:metric>
+    <srm:metric name="nFinalPunctsSubmitted" kind="Counter">
+      <srm:description>Number of final punctuations submitted</srm:description>
+    </srm:metric>
+    <srm:metric name="nBrokenConnections" kind="Counter">
+      <srm:description>Count of previously established connections that were subsequently detected as being broken. This is an incrementing counter over the lifetime of a PE's current process</srm:description>
+    </srm:metric>
+    <srm:metric name="nRequiredConnecting" kind="Gauge">
+      <srm:description>Current number of required connections that are not connected and are in the process of connecting to their receiver</srm:description>
+    </srm:metric>
+    <srm:metric name="nOptionalConnecting" kind="Gauge">
+      <srm:description>Current number of optional connections that are not connected and are in the process of connecting to their receiver</srm:description>
+    </srm:metric>
+    <srm:metric name="nTuplesTransmitted" kind="Counter">
+      <srm:description>Number of tuples transmitted</srm:description>
+    </srm:metric>
+    <srm:metric name="nTupleBytesTransmitted" kind="Counter">
+      <srm:description>Number of bytes transmitted</srm:description>
+    </srm:metric>
+    <srm:metric name="nConnections" kind="Gauge">
+      <srm:description>Number of connections</srm:description>
+    </srm:metric>
+  </srm:peOutputPortMetricsMetadata>
+
+  <srm:peOutputPortConnectionMetricsMetadata>
+    <srm:metric name="congestionFactor" kind="Gauge">
+      <srm:description>Relative congestion on connection ( 0 = no congestion to 100 = extremely congested connection)</srm:description>
+    </srm:metric>
+    <srm:metric name="nTuplesFilteredOut" kind="Counter">
+      <srm:description>Number of tuples not sent due to applied filter</srm:description>
+    </srm:metric>
+  </srm:peOutputPortConnectionMetricsMetadata>
+
+
+  <srm:operatorMetricsMetadata>
+    <srm:metric name="relativeOperatorCost" kind="Gauge">
+      <srm:description>Relative computational cost of the operator within PE scope (percent).</srm:description>
+    </srm:metric>
+  </srm:operatorMetricsMetadata>
+
+  <srm:operatorInputPortMetricsMetadata>
+    <srm:metric name="nTuplesProcessed" kind="Counter">
+      <srm:description>Number of tuples processed</srm:description>
+    </srm:metric>
+    <srm:metric name="nTuplesDropped" kind="Counter">
+      <srm:description>Number of tuples dropped</srm:description>
+    </srm:metric>
+    <srm:metric name="nTuplesQueued" kind="Gauge">
+      <srm:description>Number of tuples currently queued</srm:description>
+    </srm:metric>
+    <srm:metric name="nWindowPunctsProcessed" kind="Counter">
+      <srm:description>Number of window punctuations processed</srm:description>
+    </srm:metric>
+    <srm:metric name="nFinalPunctsProcessed" kind="Counter">
+      <srm:description>Number of final punctuations processed</srm:description>
+    </srm:metric>
+    <srm:metric name="nWindowPunctsQueued" kind="Gauge">
+      <srm:description>Number of window punctuations queued</srm:description>
+    </srm:metric>
+    <srm:metric name="nFinalPunctsQueued" kind="Gauge">
+      <srm:description>Number of final punctuations queued</srm:description>
+    </srm:metric>
+    <srm:metric name="queueSize" kind="Gauge">
+      <srm:description>Size of the queue for a threaded port</srm:description>
+    </srm:metric>
+    <srm:metric name="maxItemsQueued" kind="Gauge">
+      <srm:description>Largest number of items queued</srm:description>
+    </srm:metric>
+    <srm:metric name="recentMaxItemsQueued" kind="Gauge">
+      <srm:description>Recent largest number of items queued</srm:description>
+    </srm:metric>
+    <srm:metric name="recentMaxItemsQueuedInterval" kind="Time">
+      <srm:description>Interval to determine the recent largest number of items queued (milliseconds)</srm:description>
+    </srm:metric>
+    <srm:metric name="nEnqueueWaits" kind="Counter">
+      <srm:description>Number of waits due to a full queue</srm:description>
+    </srm:metric>
+  </srm:operatorInputPortMetricsMetadata>
+
+  <srm:operatorOutputPortMetricsMetadata>
+    <srm:metric name="nTuplesSubmitted" kind="Counter">
+      <srm:description>Number of tuples submitted</srm:description>
+    </srm:metric>
+    <srm:metric name="nWindowPunctsSubmitted" kind="Counter">
+      <srm:description>Number of window punctuations submitted</srm:description>
+    </srm:metric>
+    <srm:metric name="nFinalPunctsSubmitted" kind="Counter">
+      <srm:description>Number of final punctuations submitted</srm:description>
+    </srm:metric>
+  </srm:operatorOutputPortMetricsMetadata>
+
+</srm:systemMetricsMetadata>

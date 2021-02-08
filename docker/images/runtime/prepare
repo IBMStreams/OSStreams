@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# Parameters
+#
+REPO_ROOT=$1
+WORKDIR=$2
+INSTALLDIR=$(${REPO_ROOT}/tools/build-info --installdir)
+
+# Prepare the installation directory
+#
+umask 0022
+mkdir -p ${WORKDIR}
+cp -f doas ${WORKDIR}
+cp -f kubernetes-$(uname -m).repo ${WORKDIR}
+mkdir -p ${INSTALLDIR}/install
+rsync -a --delete --exclude=*.swp ${INSTALLDIR}/ ${WORKDIR}/install
+cp -f Dockerfile ${WORKDIR}/Dockerfile
+${PWD}/../../tools/buildinfo ${WORKDIR}

@@ -1,0 +1,126 @@
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.adapter$MetricsSink.html">
+The `MetricsSink` operator reads tuples and populates metrics with the values.
+It creates Custom Operator Metrics and updates them with values when a tuple is received.
+These metrics can be viewed with Streams Studio and the **streamtool capturestate** command.
+
+Each operator metric has kind `Gauge`.
+
+# Checkpointed data
+
+When the `MetricsSink` operator is checkpointed, the current values of the Custom Operator Metrics are saved in checkpoint.
+Logic state variables (if present) are also included in checkpoint.
+
+# Behavior in a consistent region
+
+The `MetricsSink` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+When in a consistent region, the `MetricsSink` operator checkpoints and resets the current values of the Custom Operator Metrics.
+Logic state variables (if present) are also automatically checkpointed and resetted.
+
+# Checkpointing behavior in an autonomous region
+
+When the `MetricsSink` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `MetricsSink` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `MetricsSink` operator.
+
+    composite Main {
+      graph
+        stream &lt;int64 a, int64 b&gt; A = Beacon() {}
+        () as Nil = MetricsSink(A)
+        {
+          param
+            metrics       : a, b, a + b, a * b;
+            names         : "a", "b", "sum", "product";
+            descriptions  : "A", "B", "sum of A and B", "product of A and B";
+            initialValues : 100l, 1000l, -900l, 5l;
+        }
+    }
+
+</description>
+      <iconUri size="16">metricsSink_16.gif</iconUri>
+      <iconUri size="32">metricsSink_32.gif</iconUri>
+      <metrics>
+<description>
+This operator reports the metrics defined by the operator parameters.
+</description>
+      </metrics>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>metrics</name>
+        <description>
+Specifies a list of expressions that are used to set the values of Custom Operator Metrics. Each expression sets the value for one metric.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <type>int64</type>
+      </parameter>
+      <parameter>
+        <name>names</name>
+        <description>
+Specifies a list of expressions that are used for the name of the Custom Operator Metrics.
+If this parameter is present, the number of expressions must match the number of expressions in the **metrics** parameter.
+If this parameter is omitted, the metric names default to the SPL expression for each metric.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+      </parameter>
+      <parameter>
+        <name>descriptions</name>
+        <description>
+Specifies a list of expressions that are used for the description of the Custom Operator Metrics.
+If this parameter is present, the number of expressions must match the number of expressions in the **metrics** parameter.
+If this parameter is omitted, the metric descriptions default to empty string \{""\}.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+      </parameter>
+      <parameter>
+        <name>initialValues</name>
+        <description>
+Specifies a list of expressions that are used for the starting value for the Custom Operator Metrics.
+If this parameter is present, the number of expressions must match the number of expressions in the **metrics** parameter.
+If this parameter is omitted, the initial metric values default to 0.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>int64</type>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `MetricsSink` operator is configurable with a single input port, which ingests tuples that are used to set metrics.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

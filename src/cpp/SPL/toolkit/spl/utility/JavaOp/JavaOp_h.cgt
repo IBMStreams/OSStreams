@@ -1,0 +1,97 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <SPL/Toolkit/JavaOp.h>
+
+<%SPL::CodeGen::headerPrologue($model);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR
+{
+public:
+  // constructor
+  MY_OPERATOR();
+
+  // destructor
+  virtual ~MY_OPERATOR();
+
+  // notify port readiness
+  void allPortsReady();
+
+  // notify termination
+  void prepareToShutdown();
+
+  // processing for source and threaded operators
+  void process(uint32_t idx);
+
+  // tuple processing for mutating ports
+  void process(Tuple & tuple, uint32_t port);
+
+  // tuple processing for non-mutating ports
+  void process(Tuple const & tuple, uint32_t port);
+
+  // punctuation processing
+  void process(Punctuation const & punct, uint32_t port);
+
+private:
+  void setupStateHandler();
+
+  // members
+
+  /** How we invoke actions on the Java Operator implementation */
+  SPL::JNI::JNIBridgeInvoker* _bi;
+
+  /* The instance of the JNIBridge used to wrap the Java Operator implementation */
+  jobject _bridge;
+
+  typedef void (*FP)(SPL::JNI::JNIBridgeInvoker&, jobject, NativeByteBuffer &, uint32_t);
+  FP _fp;
+
+  bool hasTupleLogic;
+
+  std::tr1::shared_ptr<SPL::StateHandler> _stateHandler;
+
+public:
+  virtual void javaopInternalAction(Punctuation const & punct, uint32_t port)
+  {
+     _bi->action(_bridge, punct, port);
+  }
+
+  // handle byte buffers being sent as is
+  virtual void processRaw(NativeByteBuffer & buffer, uint32_t port)
+  {
+     (*_fp)(*_bi, _bridge, buffer, port);
+  }
+
+  //Java operators handle byte buffers directly
+  virtual bool sendRawBufferData() { return !hasTupleLogic; }
+
+  // Requests the blocking of a consistent region permit
+  virtual void blockConsistentRegionPermit() {
+      _bi->blockConsistentRegionPermit(_bridge);
+  }
+
+  // Gets the watermark for this operator
+  virtual timestamp watermark() const {
+      return _bi->watermark(_bridge);
+  }
+
+  // Requests the release of a consistent region permit
+  virtual void releaseConsistentRegionPermit() {
+      _bi->releaseConsistentRegionPermit(_bridge);
+  }
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

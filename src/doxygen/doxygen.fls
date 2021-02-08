@@ -1,0 +1,239 @@
+# fixlib.py runs the changes described in this file into your library
+# Edit this to specify the changes needed for your Javadocs.
+# Syntax: The following set of lines may be repeated as often as needed:
+#    # optional-comment
+#    Pat: regular-expression-for-matching
+#    Rep: replacement-value-with-group-variables
+# See the Python reference for regular expressions for the syntax of these expressions.
+# For example:
+#    # Updates the copyright footers
+#    Pat: Copyright &copy; 2008 ([\s\w]+), <em>([\s\w\.,]+)</em>
+#    Rep: Copyright &copy; 2008, 2010 &1, <em>&2.</em>
+# Regular expressions must be valid for Python.
+# Expressions are expected to be case-sensitive unless you prefix them with (?i),
+# for example, (?i)END OF BOTTOM NAVBAR
+# Expressions are expected to span a single line unless you prefix them with (?m),
+# for example, (?im)end of one line\nand the beginning of the next
+
+# Add a link to the 'main content'
+Pat: (?m)(<div id="projectname">)(.*\n.*</span>)\n\s*</div>
+Rep: \1<a href="#main-content">\2</a></div>
+
+# And the anchor
+Pat: (?F)<div class="title">
+Rep: <div class="title" id="main-content">
+
+# Or the anchor
+Pat: (?F)<div class="textblock">Here is a list
+Rep: <div class="textblock" id="main-content">Here is a list
+
+# Or the anchor
+Pat: (?F)(?m)<div class="contents">\n\s*(&#160;)?\n*<ul>
+Rep: <div class="contents" id="main-content"><ul>
+
+# Or the anchor
+Pat: (?F)(?m)<div class="contents">\n\s*(&#160;)?\n*<h3>
+Rep: <div class="contents" id="main-content"><h3>
+
+# Fix up tables
+Pat: <table class="memberdecls">
+Rep: <table role="presentation" class="memberdecls">
+
+Pat: <table style="margin: 10px; white-space: nowrap;" align="center" width="95%"
+Rep: <table role="presentation" style="margin: 10px; white-space: nowrap;" align="center" width="95%"
+
+Pat: <table class="mlabels">
+Rep: <table role="presentation" class="mlabels">
+
+Pat: <table class="exception">
+Rep: <table role="presentation" class="exception">
+
+Pat: <table class="memname">
+Rep: <table role="presentation" class="memname">
+
+Pat: <table class="directory">
+Rep: <table role="presentation" class="directory">
+
+Pat: <table class="params">
+Rep: <table role="presentation" class="params">
+
+Pat: <table border="0" cellspacing="([0-9][0-9]*)" cellpadding="0">
+Rep: <table role="presentation" border="0" cellspacing="\1" cellpadding="0">
+
+Pat: <table cellpadding="3" border="1">
+Rep: <table role="presentation" cellpadding="3" border="1">
+
+# More alt=""
+Pat: " alt="" coords=
+Rep: " alt="node" coords=
+
+Pat: border="0" alt=""
+Rep: border="0" alt="inherit
+
+# Fix up Public Member Types
+Pat: (?m)<table class="memberdecls">\n<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>\nPublic Types</h2></td></tr>
+Rep: <h2 class="groupheader">Public Types</h2>\n<table role="presentation" class="memberdecls">
+
+# Fix up Protected Member Types
+Pat: (?m)<table class="memberdecls">\n<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pro-types"></a>\nProtected Types</h2></td></tr>
+Rep: <h2 class="groupheader">Protected Types</h2>\n<table role="presentation" class="memberdecls">
+
+# Fix up Public Functions
+Pat: (?m)<table class="memberdecls">\n<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="member-group"></a>\nPublic Functions</h2></td></tr>
+Rep: <h2 class="groupheader">Public Functions</h2>\n<table role="presentation" class="memberdecls">
+
+# Fix up Public Attributes
+Pat: (?m)<table class="memberdecls">\n<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>\nPublic Attributes</h2></td></tr>
+Rep: <h2 class="groupheader">Public Attributes</h2>\n<table role="presentation" class="memberdecls">
+
+# Fix up Typedefs
+Pat: (?m)<table class="memberdecls">\n<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>\nTypedefs</h2></td></tr>
+Rep: <h2 class="groupheader">Typedefs</h2>\n<table role="presentation" class="memberdecls">
+
+# Fix up Enums
+Pat: (?m)<table class="memberdecls">\n<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="enum-members"></a>\nEnumerations</h2></td></tr>
+Rep: <h2 class="groupheader">Enumerations</h2>\n<table role="presentation" class="memberdecls">
+
+# Fix up Macros
+Pat: (?m)<table class="memberdecls">\n<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="define-members"></a>\nMacros</h2></td></tr>
+Rep: <h2 class="groupheader">Macros</h2>\n<table role="presentation" class="memberdecls">
+
+# bold to strong
+Pat: <b>
+Rep: <span class="strong">
+
+# end bold
+Pat: </b>
+Rep: </span>
+
+# IDs need to be unique, so change id="current" to style="current"
+# For this to work, we must also change the tabs.css
+Pat: <li id="current">
+Rep: <li class="current">
+
+# default value of nowrap attribute
+Pat: (\s)nowrap(\s)
+Rep: \1nowrap="nowrap"\2
+
+# default value of compact attribute
+Pat: <dl compact>
+Rep: <dl compact="compact">
+
+# unclosed dd
+Pat: <dd>(.+)</dl>
+Rep: <dd>\1</dd></dl>
+
+# The pattern above can add one where it already exists
+Pat: </dd></dd>
+Rep: </dd>
+
+# Replaces small with a small style (we must also add the small style to the doxygen.css
+Pat: <small>([\S\s]+)</small>
+Rep: <span class="small">\1</span>
+
+# Replaces strong with a strong style (we must also add the style to the doxygen.css
+Pat: <strong>([\S\s]+)</strong>
+Rep: <span class="strong">\1</span>
+
+# RTC 6484 - (1) (All files) No language on the HTML tag 
+Pat: <html(.*)>
+Rep: <html lang="en"\1>
+
+# RTC 6484 - (2) Alt tag text for tree view needs to be "helpful" for meaningful images, such as "Folder open", "Folder closed", "Document"
+Pat: src="ftv2folderclosed.png" alt="\+"
+Rep: src="ftv2folderclosed.png" alt="Folder closed"
+
+Pat: src="ftv2node.png" alt="o"
+Rep: src="ftv2node.png" alt="Node"
+
+Pat: src="ftv2doc.png" alt="\*"
+Rep: src="ftv2doc.png" alt="Document"
+
+Pat: src="ftv2plastnode.png" alt="\\"
+Rep: src="ftv2plastnode.png" alt="Expansion"
+
+Pat: src="ftv2lastnode.png" alt="\\"
+Rep: src="ftv2lastnode.png" alt="Expansion"
+
+Pat: src="search/close.png" alt=""
+Rep: src="search/close.png" alt="Close search"
+
+Pat: img src="graph_legend.png"
+Rep: img src="graph_legend.png" alt="Graph Legend"
+
+# RTC 6484 - (3) (tree.html) Alt tag text for tree view, when image meanings are not useful, need to be blank.  For example the vertical bar should not have alt text.
+Pat: src="ftv2vertline.png" alt="\|" 
+Rep: src="ftv2vertline.png" alt="|" 
+
+Pat: src="ftv2blank.png" alt="&#160;" 
+Rep: src="ftv2blank.png" alt="blank" 
+
+# RTC 6484 - (4) (many or all files) AREA tag must have alt text to identify the what is in the area.
+Pat: title="([^"]*)" alt=""
+Rep: title="\1" alt="\1"
+
+Pat: <area shape="rect" id="([^"]*)" href="([^"]*)" title="([^"]*)" alt=""
+Rep: <area shape="rect" id="\1" href="\2" title="\3" alt="\3"
+
+# Fix map with empty alt
+Pat: usemap="#(.*)_map" alt=""
+Rep: usemap="#\1_map" alt="\1"
+
+
+# RTC 6484 (5) (inherits.html) IMG tags must have alt text to identify what the image is.
+Pat: <img src="inherit__graph__([0-9]+).png" border="0" alt="" usemap="#SPL_1_1([^"]+)"
+Rep: <img src="inherit__graph__\1.png" border="0" alt="\2 inheritance graph" usemap="#SPL_1_1\2"
+
+# RTC 6484 (7) (tree.html) MSearchField input field does not have a label (something like Search) to identify what the input field is for.
+Pat: <div class="tabsearch">
+Rep: <div class="tabsearch"><label style="visibility:hidden" for="MSearchField" id="MSearchFieldLabel">Search:</label>
+
+# RTC 6484 (8) (tree.html) MSearchResults iframe does not have a title attribute.
+Pat: name="MSearchResults" id="MSearchResults">
+Rep: name="MSearchResults" id="MSearchResults" title="Search Results">
+
+#RTC 6484 The FRAME elements in index.html need to have a TITLE attribute.
+Pat: <frame src="tree.html" name="treefrm"
+Rep: <frame src="tree.html" title="Tree Frame" name="treefrm"
+
+Pat: <frame src="main.html" name="basefrm"
+Rep: <frame src="main.html" title="Base Frame" name="basefrm"
+
+# replace characters that CHKPII doesn't like
+Pat: &#34;
+Rep: &quot;
+
+Pat: &#39;
+Rep: &apos;
+
+Pat: &#45;
+Rep: &ndash;
+
+Pat: &#92;
+Rep: \\
+
+Pat: &#124;
+Rep: |
+
+Pat: &#160;
+Rep: &nbsp;
+
+# fix meta http-equiv
+Pat: <meta http-equiv="Content-Style-Type" content="text/css"
+Rep: <meta http-equiv="Content-Style-Type" content="text/css; charset=utf-8"
+
+# Fix MSearchSelect
+Pat: <div id="MSearchBox" class="MSearchBoxInactive">
+Rep: <div id="MSearchBox" class="MSearchBoxInactive"><label style="visibility:hidden" for="MSearchField" id="MSearchFieldLabel">Search:</label>
+
+# Fix <a href...></a> with no text
+Pat: <a href="#[^"]*"></a>
+Rep:
+
+# Fix messed up HTML
+Pat: <h3><a class="anchor" id="index_a"></a>([^<]*)</h3>
+Rep: <h3><a class="anchor" id="index_a">\1</a></h3>
+
+# Remove bad link
+Pat: <a class="el" href="classstd_1_1vector.html">std::vector&lt; T &gt;</a>
+Rep: std::vector&lt; T &gt;

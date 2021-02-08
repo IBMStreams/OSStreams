@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator/profile"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/operator/profile"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<xs:element name="operatorProfile" type="operatorProfileType"/>
+
+<xs:complexType name="operatorProfileType">
+  <xs:sequence>
+    <xs:element name="name" type="xs:string"/>
+    <xs:element name="baseCost" type="bucketDataType"/>
+    <xs:element name="inputPort" type="portType" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="outputPort" type="portType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="bucketDataType">
+  <xs:sequence>
+    <xs:element name="row" type="rowType" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="total" type="totalType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="rowType">
+  <xs:attribute name="timestamp" use = "required" type="xs:unsignedLong"/>
+  <xs:attribute name="value" use = "required" type="xs:unsignedLong"/>
+</xs:complexType>
+
+<xs:complexType name="totalType">
+  <xs:sequence>
+    <xs:element name="initialTimestamp" type="xs:unsignedLong"/>
+    <xs:element name="finalTimestamp" type="xs:unsignedLong"/>
+    <xs:element name="min" type="xs:unsignedLong"/>
+    <xs:element name="max" type="xs:unsignedLong"/>
+    <xs:element name="count" type="xs:unsignedLong"/>
+    <xs:element name="sum" type="xs:unsignedLong"/>
+    <xs:element name="average" type="xs:double"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="portType">
+  <xs:sequence>
+    <xs:element name="number" type="bucketDataType"/>
+    <xs:element name="size" type="bucketDataType"/>
+    <xs:element name="time" type="bucketDataType"/>
+  </xs:sequence>
+</xs:complexType>
+
+</xs:schema>

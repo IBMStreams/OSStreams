@@ -1,0 +1,120 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use XMLParseCommon;
+    XMLParseCommon::verify($model);
+    my $numOutputs = $model->getNumberOfOutputPorts();
+
+    my @includes;
+    push @includes, '#include <SPL/Toolkit/XMLParse.h>';
+    push @includes, "#include <deque>";
+    push @includes, "#include <SPL/Runtime/Operator/OperatorMetrics.h>";
+
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    if ($isInConsistentRegion) {
+        push @includes, "#include <SPL/Runtime/Operator/State/StateHandler.h>";
+    }
+
+    SPL::CodeGen::headerPrologue($model, \@includes);
+%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR, public XMLParse<%if ($isInConsistentRegion or $ckptKind ne "none") {%>, public StateHandler<%}%>
+{
+public:
+  MY_OPERATOR();
+  ~MY_OPERATOR();
+
+  void prepareToShutdown();
+
+  void process(const Tuple& tuple, uint32_t port);
+  void process(Punctuation const& punct, uint32_t port);
+
+  // Interface to XMLParse
+  void finishedParse();
+  void doStartElement(const char *name, const char** attrs);
+  void doCharacters(const char *data, int len);
+  void doEndElement(const char *name);
+  void warning(const char *msg);
+  void error(const char *msg);
+
+<% if ($isInConsistentRegion) { %>
+  // StateHandler
+  virtual void checkpoint(Checkpoint & ckpt);
+  virtual void reset(Checkpoint & ckpt);
+  virtual void resetToInitialState();
+<% } %>
+
+private:
+  // Tuples to be emitted
+<% for (my $i = 0; $i < $numOutputs; $i++) {
+    my $p = $model->getOutputPortAt($i);
+    my $cppType = $p->getCppTupleType();
+    my $cppName = $p->getCppTupleName();%>
+        <%=$cppType%> <%=$cppName%>;
+<% genNestedTuplesAndLists ($p->getCppTupleName(), $p->getSPLTupleType(), $p->getCppTupleType());
+  }%>
+  const IPort0Type *_currentTuple;
+  bool _bad[<%=$numOutputs%>];
+
+  void badTuple(int index);
+  void badConversion(const std::string& from, const std::string toType, int index);
+  Metric& _numInvalidTuples;
+  Mutex _mutex;
+
+  // Consistent Region
+  uint64_t _unusedData;
+  std::deque<IPort0Type> _preservedTuples;
+  bool _submitTuples;
+  bool resetting_; // errors can be ignored during reset processing
+};
+
+<%SPL::CodeGen::headerEpilogue($model);
+
+sub genNestedTuplesAndLists($$$)
+{
+    my ($name, $splType, $cppType) = @_;
+    my @names = SPL::CodeGen::Type::getAttributeNames($splType);
+    my @types = SPL::CodeGen::Type::getAttributeTypes($splType);
+    for (my $i = 0; $i < scalar(@names); $i++) {
+        my $n = $names[$i];
+        generateOneNestedTypeList ($name, $cppType, "${n}_type", $n, $types[$i]);
+    }
+}
+
+sub generateOneNestedTypeList ($$$$$)
+{
+    my ($name, $cppType, $varType, $n, $t) = @_;
+    my $addend = "";
+    if (SPL::CodeGen::Type::isList ($t) || SPL::CodeGen::Type::isBList ($t)) {
+        $t = SPL::CodeGen::Type::getElementType($t);
+        $addend = "::value_type";
+    }
+
+    my $newName =  "$name\$$n";
+    my $newType =  $cppType . "::$varType$addend";
+    if (SPL::CodeGen::Type::isTuple ($t)) {
+        print "    typedef $newType $newName\$type;\n";
+        print "    $newName\$type $newName;\n";
+        genNestedTuplesAndLists ($newName, $t, $newType);
+    } elsif (SPL::CodeGen::Type::isList ($t) || SPL::CodeGen::Type::isBList ($t)) {
+        print "    typedef $newType $newName\$type;\n";
+        print "    $newName\$type $newName;\n";
+        generateOneNestedTypeList($newName, $cppType, $varType . "::value_type", $n, $t);
+    }
+}
+%>

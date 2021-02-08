@@ -1,0 +1,221 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use V1TCPSinkCommon;
+    V1TCPSinkCommon::verify($model);
+
+    my $inputPort = $model->getInputPortAt(0);
+    my $address = $model->getParameterByName("address");
+    my $port = $model->getParameterByName("port");
+    my $role = $model->getParameterByName("role");
+    my $flush = $model->getParameterByName("flush");
+    my $reconnectionBound = $model->getParameterByName("reconnectionBound");
+    my $reconnectionPolicy = $model->getParameterByName("reconnectionPolicy");
+    my $sendBufferSize = $model->getParameterByName("sendBufferSize");
+
+    # other corrections
+    $flush = $flush ? $flush->getValueAt(0)->getSPLExpression() : 0;
+    $sendBufferSize = $sendBufferSize->getValueAt(0)->getCppExpression() if $sendBufferSize;
+    $address = $address->getValueAt(0)->getCppExpression() if $address;
+    $port = $port ? $port->getValueAt(0)->getCppExpression() : "0";
+    $role = $role->getValueAt(0)->getSPLExpression();
+    $reconnectionBound = $reconnectionBound->getValueAt(0)->getCppExpression()
+        if $reconnectionBound;
+    $reconnectionPolicy = $reconnectionPolicy ? $reconnectionPolicy->getValueAt(0)->getSPLExpression()
+        : "NoRetry";
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Runtime/Operator/OperatorMetrics.h>
+#include <SPL/Toolkit/RuntimeException.h>
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Runtime/Utility/LogTraceMessage.h>
+#include <signal.h>
+
+using namespace std;
+using namespace boost::iostreams;
+
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads (1);
+}
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    AutoMutex am (_mutex);
+    if (_fd_sink.get())
+        _filt_str.reset();
+    _connected = false;
+    if (_connector.get())
+        _connector->terminate();
+}
+
+void MY_OPERATOR::cleanup()
+{
+    _fs.reset(NULL);
+    _filt_str.reset(NULL);
+    _fd_sink.reset(NULL);
+    _connected = false;
+}
+
+void MY_OPERATOR::setup (int32_t fd)
+{
+    AutoMutex am (_mutex);
+    if (!_connector->connected())
+        return;
+    _fd_sink.reset (new file_descriptor_sink(fd, never_close_handle));
+    _filt_str.reset (new filtering_streambuf<output>);
+    _filt_str->push (*_fd_sink);
+    _fs.reset(new ostream(_filt_str.get()));
+    _fs->imbue(locale::classic());
+    _connected = true;
+    SPLAPPTRC(L_DEBUG, "V1TCPSink: file descriptor: " << fd, SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::process(uint32_t)
+{
+    SPLAPPTRC(L_DEBUG, "V1TCPSink Connector startup...", SPL_OPER_DBG);
+    <%if ($role eq "client") {%>
+        _connector.reset(new SPL::TCPClient(getPE()));
+    <%} else {%>
+        _connector.reset(new SPL::TCPServer(getPE()));
+    <%}
+    if ($sendBufferSize) {%>
+        _connector->setSendBufferSize(<%=$sendBufferSize%>);
+    <%}
+    if ($role eq "client") {%>
+        _connector->setup(<%="$address,$port"%>);
+    <%} else {%>
+        _connector->setup(<%=$port%>);
+    <%}%>
+    SPLAPPTRC(L_DEBUG, "V1TCPSink connected...", SPL_OPER_DBG);
+    setup (_connector->fileDescriptor());
+
+    <%if ($reconnectionPolicy ne "NoRetry") {%>
+        while (!getPE().getShutdownRequested() <%print "&& _reconnectsLeft" if $reconnectionPolicy eq "BoundedRetry";%>) {
+            if (!getPE().getShutdownRequested() && !_connected) {
+                int fd = _connector->reconnect();
+                _numReconnects.incrementValueNoLock();
+                <%print "_reconnectsLeft--;" if $reconnectionPolicy eq "BoundedRetry";%>
+                SPLAPPTRC(L_DEBUG, "V1TCPSink reconnected...", SPL_OPER_DBG);
+                setup (fd);
+            }
+        }
+    <%}%>
+    SPLAPPTRC(L_DEBUG, "V1TCPSink Connector exitting...", SPL_OPER_DBG);
+}
+
+MY_OPERATOR::MY_OPERATOR()
+: MY_BASE_OPERATOR(), _connected(false),
+    <%print "_reconnectsLeft ($reconnectionBound)," if $reconnectionBound;%>
+    _numReconnects(getContext().getMetrics().getCustomMetricByName("nReconnections"))
+{
+    SPLAPPTRC(L_DEBUG, "V1TCPSink startup...", SPL_OPER_DBG);
+    <%print "_tuplesUntilFlush = $flush;" if $flush > 0;%>
+    signal (SIGPIPE, SIG_IGN);
+    _numReconnects.setValueNoLock(0);
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port) {
+    AutoMutex am(_mutex);
+    if (punct == Punctuation::FinalMarker) {
+        SPLAPPTRC(L_DEBUG, "V1TCPSink received FinalMarker...", SPL_OPER_DBG);
+        cleanup();
+    }
+}
+
+void MY_OPERATOR::process(Tuple const & tuple$, uint32_t port)
+{
+    AutoMutex am(_mutex);
+    // Write to output
+    const IPort0Type tuple = static_cast<const IPort0Type>(tuple$);
+    if (!_connected)
+        return;
+    SPL::uint16 u16;
+    SPL::uint32 u32 = 0;
+    SPL::NetworkByteBuffer nb(1000);
+    nb.setAutoDealloc(true);
+
+    // Tuple size
+    nb << u32;
+
+    <%my $numAttrs = $inputPort->getNumberOfAttributes();
+    for (my $i = 0; $i < $numAttrs; ++$i) {
+        my $attr = $inputPort->getAttributeAt($i);
+        my $attrType = $attr->getSPLType();
+        my $attrName = $attr->getName();
+        if (SPL::CodeGen::Type::isSigned($attrType) ||
+                SPL::CodeGen::Type::isFloat($attrType) ||
+                SPL::CodeGen::Type::isBoolean($attrType)) {%>
+          nb << tuple.get_<%=$attrName%>();
+        <%} elsif (SPL::CodeGen::Type::isRString($attrType)) {%>
+          {
+              const string& s = tuple.get_<%=$attrName%>();
+              uint32_t sz = s.size();
+              if (sz >= 64*1024)
+                SPLTRACEMSGANDTHROW(SPLRuntimeV1TCPSinkOperator, L_ERROR, SPL_APPLICATION_RUNTIME_STRING_TOO_BIG(sz), SPL_FUNC_DBG);
+              u16 = sz;
+              nb << u16;
+              nb.addCharSequence(s.c_str(), sz);
+          }
+        <%} else { # must be a list
+          my $attrCppType = $attr->getCppType();
+          $attrType = SPL::CodeGen::Type::getElementType($attrType);%>
+          {
+              const <%=$attrCppType%>& a$ = tuple.get_<%=$attrName%>();
+              u32 = a$.size();
+              nb << u32;
+              for (uint32_t i = 0; i < u32; i++) {
+                  <%if (SPL::CodeGen::Type::isSigned($attrType) ||
+                            SPL::CodeGen::Type::isFloat($attrType) ||
+                            SPL::CodeGen::Type::isBoolean($attrType)) {%>
+                      nb << a$[i];
+                  <%} else { # rstring %>
+                      const string& s = a$[i];
+                      uint32_t sz = s.size();
+                      if (sz >= 64*1024)
+                        SPLTRACEMSGANDTHROW(SPLRuntimeV1TCPSinkOperator, L_ERROR, SPL_APPLICATION_RUNTIME_STRING_TOO_BIG(sz), SPL_FUNC_DBG);
+                      u16 = sz;
+                      nb << u16;
+                      nb.addCharSequence(s.c_str(), sz);
+                  <%}%>
+              }
+          }
+        <%}
+    }%>
+    // Fix tuple length
+    uint32_t realSize = nb.getICursor();
+    u32 = realSize - sizeof (u32);
+    nb.setICursor(0);
+    nb << u32;
+    _fs->write ((const char *)nb.getPtr(), realSize);
+    <%if ($flush > 0) {%>
+    if (--_tuplesUntilFlush == 0) {
+        _tuplesUntilFlush = <%=$flush%>;
+        _fs->flush();
+    }
+    <%}%>
+    if (_fs->fail()) {
+        // Assume the connection went away
+        SPLAPPTRC(L_DEBUG, "V1TCPSink lost connection...", SPL_OPER_DBG);
+        cleanup();
+    }
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

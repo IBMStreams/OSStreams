@@ -1,0 +1,140 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use Cwd qw(abs_path getcwd chdir);
+use Data::Dumper;
+use File::Basename;
+use File::Temp qw(tempdir tempfile);
+use Getopt::Long qw(:config no_ignore_case bundling) ;
+
+sub usage
+{
+	print "Usage: " . basename($0) . " [--help]\n";
+        print "                            [--outputfile file]  [--templatefile file]\n";
+        print "                            [--version version]\n";
+        print "                            [--timestamp timestamp]\n";
+        print "                            [--hotfix]\n";
+        print "\n";
+        print "This program generates a Streams .product file\n";
+        print "\n";
+        print "Options:\n";
+        print "\n";
+        print "--outputfile         The output filename for where the generated file will be placed.\n";
+        print "                     If not specified, the output file <current working directory>/.product will be used.\n";
+        print "--templatefile       A template file which will be used to generate the .product file.\n";
+        print "                     If not specified, the default template file will be used.\n";
+        print "--version            The version struing used to substitute for the %V.R.M.L% variable\n";
+        print "                     If not specified, the default version from the release information will be used.\n";
+        print "--timestamp          A string used to substitute for the %timestamp% variable.\n";
+        print "                     If not specified, a default timestamp (using the current time) will be used.\n";
+        print "--hotfix             If specified, an additional HOTFIX=%timestamp% line will be added to the end of the file.\n";
+	exit;
+}
+
+# Options
+my $HELP = 0;
+my $OUTPUTFILE;
+my $TEMPLATEFILE;
+my $VERSION;
+my $TIMESTAMP;
+my $HOTFIX = 0;
+
+my $result = GetOptions("h|help"         => \$HELP,
+                        "outputfile:s"   => \$OUTPUTFILE,
+                        "templatefile:s" => \$TEMPLATEFILE,
+                        "version:s"      => \$VERSION,
+                        "timestamp:s"    => \$TIMESTAMP,
+                        "hotfix"         => \$HOTFIX);
+
+if (!$result || $HELP) {
+    usage();
+    exit($result ? 0 : 1);
+}
+
+if (!$OUTPUTFILE) {
+    $OUTPUTFILE = getcwd() . "/.product";
+}
+else {
+    my $outputdir = dirname($OUTPUTFILE);
+    if (! -d $outputdir) {
+        print STDERR "--outputfile directory $outputdir does not exist\n";
+        usage();
+        exit(1);
+    }
+}
+
+if (!$TEMPLATEFILE) {
+    $TEMPLATEFILE = dirname($0) . "/../etc/.product.tmpl";
+}
+else {
+    if (! -f $TEMPLATEFILE) {
+        print STDERR "--templatefile $TEMPLATEFILE does not exist\n";
+        usage();
+        exit(1);
+    }
+}
+
+if (!$TIMESTAMP) {
+    $TIMESTAMP = `date "+%Y%m%d%H%M%S"`;
+    chomp($TIMESTAMP);
+}
+
+# Substitution variables
+my $productinfo_cmd = dirname($0) . "/product-info";
+
+my $vrml = $VERSION;
+if (!$VERSION) {
+    $vrml = `$productinfo_cmd --version`;
+}
+chomp($vrml);
+my $productname = `$productinfo_cmd --product-name`;
+chomp($productname);
+my $os = `$productinfo_cmd --min-os`;
+chomp($os);
+my $os_version = `$productinfo_cmd --min-os-version`;
+chomp($os_version);
+my $os_patch = `$productinfo_cmd --min-os-patch`;
+chomp($os_patch);
+my $platforminfo_cmd = dirname($0) . "/platform-info";
+my $arch = `$platforminfo_cmd --arch_uname`;
+chomp($arch);
+
+open (INPUT, "$TEMPLATEFILE") || die "Unable to open input product template file $TEMPLATEFILE";
+open (OUTPUT, ">$OUTPUTFILE") || die "Unable to open output product file $OUTPUTFILE";
+
+foreach my $line (<INPUT>) {
+    $line =~ s/%V.R.M.L%/$vrml/g;
+    $line =~ s/%product-name%/$productname/g;
+    $line =~ s/%timestamp%/$TIMESTAMP/g;
+    $line =~ s/%arch%/$arch/g;
+    $line =~ s/%os%/$os/g;
+    $line =~ s/%os_version%/$os_version/g;
+    $line =~ s/%os_patch%/$os_patch/g;
+
+    print OUTPUT $line;
+}
+
+if ($HOTFIX) {
+    print OUTPUT "HOTFIX=$TIMESTAMP\n";
+}
+
+close(INPUT);
+close(OUTPUT);
+
+exit 0;

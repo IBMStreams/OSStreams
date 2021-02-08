@@ -1,0 +1,779 @@
+<?xml version="1.0" encoding="utf-8"?>
+  <xliff version="1.1" xmlns="urn:oasis:names:tc:xliff:document:1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.1 ../../../../../../../etc/xliff/xliff-core-1.1.xsd">
+    <file datatype="plaintext" original="root.txt" source-language="en" target-language="zh-TW" xml:space="preserve">
+      <body>
+        <!-- =============================================================== -->
+        <!-- TRNOTE Please refer to the "XML Localization Interchange File   -->
+        <!-- Format (.xlf) files" section in the translation instructions    -->
+        <!-- file for more information on this file.                         -->
+        <!--                                                                 -->
+        <!-- NLS_ENCODING=UTF-8                                              -->
+        <!-- TRNOTE Return this file using the UTF-8 encoding.               -->
+        <!--                                                                 -->
+        <!-- NLS_MESSAGEFORMAT_ALL                                          -->
+        <!-- TRNOTE Because of a behavior with the Java MessageFormat class, -->
+        <!-- any message in the Java Resource Bundle that has a {0} string   -->
+        <!-- in it, must escape all single quotes in that message. To escape -->
+        <!-- the single quote, just insert another single quote before it.   -->
+        <!-- For example, the following message                              -->
+        <!--    "Can't find card with name [{0}]"                            -->
+        <!-- would be changed to                                             -->
+        <!--    "Can''t find card with name [{0}]"                           -->
+        <!--                                                                 -->
+        <!-- TRNOTE Do not translate the text between the curly braces. This -->
+        <!-- text is reserved and should not be translated. For example,     -->
+        <!-- the text in the following curly braces should not be translated:-->
+        <!--    {0,number} {0,number,percent} {0,date} {0,time}              -->
+        <!--                                                                 -->
+        <!-- TRNOTE For the target language setting, please use the          -->
+        <!-- appropriate value for your locale as indicated in parenthesis:  -->
+        <!--   Danish (da), Dutch (nl), Finnish (fi), French (fr),           -->
+        <!--   German (de), Italian (it), Norwegian - Bokmal (no),           -->
+        <!--   Brazilian Portuguese (pt-BR), Portuguese (pt-PT),             -->
+        <!--   Spanish (es), Swedish (sv), Czech (cs), Hungarian (hu),       -->
+        <!--   Polish (pl), Russian (ru), Simplified Chinese (zh),           -->
+        <!--   Traditional Chinese (zh-TW), Japanese (ja), Korean (ko),      -->
+        <!--   Arabic (ar), Hebrew (he), Slovakian (sk), Slovenian (sl),     -->
+        <!--   Thai (th), Turkish (tr)                                       -->
+        <!--                                                                 -->
+        <!-- TRNOTE Please start translating the following entries.          -->
+        <!-- =============================================================== -->
+
+        <!-- messages CDISP7000-72000 -->
+        <group id="StreamsSPLDOCMessages" restype="table" xml:space="preserve">
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7000E" extraData="CDISP7000E" resname="CDISP7000E" xml:space="preserve">
+            <source xml:lang="en">No toolkit specified. Use either the -i or -t parameter to specify the toolkit path(s).</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The toolkit path was missing from the command.</EXPLANATION>
+              <USER_RESPONSE>Add the toolkit path using either the -i or -t parameter.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">未指定工具箱。請使用 -i 或 -t 參數來指定工具箱路徑。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7002I" extraData="CDISP7002I" resname="CDISP7002I" xml:space="preserve">
+            <source xml:lang="en">JVM locale: language: {0}, country: {1}, variant: {2}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="language"/>
+              <REPLACEMENT arg="{1}" value="country"/>
+              <REPLACEMENT arg="{2}" value="variant"/>
+              <EXPLANATION>This is the locale used by the Java virtual machine.</EXPLANATION>
+              <USER_RESPONSE>This is information only.  No action is needed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">JVM 語言環境：語言：{0}，國家/地區：{1}，變式：{2}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7003E" extraData="CDISP7003E" resname="CDISP7003E" xml:space="preserve">
+            <source xml:lang="en">Invalid argument: {0}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="argument"/>
+              <EXPLANATION>An unknown argument was used.</EXPLANATION>
+              <USER_RESPONSE>Check the documentation for the command to see the valid arguments.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">引數無效：{0}。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7004E" extraData="CDISP7004E" resname="CDISP7004E" xml:space="preserve">
+            <source xml:lang="en">Both -i and -t parameters are specified. Use either the -i or -t parameter to specify the toolkit path(s).</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>The parameters -i and -t cannot both be used.</EXPLANATION>
+              <USER_RESPONSE>Specify the toolkit path using either -i or -t, but not both.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">同時指定了 -i 和 -t 參數。請使用 -i 或 -t 參數來指定工具箱路徑。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7005E" extraData="CDISP7005E" resname="CDISP7005E" xml:space="preserve">
+            <source xml:lang="en">The specified toolkit path {0} does not exist or is not a directory.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="path"/>
+              <EXPLANATION>A toolkit was not found at the specified path.</EXPLANATION>
+              <USER_RESPONSE>Check that the path was specified correctly.  Also check the permissions on the path.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">指定的工具箱路徑 {0} 不存在，或者不是目錄。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7006E" extraData="CDISP7006E" resname="CDISP7006E" xml:space="preserve">
+            <source xml:lang="en">Error loading model file: {0}. File does not exist, or: {1}. Try reindexing or recompiling the toolkit.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="model file"/>
+              <REPLACEMENT arg="{1}" value="error" />
+              <EXPLANATION>The model file was not found or is not a well-formed model file.</EXPLANATION>
+              <USER_RESPONSE>Check that the file was specified correctly.  Check the permission on the file and the directory containing it.  If the file exists and is readable, try reindexing or recompiling.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">載入模型檔 {0} 時發生錯誤。檔案不存在，或者：{1}。請嘗試重新建立索引或重新編譯工具箱。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7007I" extraData="CDISP7007I" resname="CDISP7007I" xml:space="preserve">
+            <source xml:lang="en">Exiting spl-make-doc.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>spl-make-doc has completed.</EXPLANATION>
+              <USER_RESPONSE>This is information only.  No action is needed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">正在結束 spl-make-doc。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7008E" extraData="CDISP7008E" resname="CDISP7008E" xml:space="preserve">
+            <source xml:lang="en">Error reading model file: {0}. Content missing. Try reindexing or recompiling the toolkit.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="model file"/>
+              <EXPLANATION>The model file was found, but is empty, or does not contain the expected contents.</EXPLANATION>
+              <USER_RESPONSE>Check that the file was specified correctly.  If the file exists, try reindexing or recompiling.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">讀取模型檔 {0} 時發生錯誤。遺漏了內容。請嘗試重新建立索引或重新編譯工具箱。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7009E" extraData="CDISP7009E" resname="CDISP7009E" xml:space="preserve">
+            <source xml:lang="en">Error reading SPL file: {0}. Verify that the SPL file exists and can be read.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="model file"/>
+              <EXPLANATION>The model file was either was not found, or could not be read.</EXPLANATION>
+              <USER_RESPONSE>Check that the file was specified correctly.  Check the permissions on the file and the directory containing it.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">讀取 SPL 檔 {0} 時發生錯誤。請驗證 SPL 檔存在，並且可以讀取。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7010E" extraData="CDISP7010E" resname="CDISP7010E" xml:space="preserve">
+            <source xml:lang="en">Exception encountered:\n {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="exception"/>
+              <EXPLANATION>An unexpected problem happened.</EXPLANATION>
+              <USER_RESPONSE>Check the exception for information about the problem.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">發生異常狀況：\n{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7011I" extraData="CDISP7011I" resname="CDISP7011I" xml:space="preserve">
+            <source xml:lang="en">SPL composite operator image not displayed. Problem loading file: {0}\n</source>
+            <target xml:lang="zh-TW">未顯示 SPL 複合運算子影像。載入檔案時遇到問題：{0}\n</target>
+          </trans-unit>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="image file"/>
+              <EXPLANATION>An image file could not be loaded.</EXPLANATION>
+              <USER_RESPONSE>Check that the file exists, is readable, and is a supported type.</USER_RESPONSE>
+            </MSGDOC> -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7012I" extraData="CDISP7012I" resname="CDISP7012I" xml:space="preserve">
+            <source xml:lang="en">Primitive operator image not displayed. Problem loading file: {0}\n</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="image file"/>
+              <EXPLANATION>An image file could not be loaded.</EXPLANATION>
+              <USER_RESPONSE>Check that the file exists, is readable, and is a supported type.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">未顯示初始運算子影像。載入檔案時遇到問題：{0}\n</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7013E" extraData="CDISP7013E" resname="CDISP7013E" xml:space="preserve">
+            <source xml:lang="en">Exception loading the model file {0}. Try reindexing or recompiling the toolkit.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="model file"/>
+              <EXPLANATION>The model file could not be loaded.</EXPLANATION>
+              <USER_RESPONSE>Check that the file exists, and is readable.  Try reindexing or recompiling the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">載入模型檔 {0} 時發生異常狀況。請嘗試重新建立索引或重新編譯工具箱。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7014E" extraData="CDISP7014E" resname="CDISP7014E" xml:space="preserve">
+            <source xml:lang="en">Source model inconsistency. Start column number {0} on line {1} exceeds line length {2}. Contact IBM Software Support.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="column"/>
+              <REPLACEMENT arg="{1}" value="line number"/>
+              <REPLACEMENT arg="{2}" value="line length"/>
+              <EXPLANATION>This is an unexpected error reading a model file.</EXPLANATION>
+              <USER_RESPONSE>Try reindexing or recompiling the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">原始檔模型不一致。第 {1} 行上的起始欄號碼 {0} 超過行長度 {2}。請與「IBM 軟體支援中心」聯絡。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7015E" extraData="CDISP7015E" resname="CDISP7015E" xml:space="preserve">
+            <source xml:lang="en">Source model inconsistency. End column number {0} on line {1} exceeds line length {2}. Contact IBM Software Support.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="column"/>
+              <REPLACEMENT arg="{1}" value="line number"/>
+              <REPLACEMENT arg="{2}" value="line length"/>
+              <EXPLANATION>This is an unexpected error reading a model file.</EXPLANATION>
+              <USER_RESPONSE>Try reindexing or recompiling the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">原始檔模型不一致。第 {1} 行上的結束欄號碼 {0} 超過行長度 {2}。請與「IBM 軟體支援中心」聯絡。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7016E" extraData="CDISP7016E" resname="CDISP7016E" xml:space="preserve">
+            <source xml:lang="en">File does not exist, or incorrect path name: {0}. Try reindexing or recompiling the toolkit.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="file"/>
+              <EXPLANATION>The file could not be opened.</EXPLANATION>
+              <USER_RESPONSE>Check that the file exists.  Check the permissions on the file.  Try reindexing or recompiling the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">檔案不存在，或者路徑名稱不正確：{0}。請嘗試重新建立索引或重新編譯工具箱。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7017E" extraData="CDISP7017E" resname="CDISP7017E" xml:space="preserve">
+            <source xml:lang="en">URI table not found for toolkit {0}. Try reindexing or recompiling the toolkit.</source>
+            <!-- TODO: how does this happen?  Is it even possible? -->
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="toolkit"/>
+              <EXPLANATION>A problem happened while reading the toolkit, or it did not contain the expected information.</EXPLANATION>
+              <USER_RESPONSE>Try reindexing or recompiling the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">找不到工具箱 {0} 的 URI 表格。請嘗試重新建立索引或重新編譯工具箱。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7018E" extraData="CDISP7018E" resname="CDISP7018E" xml:space="preserve">
+            <source xml:lang="en">URI index for toolkit {0} missing entry: {1}. Try reindexing or recompiling the toolkit.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="toolkit"/>
+              <REPLACEMENT arg="{1}" value="entry"/>
+              <EXPLANATION>A problem happened while reading the toolkit, or it did not contain the expected information.</EXPLANATION>
+              <USER_RESPONSE>Try reindexing or recompiling the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">工具箱 {0} 的 URI 索引遺漏項目：{1}。請嘗試重新建立索引或重新編譯工具箱。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7019E" extraData="CDISP7019E" resname="CDISP7019E" xml:space="preserve">
+            <source xml:lang="en">The toolkit in directory {0} has the same name as the toolkit in directory {1}. Specify the toolkit {2} only once.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="toolkit directory"/>
+              <REPLACEMENT arg="{1}" value="toolkit directory"/>
+              <REPLACEMENT arg="{2}" value="toolkit"/>
+              <EXPLANATION>Two toolkits with the same name were found.</EXPLANATION>
+              <USER_RESPONSE>This could be two copies of the same toolkit, or two different toolkits with the same name.  If two copies of the same toolkit were found, delete one, or ensure that the toolkit path contains only one.  If two toolkits have the same name, and both are needed, rename one of them.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">目錄 {0} 中的工具箱與目錄 {1} 中的工具箱具有相同的名稱。請僅指定工具箱 {2} 一次。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7020E" extraData="CDISP7020E" resname="CDISP7020E" xml:space="preserve">
+            <source xml:lang="en">Toolkit model inconsistency for the toolkit in directory {0}. Try rebuilding the toolkit.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="toolkit directory"/>
+              <EXPLANATION>The toolkit model did not contain the expected information.</EXPLANATION>
+              <USER_RESPONSE>Try rebuilding the toolkit.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">目錄 {0} 中工具箱的工具箱模型不一致。請嘗試重建工具箱。</target>
+          </trans-unit>
+
+          <!-- SPLDOC markup messages -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7021E" extraData="CDISP7021E" resname="CDISP7021E" xml:space="preserve">
+            <source xml:lang="en">A line of SPLDOC markup text starts with characters reserved for possible future markup. Suppress interpretation by using the backslash (\\\\) escape character in this line: {0}</source>
+            <!-- TODO what are the reserved characters? -->
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="line"/>
+              <EXPLANATION>The line contains characters reserved for possible future use.</EXPLANATION>
+              <USER_RESPONSE>Escape the reserved characters with backslashes.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">SPLDOC 標記文字的某一行以保留字元開頭，這些保留字元供未來可能的標記使用。請透過在此行中使用反斜線 (\\\\) 跳出字元，來暫停解譯：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7022E" extraData="CDISP7022E" resname="CDISP7022E" xml:space="preserve">
+            <source xml:lang="en">A title in SPLDOC markup text starts with characters reserved for possible future SPLDOC markup. Suppress interpretation by using the backslash (\\\\) escape character in this title: {0}</source>
+            <!-- TODO what are the reserved characters? -->
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="title"/>
+              <EXPLANATION>The title contains characters reserved for possible future use.</EXPLANATION>
+              <USER_RESPONSE>Escape the reserved characters with backslashes.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">SPLDOC 標記文字中的標題以保留字元開頭，這些保留字元供未來可能的 SPLDOC 標記使用。請透過在此標題中使用反斜線 (\\\\) 跳出字元，來暫停解譯：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7023E" extraData="CDISP7023E" resname="CDISP7023E" xml:space="preserve">
+            <source xml:lang="en">A line of SPLDOC markup text includes characters reserved for possible future SPLDOC markup. Suppress interpretation by using the backslash (\\\\) escape character in this text: {0}</source>
+            <!-- TODO what are the reserved characters? -->
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>The text contains characters reserved for possible future use.</EXPLANATION>
+              <USER_RESPONSE>Escape the reserved characters with backslashes.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">SPLDOC 標記文字的某一行包括保留字元，這些保留字元供未來可能的 SPLDOC 標記使用。請透過在此文字中使用反斜線 (\\\\) 跳出字元，來暫停解譯：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7024E" extraData="CDISP7024E" resname="CDISP7024E" xml:space="preserve">
+            <source xml:lang="en">A line of SPLDOC markup text that requires a title has no title.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>A title is missing where one is required.</EXPLANATION>
+              <USER_RESPONSE>Add the missing title.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">SPLDOC 標記文字的某一行需要標題，但卻沒有標題。</target>
+          </trans-unit>
+          <!-- TODO add explanation and user response for this unhelpful message.  This is the default message when no more specific problem happened. -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7025E" extraData="CDISP7025E" resname="CDISP7025E" xml:space="preserve">
+            <source xml:lang="en">A line of SPLDOC markup text is incorrect.</source>
+            <target xml:lang="zh-TW">SPLDOC 標記文字的某一行不正確。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7026W" extraData="CDISP7026W" resname="CDISP7026W" xml:space="preserve">
+            <source xml:lang="en">A line of SPLDOC markup text contains in-line markup that is not closed or that contains incorrect SPLDOC markup. Correct the markup or suppress interpretation of the markup tag by using the backslash (\\\\) escape character in this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>An SPLDOC markup tag is not closed.</EXPLANATION>
+              <USER_RESPONSE>Close the tag, or escape it with a backslash if the tag was not intended.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">SPLDOC 標記文字的某一行包含行內標記，該行內標記不完整或包含不正確的 SPLDOC 標記。請更正該標記，或者透過在此文字中使用反斜線 (\\\\) 跳出字元，來暫停標記標籤的解譯：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7027W" extraData="CDISP7027W" resname="CDISP7027W" xml:space="preserve">
+            <source xml:lang="en">An SPLDOC in-line markup tag is nested within other in-line markup where this is not currently supported. Suppress interpretation by using the backslash (\\\\) escape character in this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>An SPLDOC markup tag is contained within another tag.</EXPLANATION>
+              <USER_RESPONSE>Remove the nested tag, or escape it with a backslash if it was not intended.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">某個 SPLDOC 行內標記標籤巢套在其他行內標記中，但這種情況目前不受支援。請透過在此文字中使用反斜線 (\\\\) 跳出字元，來暫停解譯：{0}</target>
+          </trans-unit>
+          <!-- This message occurs only as part of another message, and
+          does not need to be documented on its own. -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7028E" extraData="CDISP7028E" resname="CDISP7028E" xml:space="preserve">
+            <source xml:lang="en">description line {0}</source>
+            <target xml:lang="zh-TW">說明行 {0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7029E" extraData="CDISP7029E" resname="CDISP7029E" xml:space="preserve">
+            <source xml:lang="en">The SPLDOC markup for a table is missing the markup to end the table at this line: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="line"/>
+              <EXPLANATION>An SPLDOC table is missing its end tag.</EXPLANATION>
+              <USER_RESPONSE>Add the missing tag.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">在下列行中，某個表格的 SPLDOC 標記遺漏了用來結束該表格的標記：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7030E" extraData="CDISP7030E" resname="CDISP7030E" xml:space="preserve">
+            <source xml:lang="en">There is a syntax error in the SPLDOC markup for a table. Correct the markup at this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>An SPLDOC table has a syntax error.</EXPLANATION>
+              <USER_RESPONSE>Correct the syntax error.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">某個表格的 SPLDOC 標記存在語法錯誤。請更正下列文字中的標記：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7031E" extraData="CDISP7031E" resname="CDISP7031E" xml:space="preserve">
+            <source xml:lang="en">Required SPLDOC markup is missing from the end of this line of SPLDOC markup for a table: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="line"/>
+              <EXPLANATION>An SPLDOC table is missing markup from the end of a line.</EXPLANATION>
+              <USER_RESPONSE>Add the missing markup.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">針對某個表格，SPLDOC 標記的以下行末尾，遺漏了必要的 SPLDOC 標記：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7032E" extraData="CDISP7032E" resname="CDISP7032E" xml:space="preserve">
+            <source xml:lang="en">This line of SPLDOC markup for a table has fewer columns than the number already defined for the table: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="line"/>
+              <EXPLANATION>All lines of a table must contain the same number of columns.</EXPLANATION>
+              <USER_RESPONSE>Add or remove columns, so that all lines have the same number of columns.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">針對某個表格，SPLDOC 標記的以下行所具有的直欄數目，少於已經為該表格定義的數目：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7033E" extraData="CDISP7033E" resname="CDISP7033E" xml:space="preserve">
+            <source xml:lang="en">A line of SPLDOC markup for a table has more columns than the number already defined for the table, starting at this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="line"/>
+              <EXPLANATION>All lines of a table must contain the same number of columns.</EXPLANATION>
+              <USER_RESPONSE>Add or remove columns, so that all lines have the same number of columns.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">針對某個表格，SPLDOC 標記的某一行所具有的直欄數目，多於已經為該表格定義的數目（從下列文字開始）：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7034E" extraData="CDISP7034E" resname="CDISP7034E" xml:space="preserve">
+            <source xml:lang="en">The SPLDOC markup for a column boundary in a table uses both normal and row header column boundary markup for the same column, at this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>Column boundaries may be specified by only normal, or only row header column boundary markup.</EXPLANATION>
+              <USER_RESPONSE>Change the column boundaries to use only normal, or only row header column boundary markup.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">在下列文字處，表格中某個直欄界限的 SPLDOC 標記為同一直欄同時使用了一般直欄界限標記和列標頭直欄界限標記：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7035E" extraData="CDISP7035E" resname="CDISP7035E" xml:space="preserve">
+            <source xml:lang="en">The SPLDOC markup for a row boundary in a table occurs before all columns have been defined, at this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>All columns must be defined before a row boundary.</EXPLANATION>
+              <USER_RESPONSE>Add the missing column definition markup.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">在下列文字處，在已定義所有直欄之前，出現了表格中某個列界限的 SPLDOC 標記：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7036E" extraData="CDISP7036E" resname="CDISP7036E" xml:space="preserve">
+            <source xml:lang="en">The SPLDOC markup for a row boundary in a table has fewer than three characters between columns before this text: {0}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="text"/>
+              <EXPLANATION>At least three characters must be used between columns.</EXPLANATION>
+              <USER_RESPONSE>Add more characters between the columns in the row boundary SPL markup.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">在下列文字前面的直欄之間，表格中某個列界限的 SPLDOC 標記所具有的字元數目少於 3 個：{0}</target>
+          </trans-unit>
+
+          <!-- Image generating messages -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7040E" extraData="CDISP7040E" resname="CDISP7040E" xml:space="preserve">
+            <source xml:lang="en">An error occurred during generation of image file: {0}. Contact IBM Software Support.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="image file"/>
+              <EXPLANATION>An unexpected error occurred during image generation.</EXPLANATION>
+              <USER_RESPONSE>Try the operation again.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">產生影像檔 {0} 期間發生錯誤。請與「IBM 軟體支援中心」聯絡。</target>
+          </trans-unit>
+
+          <!-- Trace messages -->
+          <!-- These messages are written when spl-make-doc is run in
+          verbose mode.  They will be written without message IDs, and
+          do not require documentation -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7060I" extraData="CDISP7060I" resname="CDISP7060I" xml:space="preserve">
+            <source xml:lang="en">Toolkit path(s): {0}</source>
+            <target xml:lang="zh-TW">工具箱路徑：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7061I" extraData="CDISP7061I" resname="CDISP7061I" xml:space="preserve">
+            <source xml:lang="en">Output directory: {0}</source>
+            <target xml:lang="zh-TW">輸出目錄：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7062I" extraData="CDISP7062I" resname="CDISP7062I" xml:space="preserve">
+            <source xml:lang="en">Document format: {0}</source>
+            <target xml:lang="zh-TW">文件格式：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7063I" extraData="CDISP7063I" resname="CDISP7063I" xml:space="preserve">
+            <source xml:lang="en">Author: {0}</source>
+            <target xml:lang="zh-TW">作者：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7064I" extraData="CDISP7064I" resname="CDISP7064I" xml:space="preserve">
+            <source xml:lang="en">Verbose: {0}</source>
+            <target xml:lang="zh-TW">詳細：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7065I" extraData="CDISP7065I" resname="CDISP7065I" xml:space="preserve">
+            <source xml:lang="en">Processing completed for: {0}</source>
+            <target xml:lang="zh-TW">已完成對下列項目的處理：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7066I" extraData="CDISP7066I" resname="CDISP7066I" xml:space="preserve">
+            <source xml:lang="en">Output warning if link is to an absent toolkit or namespace: {0}</source>
+            <target xml:lang="zh-TW">如果鏈結指向某個不存在的工具箱或名稱空間，則輸出警告：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7067I" extraData="CDISP7067I" resname="CDISP7067I" xml:space="preserve">
+            <source xml:lang="en">DitaDriver translating: {0} to {1}</source>
+            <target xml:lang="zh-TW">DitaDriver 正在將 {0} 轉換為 {1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7068I" extraData="CDISP7068I" resname="CDISP7068I" xml:space="preserve">
+            <source xml:lang="en">DitaDriver using ditamap: {0}</source>
+            <target xml:lang="zh-TW">DitaDriver 正在使用 ditamap：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7069I" extraData="CDISP7069I" resname="CDISP7069I" xml:space="preserve">
+            <source xml:lang="en">{0}</source>
+            <target xml:lang="zh-TW">{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7070I" extraData="CDISP7070I" resname="CDISP7070I" xml:space="preserve">
+            <source xml:lang="en">Command exit value: {0}</source>
+            <target xml:lang="zh-TW">指令結束值：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7071I" extraData="CDISP7071I" resname="CDISP7071I" xml:space="preserve">
+            <source xml:lang="en">Image format: {0}</source>
+            <target xml:lang="zh-TW">影像格式：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7072I" extraData="CDISP7072I" resname="CDISP7072I" xml:space="preserve">
+            <source xml:lang="en">Using default dimensions for image: {0}</source>
+            <target xml:lang="zh-TW">使用影像的預設維度：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7073I" extraData="CDISP7073I" resname="CDISP7073I" xml:space="preserve">
+            <source xml:lang="en">No dimension defined for image: {0}. Using default dimensions.</source>
+            <target xml:lang="zh-TW">未定義影像的維度：{0}。將使用預設維度。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7074I" extraData="CDISP7074I" resname="CDISP7074I" xml:space="preserve">
+            <source xml:lang="en">Processing primitive operator: {0}</source>
+            <target xml:lang="zh-TW">正在處理初始運算子：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7075I" extraData="CDISP7075I" resname="CDISP7075I" xml:space="preserve">
+            <source xml:lang="en">Processing native function model: {0}</source>
+            <target xml:lang="zh-TW">正在處理原生函數模型：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7076I" extraData="CDISP7076I" resname="CDISP7076I" xml:space="preserve">
+            <source xml:lang="en">Generation complete. Top-level document: {0}</source>
+            <target xml:lang="zh-TW">產生已完成。最上層文件：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7077I" extraData="CDISP7077I" resname="CDISP7077I" xml:space="preserve">
+            <source xml:lang="en">Check tags: {0}</source>
+            <target xml:lang="zh-TW">檢查標籤：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7078I" extraData="CDISP7078I" resname="CDISP7078I" xml:space="preserve">
+            <source xml:lang="en">Output warning if no SPLDOC comment provided: {0}</source>
+            <target xml:lang="zh-TW">如果未提供 SPLDOC 註解，則輸出警告：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7079I" extraData="CDISP7079I" resname="CDISP7079I" xml:space="preserve">
+            <source xml:lang="en">Copy image files: {0}</source>
+            <target xml:lang="zh-TW">複製影像檔：{0}</target>
+          </trans-unit>
+
+          <!-- Miscellaneous messages -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7080W" extraData="CDISP7080W" resname="CDISP7080W" xml:space="preserve">
+            <source xml:lang="en">No SPLDOC comment provided for composite &quot;{0}&quot;.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="composite"/>
+              <EXPLANATION>The composite contains no SPLDOC comment.</EXPLANATION>
+              <USER_RESPONSE>Add an SPLDOC comment.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">未向複合項 &quot;{0}&quot; 提供 SPLDOC 註解。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7081W" extraData="CDISP7081W" resname="CDISP7081W" xml:space="preserve">
+            <source xml:lang="en">No SPLDOC comment provided for function &quot;{0}&quot;.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="function"/>
+              <EXPLANATION>The function contains no SPLDOC comment.</EXPLANATION>
+              <USER_RESPONSE>Add an SPLDOC comment.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">未向函數 &quot;{0}&quot; 提供 SPLDOC 註解。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7082W" extraData="CDISP7082W" resname="CDISP7082W" xml:space="preserve">
+            <source xml:lang="en">No SPLDOC comment provided for type &quot;{0}&quot;.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="type"/>
+              <EXPLANATION>The type contains no SPLDOC comment.</EXPLANATION>
+              <USER_RESPONSE>Add an SPLDOC comment.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">未向類型 &quot;{0}&quot; 提供 SPLDOC 註解。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7083I" extraData="CDISP7083I" resname="CDISP7083I" xml:space="preserve">
+            <source xml:lang="en">Processing SPL artifacts.</source>
+            <!-- <MSGDOC>
+              <EXPLANATION>SPL artifacts are being processed.</EXPLANATION>
+              <USER_RESPONSE>This is information only.  No action is needed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">正在處理 SPL 構件。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7084I" extraData="CDISP7084I" resname="CDISP7084I" xml:space="preserve">
+            <source xml:lang="en">Loading toolkit: {0} : {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="toolkit name"/>
+              <REPLACEMENT arg="{1}" value="toolkit version"/>
+              <EXPLANATION>The toolkit is being loaded.</EXPLANATION>
+              <USER_RESPONSE>This is information only.  No action is needed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">正在載入工具箱：{0}：{1}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7085W" extraData="CDISP7085W" resname="CDISP7085W" xml:space="preserve">
+            <source xml:lang="en">Unrecognized SPLDOC annotation tag &quot;{0}&quot; for artifact &quot;{1}&quot;. Skipping tag.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="tag"/>
+              <REPLACEMENT arg="{1}" value="artifact"/>
+              <EXPLANATION>An unrecognized SPLDOC annotation tag was skipped.</EXPLANATION>
+              <USER_RESPONSE>Check the tag.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">無法辨識構件 &quot;{1}&quot; 的 SPLDOC 註釋標籤 &quot;{0}&quot;。將跳過標籤。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7086E" extraData="CDISP7086E" resname="CDISP7086E" xml:space="preserve">
+            <source xml:lang="en">SPLDOC annotation tag for artifact &quot;{0}&quot; has no name.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="artifact"/>
+              <EXPLANATION>Every SPLDOC annotation tag must have a name.</EXPLANATION>
+              <USER_RESPONSE>Add a name to the tag.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">構件 &quot;{0}&quot; 的 SPLDOC 註釋標籤沒有名稱。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7087E" extraData="CDISP7087E" resname="CDISP7087E" xml:space="preserve">
+            <source xml:lang="en">SPLDOC annotation &quot;@{0}&quot; for artifact &quot;{1}&quot; has no value.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="annotation"/>
+              <REPLACEMENT arg="{1}" value="artifact"/>
+              <EXPLANATION>The value is missing for an SPLDOC annotation which must have a value.</EXPLANATION>
+              <USER_RESPONSE>Add a value to the annotation.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">構件 &quot;{1}&quot; 的 SPLDOC 註釋 &quot;@{0}&quot; 沒有值。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7088W" extraData="CDISP7088W" resname="CDISP7088W" xml:space="preserve">
+            <source xml:lang="en">No SPLDOC comment provided for operator &quot;{0}&quot;.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="operator"/>
+              <EXPLANATION>The operator contains no SPLDOC comment.</EXPLANATION>
+              <USER_RESPONSE>Add an SPLDOC comment.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">未向運算子 &quot;{0}&quot; 提供 SPLDOC 註解。</target>
+          </trans-unit>
+          <!-- trace messages, no documentation needed -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7089I" extraData="CDISP7089I" resname="CDISP7089I" xml:space="preserve">
+            <source xml:lang="en">Include function set header: {0}</source>
+            <target xml:lang="zh-TW">包括函數集標頭：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7090I" extraData="CDISP7090I" resname="CDISP7090I" xml:space="preserve">
+            <source xml:lang="en">Include excluded SPL artifacts: {0}</source>
+            <target xml:lang="zh-TW">包括已排除的 SPL 構件：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7091I" extraData="CDISP7091I" resname="CDISP7091I" xml:space="preserve">
+            <source xml:lang="en">Include non-public SPL artifacts: {0}</source>
+            <target xml:lang="zh-TW">包括非公用 SPL 構件：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7092I" extraData="CDISP7092I" resname="CDISP7092I" xml:space="preserve">
+            <source xml:lang="en">Include SPL source code: {0}</source>
+            <target xml:lang="zh-TW">包括 SPL 原始碼：{0}</target>
+          </trans-unit>
+
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7093E" extraData="CDISP7093E" resname="CDISP7093E" xml:space="preserve">
+            <source xml:lang="en">Generation complete with {0} errors and {1} warnings. Generation of the SPL documentation failed.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="error count"/>
+              <REPLACEMENT arg="{1}" value="warning count"/>
+              <EXPLANATION>The generation of SPL documentation failed because of previous errors.</EXPLANATION>
+              <USER_RESPONSE>Correct the errors, and retry the SPL documentation generation.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">產生已完成，發生了 {0} 個錯誤和 {1} 個警告。產生 SPL 說明文件失敗。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7095I" extraData="CDISP7095I" resname="CDISP7095I" xml:space="preserve">
+            <source xml:lang="en">Debug mode enabled: {0}</source>
+            <target xml:lang="zh-TW">已啟用除錯模式：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7096I" extraData="CDISP7096I" resname="CDISP7096I" xml:space="preserve">
+            <source xml:lang="en">Command: {0}</source>
+            <target xml:lang="zh-TW">指令：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7097E" extraData="CDISP7097E" resname="CDISP7097E" xml:space="preserve">
+            <source xml:lang="en">Generation complete with {0} errors and {1} warnings. Top-level document: {2}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="error count"/>
+              <REPLACEMENT arg="{1}" value="warning count"/>
+              <REPLACEMENT arg="{2}" value="document"/>
+              <EXPLANATION>The generation of SPL documentation failed because of previous errors.</EXPLANATION>
+              <USER_RESPONSE>Correct the errors, and retry the SPL documentation generation.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">產生已完成，發生了 {0} 個錯誤和 {1} 個警告。最上層文件：{2}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7101W" extraData="CDISP7101W" resname="CDISP7101W" xml:space="preserve">
+            <source xml:lang="en">Generation complete with 0 errors and {0} warnings. Top-level document: {1}</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="warning count"/>
+              <REPLACEMENT arg="{1}" value="document"/>
+              <EXPLANATION>The generation of SPL documentation succeeded, but there were warnings.</EXPLANATION>
+              <USER_RESPONSE>Evaluate the warnings and determine whether they need to be fixed.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">產生已完成，發生了 0 個錯誤和 {0} 個警告。最上層文件：{1}</target>
+          </trans-unit>
+<!--
+START-NON-TRANSLATABLE
+-->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7102E" extraData="CDISP7102E" resname="CDISP7102E" xml:space="preserve">
+            <source xml:lang="en">{0}</source>
+            <target xml:lang="zh-TW">{0}</target>
+          </trans-unit>
+<!--
+END-NON-TRANSLATABLE
+-->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7103E" extraData="CDISP7103E" resname="CDISP7103E" xml:space="preserve">
+            <source xml:lang="en">Invalid image URI: {0}. Correct the image file name in the SPLDOC comment.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="image URI"/>
+              <EXPLANATION>The image URI is malformed.</EXPLANATION>
+              <USER_RESPONSE>Fix the image URI.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">影像 URI {0} 無效。請更正 SPLDOC 註解中的影像檔名稱。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7104E" extraData="CDISP7104E" resname="CDISP7104E" xml:space="preserve">
+            <source xml:lang="en">Image file not found or cannot be read: {0}. Correct the image file name in the SPLDOC comment or correct its access permissions.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="image file"/>
+              <EXPLANATION>The image file was not found or was not readable.</EXPLANATION>
+              <USER_RESPONSE>Correct the image file name in the SPLDOC comment or correct its access permissions.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">找不到影像檔，或者無法讀取影像檔：{0}。請更正 SPLDOC 註解中的影像檔名稱，或者更正其存取權。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7105W" extraData="CDISP7105W" resname="CDISP7105W" xml:space="preserve">
+            <source xml:lang="en">The &quot;@return&quot; annotation for function &quot;{0}&quot; with return type void has been skipped.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="function"/>
+              <EXPLANATION>A function that returns void cannot have a return annotation.</EXPLANATION>
+              <USER_RESPONSE>Remove the return annotation.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">已跳過傳回類型為 void 之函數 &quot;{0}&quot; 的 &quot;@return&quot; 註釋。</target>
+          </trans-unit>
+          <!-- CDISP7106 is unused -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7107E" extraData="CDISP7107E" resname="CDISP7107E" xml:space="preserve">
+            <source xml:lang="en">Ambiguous link to SPL artifact &quot;{0}&quot;. Link matches: {1}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="artifact"/>
+              <REPLACEMENT arg="{1}" value="list of matches"/>
+              <EXPLANATION>The link matched more than one artifact.</EXPLANATION>
+              <USER_RESPONSE>Add a namespace to the link to resolve the ambiguity.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">指向 SPL 構件 &quot;{0}&quot; 的鏈結語意不明。鏈結相符項：{1}。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7108E" extraData="CDISP7108E" resname="CDISP7108E" xml:space="preserve">
+            <source xml:lang="en">The link to SPL artifact &quot;{0}&quot; must include a namespace to reference an artifact in another toolkit. The link matches: {1}.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="artifact"/>
+              <REPLACEMENT arg="{1}" value="matching artifact"/>
+              <EXPLANATION>A link between toolkits must include a namespace.</EXPLANATION>
+              <USER_RESPONSE>Add the namespace to the link.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">指向 SPL 構件 &quot;{0}&quot; 的鏈結必須包括一個名稱空間，以參照另一個工具箱中的某個構件。鏈結相符項：{1}。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7109E" extraData="CDISP7109E" resname="CDISP7109E" xml:space="preserve">
+            <source xml:lang="en">The SPL artifact referenced by the link &quot;{0}&quot; is not in the document. Correct the reference to the SPL artifact in the SPLDOC link. If the link is to a function with parameters, include the parameter types.</source>
+            <!-- <MSGDOC>
+              <REPLACEMENT arg="{0}" value="link"/>
+              <EXPLANATION>A document contained a link to an artifact.  This artifact is not in the document.</EXPLANATION>
+              <USER_RESPONSE>Correct the link.</USER_RESPONSE>
+            </MSGDOC> -->
+            <target xml:lang="zh-TW">鏈結 &quot;{0}&quot; 所參照的 SPL 構件不在文件中。請更正 SPLDOC 鏈結中對 SPL 構件的參照。如果該鏈結指向某個帶參數的函數，請包括參數類型。</target>
+          </trans-unit>
+          <!-- TODO add MSGDOC sections for messages below. -->
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7110W" extraData="CDISP7110W" resname="CDISP7110W" xml:space="preserve">
+            <source xml:lang="en">Missing &quot;@param {0}&quot; annotation, or annotation description, for composite operator parameter &quot;{1}&quot;.</source>
+            <target xml:lang="zh-TW">針對複合運算子參數 &quot;{1}&quot;，遺漏了 &quot;@param {0}&quot; 註釋或註釋說明。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7111W" extraData="CDISP7111W" resname="CDISP7111W" xml:space="preserve">
+            <source xml:lang="en">Missing &quot;{0}&quot; annotation, or annotation description, on operator port &quot;{1}&quot; for composite operator &quot;{2}&quot;.</source>
+            <target xml:lang="zh-TW">在複合運算子 &quot;{2}&quot; 的運算子埠 &quot;{1}&quot; 上，遺漏了 &quot;{0}&quot; 註釋或註釋說明。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7112W" extraData="CDISP7112W" resname="CDISP7112W" xml:space="preserve">
+            <source xml:lang="en">Missing &quot;{0}&quot; annotation, or annotation description, for SPL or native function &quot;{1}&quot;.</source>
+            <target xml:lang="zh-TW">針對 SPL 或原生函數 &quot;{1}&quot;，遺漏了 &quot;{0}&quot; 註釋或註釋說明。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7113W" extraData="CDISP7113W" resname="CDISP7113W" xml:space="preserve">
+            <source xml:lang="en">The &quot;@param {0}&quot; annotation does not match any parameter defined by the SPL or native function &quot;{1}&quot;.</source>
+            <target xml:lang="zh-TW">&quot;@param {0}&quot; 註釋與 SPL 或原生函數 &quot;{1}&quot; 定義的任何參數均不符。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7115W" extraData="CDISP7115W" resname="CDISP7115W" xml:space="preserve">
+            <source xml:lang="en">The &quot;{0} {1}&quot; annotation does not match any port for the composite operator &quot;{2}&quot;.</source>
+            <target xml:lang="zh-TW">&quot;{0} {1}&quot; 註釋與複合運算子 &quot;{2}&quot; 的任何埠均不符。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7116W" extraData="CDISP7116W" resname="CDISP7116W" xml:space="preserve">
+            <source xml:lang="en">The &quot;@param {0}&quot; annotation does not match any parameter defined by the composite operator &quot;{1}&quot;.</source>
+            <target xml:lang="zh-TW">&quot;@param {0}&quot; 註釋與複合運算子 &quot;{1}&quot; 定義的任何參數均不符。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7117W" extraData="CDISP7117W" resname="CDISP7117W" xml:space="preserve">
+            <source xml:lang="en">The link to SPL artifact &quot;{0}&quot; references a toolkit or namespace that is not in the document.</source>
+            <target xml:lang="zh-TW">指向 SPL 構件 &quot;{0}&quot; 的鏈結所參照的工具箱或名稱空間，不在文件中。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7118I" extraData="CDISP7118I" resname="CDISP7118I" xml:space="preserve">
+            <source xml:lang="en">Suppress generation of SPL reference documents: {0}</source>
+            <target xml:lang="zh-TW">暫停產生 SPL 參照文件：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7119E" extraData="CDISP7119E" resname="CDISP7119E" xml:space="preserve">
+            <source xml:lang="en">Error reading SPL model or reference file: {0}. Contact IBM Software Support.</source>
+            <target xml:lang="zh-TW">讀取 SPL 模型或參照檔案時發生錯誤：{0}。請與「IBM 軟體支援中心」聯絡。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7120I" extraData="CDISP7120I" resname="CDISP7120I" xml:space="preserve">
+            <source xml:lang="en">Loading file: {0}</source>
+            <target xml:lang="zh-TW">正在載入檔案：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7121E" extraData="CDISP7121E" resname="CDISP7121E" xml:space="preserve">
+            <source xml:lang="en">The link &quot;{0}&quot; is not a valid SPL artifact, local file or URI link.</source>
+            <target xml:lang="zh-TW">鏈結 &quot;{0}&quot; 不是有效的 SPL 構件、本端檔案或 URI 鏈結。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7122I" extraData="CDISP7122I" resname="CDISP7122I" xml:space="preserve">
+            <source xml:lang="en">Include composite operator diagram: {0}</source>
+            <target xml:lang="zh-TW">包括複合運算子圖：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7123I" extraData="CDISP7123I" resname="CDISP7123I" xml:space="preserve">
+            <source xml:lang="en">Suppress primitive operator diagram: {0}</source>
+            <target xml:lang="zh-TW">暫停初始運算子圖：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7124E" extraData="CDISP7124E" resname="CDISP7124E" xml:space="preserve">
+            <source xml:lang="en">Internal error: {0}. Contact IBM Software Support.</source>
+            <target xml:lang="zh-TW">內部錯誤：{0}。請與「IBM 軟體支援中心」聯絡。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7125I" extraData="CDISP7125I" resname="CDISP7125I" xml:space="preserve">
+            <source xml:lang="en">Document title: {0}</source>
+            <target xml:lang="zh-TW">文件標題：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7126E" extraData="CDISP7126E" resname="CDISP7126E" xml:space="preserve">
+            <source xml:lang="en">Command exit value: {0}</source>
+            <target xml:lang="zh-TW">指令結束值：{0}</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7127E" extraData="CDISP7127E" resname="CDISP7127E" xml:space="preserve">
+            <source xml:lang="en">Malformed SPLDOC link: {0}, {1}. Link is output as plain text. Update SPLDOC to enable link.</source>
+            <target xml:lang="zh-TW">SPLDOC 鏈結的形態異常：{0}，{1}。鏈結輸出為純文字。更新 SPLDOC 以啟用鏈結。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7128E" extraData="CDISP7128E" resname="CDISP7128E" xml:space="preserve">
+            <source xml:lang="en">Unexpected path for native function model: {0} in toolkit directory {1}.</source>
+            <target xml:lang="zh-TW">在工具箱目錄 {1} 中，原生函數模型 {0} 的路徑是非預期的。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7129E" extraData="COMPOSITE_NOT_SUPPORTED_WINDOWS" resname="CDISP7129E" xml:space="preserve">
+            <source xml:lang="en">Composite operator diagram is not supported on Windows.</source>
+            <target xml:lang="zh-TW">複合運算子圖在 Windows 上不受支援。</target>
+          </trans-unit>
+          <trans-unit id="StreamsSPLDOCMessages_CDISP7130E" extraData="OPERATOR_MODEL_OBJECT_MISSING" resname="CDISP7130E" xml:space="preserve">
+            <source xml:lang="en">Operator model object is missing.</source>
+            <target xml:lang="zh-TW">遺漏運算子模型物件。</target>
+          </trans-unit>
+
+        </group>
+
+        <!-- =============================================================== -->
+        <!-- TRNOTE Do not translate the following group                     -->
+        <!-- =============================================================== -->
+<!--
+START-NON-TRANSLATABLE
+-->
+        <group id="Example" restype="table" xml:space="preserve">
+          <trans-unit id="StreamsSPLRuntimeMessages_CDISR5186E" extraData="SPL_EXAMPLE_TEST_MESSAGE" resname="CDISR5186E" xml:space="preserve">
+            <source xml:lang="en">This is a test message - String: {0} - Integer: {1,number,0} - Formatted Integer: {2,number} - Real: {3,number,integer.##########} - Formatted Real: {4,number} - Date: {5,date} - Time: {6,time} - DateTime: {7,date} {7,time}.</source>
+            <target xml:lang="zh-TW">這是測試訊息 - 字串：{0} - 整數：{1,number,0} - 格式化整數：{2,number} - 實數：{3,number,integer.##########} - 格式化實數：{4,number} - 日期：{5,date} - 時間：{6,time} - 日期時間：{7,date} {7,time}。</target>
+          </trans-unit>
+        </group>
+<!--
+END-NON-TRANSLATABLE
+-->
+      </body>
+  </file>
+</xliff>

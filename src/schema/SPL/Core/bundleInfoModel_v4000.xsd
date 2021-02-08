@@ -1,0 +1,66 @@
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/bundleInfoModel"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/bundleInfoModel"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<xs:element name="bundleInfoModel" type="bundleInfoModelType"/>
+
+<xs:complexType name="bundleInfoModelType">
+  <xs:sequence>
+    <xs:element name="toolkit" type="toolkitType" maxOccurs="unbounded"/>
+    <xs:element name="output" type="outputType" minOccurs="0"/>
+    <xs:element name="outputIncludes" type="outputIncludesType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+  <xs:attribute name="bundleVersion" type="xs:string" use="required"/>
+  <xs:attribute name="buildId" type="xs:string" use="required"/>
+  <xs:attribute name="buildDate" type="xs:string" use="required"/>
+  <xs:attribute name="applicationDirectory" type="xs:string" use="required"/>
+  <xs:attribute name="outputDirectory" type="xs:string" use="required"/>
+  <xs:attribute name="adlFile" type="xs:string" use="required"/>
+  <xs:attribute name="executionMode" type="executionModeType" use="required"/>
+</xs:complexType>
+
+  <xs:simpleType name="executionModeType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the available execution modes
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="standalone"/>
+      <xs:enumeration value="distributed"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<xs:complexType name="toolkitType">
+  <xs:sequence>
+    <xs:element name="file" type="fileType" maxOccurs="unbounded"/>
+  </xs:sequence>
+  <xs:attribute name="name" type="xs:string" use="required"/>
+  <xs:attribute name="version" type="xs:string" use="required"/>
+  <xs:attribute name="compileRoot" type="xs:string" use="required"/>
+</xs:complexType>
+
+<xs:complexType name="fileType">
+  <xs:attribute name="name" type="xs:string" use="required"/>
+</xs:complexType>
+
+<xs:complexType name="outputIncludesType">
+  <xs:sequence>
+    <xs:element name="outputInclude" type="outputIncludeType" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="outputType">
+  <xs:sequence>
+    <xs:element name="file" type="fileType" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="outputIncludeType">
+  <xs:attribute name="path" type="xs:string" use="required"/>
+</xs:complexType>
+
+</xs:schema>

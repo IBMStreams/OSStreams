@@ -1,0 +1,74 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <javaOperatorModel>
+    <context>
+      <!-- some optional elements
+      <description>Brief description of the operator</description>
+      <metrics>
+        <metric>
+          <name>metricName</name>
+          <description>Metric description</description>
+          <kind>Counter</kind>
+        </metric>
+      </metrics>
+      -->
+      <executionSettings>
+        <className>my.operator.MyClass</className>
+        <!-- some optional elements
+        <vmArgs>
+          <vmArg>-my-vm-arg</vmArg>
+        </vmArgs>
+        -->
+      </executionSettings>
+      <libraryDependencies>
+        <library>
+          <cmn:description>Java operator class library</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:libPath>.</cmn:libPath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+    </context>
+    <parameters>
+      <!-- some optional elements
+      <parameter>
+        <name>paramName</name>
+        <description>brief description of the parameter</description>
+        <optional>true</optional>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      -->
+    </parameters>
+    <inputPorts>
+      <!-- some optional elements
+      <inputPortSet>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>2</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+      -->
+      <inputPortOpenSet>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+      </inputPortOpenSet>
+    </inputPorts>
+    <outputPorts>
+      <!-- some optional elements
+      <outputPortSet>
+        <windowPunctuationOutputMode>Free</windowPunctuationOutputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+      -->
+      <outputPortOpenSet>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+      </outputPortOpenSet>
+    </outputPorts>
+  </javaOperatorModel>
+</operatorModel>

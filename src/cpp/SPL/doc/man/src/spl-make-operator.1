@@ -1,0 +1,34 @@
+.TH spl-make-operator 1  "November 28, 2010" "version 2.0" "USER COMMANDS"
+.SH NAME
+spl-make-operator \- create code generators from code generator templates
+.SH SYNOPSIS
+.B spl-make-operator [options]
+.SH DESCRIPTION
+.BR "spl-make-operator" " creates code generator modules (" "<opname>_h.pm" " and " "<opname>_cpp.pm" ") from code generator template files (" "<opname>_h.cgt" " and " "<opname>_cpp.cgt" ")." 
+.PP
+.BR "spl-make-operator" " will offer to create skeleton code generator templates (" ".cgt" " files) and a default operator model (" ".xml" " file), if they do not already exist."
+.SH OPTIONS
+.TP
+\-h, \-\-help 
+Display help and exit.
+.TP
+\-j, \-\-kind
+Generate templates for a specific operator kind. Options are:
+  generic : A generic mixed-mode C++ operator
+  c++     : A non-generic C++ operator
+  java    : A non-generic Java operator
+.TP
+\-s, \-\-silent 
+Create skeletons for missing artifacts without prompting the user.
+.TP
+\-i, \-\-directory
+Use the specified directory for locating the operator artifacts.
+.TP
+\-\-brief-opmodel
+Do not generate sample sections (commented out) in the skeleton operator model.
+.SH EXIT STATUS
+.BR "spl-make-operator" " returns a zero exist status if the generation succeeds. Non zero is returned in case of failure."
+
+.SH SEE ALSO
+.BR "spl-make-toolkit" " (1)"
+

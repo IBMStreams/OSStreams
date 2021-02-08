@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/AstNodes"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/AstNodes"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+  <!-- Root element containing the model -->
+  <xs:element name="AstNodes" type="AstNodesType"/>
+
+  <xs:complexType name="AstNodesType">
+    <xs:sequence>
+      <xs:element name="AstNode" type="AstNodeType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="AstNodeType">
+    <xs:sequence>
+      <xs:element name="Child" type="ChildType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="tokenType" type="xs:string" use="required"/>
+    <xs:attribute name="spelling" type="xs:string" use="optional"/>
+    <xs:attribute name="noAstNamespace" type="xs:boolean" use="optional"/>
+    <xs:attribute name="start" type="xs:boolean" use="optional"/>
+    <xs:attribute name="noStart" type="xs:boolean" use="optional"/>
+    <xs:attribute name="text" type="xs:boolean" use="optional"/>
+    <xs:attribute name="public" type="xs:boolean" use="optional"/>
+    <xs:attribute name="useStartToken" type="xs:boolean" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="ChildType">
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="repeat" type="xs:boolean" use="optional"/>
+    <xs:attribute name="optional" type="xs:boolean" use="optional"/>
+  </xs:complexType>
+
+</xs:schema>

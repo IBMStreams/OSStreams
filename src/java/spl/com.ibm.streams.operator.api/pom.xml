@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <name>Streams Java Operator Interface</name>
+
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <organization>
+    <name>IBM Corporation</name>
+    <url>http://www.ibm.com</url>
+  </organization>
+
+  <parent>
+    <groupId>com.ibm.streams</groupId>
+    <artifactId>streams</artifactId>
+    <version>${revision}</version>
+    <relativePath>../../../..</relativePath>
+  </parent>
+  <artifactId>streams.operator</artifactId>
+  <version>${revision}</version>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.github.wnm3</groupId>
+      <artifactId>API4JSON</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-math</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.ibm.streams</groupId>
+      <artifactId>streams.spl.messages</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <directory>${target.directory}</directory>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version>
+        <configuration>
+          <proc>none</proc>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.1.0</version>
+        <configuration>
+          <doclint>none</doclint>
+          <use/>
+          <charset>utf-8</charset>
+          <docencoding>utf-8</docencoding>
+          <encoding>utf-8</encoding>
+          <windowtitle>IBM Streams Java Operator API</windowtitle>
+          <overview>${basedir}/src/main/html/overview_api.html</overview>
+          <groups>
+            <group>
+              <title>Primitive Operator Packages</title>
+              <packages>com.ibm.streams.operator.*</packages>
+            </group>
+            <group>
+              <title>Mock Operator Framework Packages</title>
+              <packages>com.ibm.streams.flow.*</packages>
+            </group>
+            <group>
+              <title>Toolkit Packages</title>
+              <packages>com.ibm.streams.toolkit.*</packages>
+            </group>
+            <group>
+              <title>Native Function Packages</title>
+              <packages>com.ibm.streams.function.*</packages>
+            </group>
+          </groups>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.1.0</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <addClasspath>true</addClasspath>
+              <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+            </manifest>
+            <manifestEntries>
+              <Class-Path>streams.operator.internal-${project.version}.jar</Class-Path>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

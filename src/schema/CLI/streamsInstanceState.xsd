@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/api/state"
+  xmlns:streams="http://www.ibm.com/xmlns/prod/streams/api/state"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/api/state"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<!-- This schema defines the state and metric information provided
+     for a Streams instance. -->
+<xsd:include schemaLocation="streamsStateTypes.xsd"/>
+<xsd:include schemaLocation="streamsMetrics.xsd"/>
+
+<!-- Root instance element -->
+<xsd:element name="instance">
+  <xsd:complexType>
+    <xsd:annotation>
+      <xsd:documentation>
+      The root element of the document which represents a Streams instance.
+      The following information might be available for the instance. The
+      information that is provided is based on the requested objects and
+      filters.
+
+      id          - The instance ID associated with this request.
+      requestTime - The time the command request was processed.
+                    The time is represented as the number of seconds
+                    since the epoch (January 1, 1970 00:00:00 UTC).
+      state       - The state of the resources in the instance.
+      host        - The list of resources that are configured for the instance.
+      job         - The list of jobs that are running in the instance.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:choice>
+      <xsd:element name="host" type="hostType" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="job" type="jobType" minOccurs="0" maxOccurs="unbounded"/>
+    </xsd:choice>
+    <xsd:attribute name="id" type="xsd:token" use="required"/>
+    <xsd:attribute name="state" type="instanceStateType" use="optional"/>
+    <xsd:attribute name="requestTime" type="timeInSeconds" use="required"/>
+  </xsd:complexType>
+</xsd:element>
+
+<!-- hostType -->
+<xsd:complexType name="hostType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This provides the information for each resource that is configured for the instance.
+      The following information is provided for each resource:
+
+      id               - The resource identifier.
+      isMetricsStale   - A Boolean value that indicates that the metrics that are available
+                         for this resource were not retrieved on the most recent metrics
+                         collection interval. Data from a previous metrics collection interval
+                         is supplied. The frequency of metric collections is managed by the
+                         hc.metricCollectionInterval instance property.
+      state            - The state of the resource in the instance.
+      schedulableState - Indicates whether the resource is available for scheduling application jobs.
+      service          - The list of services that are running on the resource.
+      metric           - The list of metrics that are available for this resource.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:sequence>
+    <xsd:element minOccurs="0" maxOccurs="unbounded" name="metric" type="metricType"/>
+    <xsd:element minOccurs="0" maxOccurs="unbounded" name="service" type="serviceType"/>
+  </xsd:sequence>
+  <xsd:attribute name="id" type="xsd:string" use="required"/>
+  <xsd:attribute name="state" type="hostStateType" use="optional"/>
+  <xsd:attribute name="schedulableState" type="hostSchedulableStateType" use="optional"/>
+  <xsd:attribute name="isMetricsStale" type="xsd:boolean" use="optional" default="false"/>
+</xsd:complexType>
+
+<!-- serviceStateType -->
+<xsd:complexType name="serviceType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This provides the state information for an instance service. The following
+      information is provided:
+
+      name  - The name of the service.
+      state - The state of the service.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:sequence>
+    <xsd:element name="reasonCode" type="daemonReasonCodeType" minOccurs="0" maxOccurs="unbounded"/>
+  </xsd:sequence>
+  <xsd:attribute name="name" type="serviceNameType" use="required"/>
+  <xsd:attribute name="state" type="serviceStateType" use="optional"/>
+</xsd:complexType>
+
+<!-- daemonReasonCodeType, has to match with DaemonReasonCodeType of ../SRM/SRMInterfaceTypes.xsd. -->
+<xsd:simpleType name="daemonReasonCodeType">
+  <xsd:annotation>
+    <xsd:documentation>
+      The reason code provides more information about the current state of the service.
+      The following reason codes are supported:
+      none                - There is no specific reason code.
+      client_call_failure - The service received a request from a client,
+                            such as a streamtool command, but a failure occurred.
+      LDAP_failure        - The service failed to connect to the LDAP authentication service.
+      ZooKeeper_failure   - The service failed to connect to the name service in ZooKeeper.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:restriction base="xsd:string">
+    <xsd:enumeration value="none"/>
+    <xsd:enumeration value="client_call_failure"/>
+    <xsd:enumeration value="LDAP_failure"/>
+    <xsd:enumeration value="ZooKeeper_failure"/>
+  </xsd:restriction>
+</xsd:simpleType>
+
+<!-- jobType -->
+<xsd:complexType name="jobType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This provides the information for a job that is running in a Streams instance.
+      The following information is provided:
+
+      id            	- The job identifier.
+      name          	- The job name.
+      applicationName	- The application name that is associated with the job.
+      state         	- The state of the job.
+      healthSummary 	- A summary of the overall health of the job. The health
+                      	  summary is based on the health of the processing elements
+                          in the job.
+      user          	- The user that submitted the job.
+      submitTime    	- The time the job was submitted to the instance. This time is
+                          represented in the number of seconds since the epoch.
+      pe            	- The set of processing elements running in this job.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:sequence>
+    <xsd:element name="pe" type="peType" minOccurs="1" maxOccurs="unbounded"/>
+  </xsd:sequence>
+  <xsd:attribute name="id" type="xsd:unsignedLong" use="required"/>
+  <xsd:attribute name="name" type="xsd:string" use="required"/>
+  <xsd:attribute name="applicationName" type="xsd:string" use="required"/>
+  <xsd:attribute name="state" type="jobStateType" use="optional"/>
+  <xsd:attribute name="healthSummary" type="healthSummaryType" use="optional"/>
+  <xsd:attribute name="user" type="xsd:token" use="optional"/>
+  <xsd:attribute name="submitTime" type="timeInSeconds" use="optional"/>
+</xsd:complexType>
+
+<!-- peType -->
+<xsd:complexType name="peType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This provides the information for a processing element (PE) that is running in an instance.
+      The following information is provided for each PE:
+
+      id                  - The PE identifier.
+      isMetricsStale      - A Boolean value that indicates that the metrics available for this PE
+                            were not retrieved on the most recent metrics collection interval.
+                            Data from a previous metrics collection interval is provided.
+                            The frequency of metric collections is managed by the
+                            hc.metricCollectionInterval instance configuration property.
+      host                - The host that the PE is running on.
+      processId           - The process ID associated with the PE.
+      state               - The current state of the PE.
+      reasonCode          - The reason code provides more information about the current state of the PE.
+      healthSummary       - A summary of the overall health of the PE. The health
+                            summary is based on the PE's state and the state of
+                            the connections within the PE.
+      requiredConnections - Indicates the health of the required connections for the PE.
+      optionalConnections - Indicates the health of the optional connections for the PE.
+      lastMetricCollection- The last metric collection period that the PE reported
+                            metrics to the host controller service. This information
+                            is included if metrics were requested.
+      metric              - The list of metrics available for the PE. This is included
+                            if metrics were requested.
+      operator            - The set of operators that is running in this PE.
+      inputPort           - The set of input ports for the PE.
+      outputPort          - The set of output ports for the PE.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:sequence>
+    <xsd:element name="metric" type="metricType" minOccurs="0" maxOccurs="unbounded"/>
+    <xsd:element name="operator" type="operatorType" minOccurs="1" maxOccurs="unbounded"/>
+    <xsd:element name="inputPort" type="inputPortType" minOccurs="0" maxOccurs="unbounded"/>
+    <xsd:element name="outputPort" type="outputPortType" minOccurs="0" maxOccurs="unbounded"/>
+  </xsd:sequence>
+  <xsd:attribute name="id" type="xsd:unsignedLong" use="required"/>
+  <xsd:attribute name="host" type="xsd:string" use="required"/>
+  <xsd:attribute name="processId" type="xsd:nonNegativeInteger" use="required"/>
+  <xsd:attribute name="state" type="peStateType" use="optional"/>
+  <xsd:attribute name="reasonCode" type="peReasonCodeType" use="optional"/>
+  <xsd:attribute name="healthSummary" type="healthSummaryType" use="optional"/>
+  <xsd:attribute name="requiredConnections" type="connectionHealthType" use="optional"/>
+  <xsd:attribute name="optionalConnections" type="connectionHealthType" use="optional"/>
+  <xsd:attribute name="lastMetricCollection" type="timeInSeconds" use="optional"/>
+  <xsd:attribute name="isMetricsStale" type="xsd:boolean" use="optional" default="false"/>
+</xsd:complexType>
+
+<!-- operatorType -->
+<xsd:complexType name="operatorType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This provides information about an operator in a Streams instance.
+      The following information is available for an operator:
+
+      name       - The name of the operator. If the operator is parallelized, the
+                   channelIndex value is encoded in the name.
+      metric     - The set of metrics available for the operator.
+      parallelChannel - The list of channels of the parallel regions used to route
+                        tuple data for this operator.
+                        The returned channel information is ordered with the
+                        innermost region information first and the outermost last.
+                        The list is empty if the operator is not parallelized.
+      inputPort  - The set of input ports for the operator.
+      outputPort - The set of output ports for the operator.
+      logicalName  - The name of the logical operator. If the operator is not parallelized,
+                     the logicalName is the same as the name.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:sequence>
+    <xsd:element name="metric" type="metricType" minOccurs="0" maxOccurs="unbounded"/>
+    <xsd:element name="parallelChannel" type="parallelChannelType" minOccurs="0" maxOccurs="unbounded"/>
+    <xsd:element name="inputPort" type="inputPortType" minOccurs="0" maxOccurs="unbounded"/>
+    <xsd:element name="outputPort" type="outputPortType" minOccurs="0" maxOccurs="unbounded"/>
+  </xsd:sequence>
+  <xsd:attribute name="name" type="xsd:string" use="required"/>
+  <xsd:attribute name="logicalName" use="optional" type="xsd:string"/>
+</xsd:complexType>
+
+<!-- parallelChannelType -->
+<xsd:complexType name="parallelChannelType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This provides information about a channel of a parallel region
+      used to route tuple data of an operator.
+
+      index       - The channel index within the parallel region
+      logicalName - The logical name of the parallelized operator introducing the region.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:attribute name="logicalName" type="xsd:string" use="required"/>
+  <xsd:attribute name="index" type="xsd:nonNegativeInteger" use="required"/>
+</xsd:complexType>
+
+<!-- outputPortType -->
+<xsd:complexType name="outputPortType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This provides information about an output port for a PE or operator.
+      The following information is provided for an output port:
+
+      index      - The index of the output port. For operators, the ports are
+                   numbered by the order that they appear in an output specification on an operator.
+      streamName - The name of the stream that is associated with this output port.
+      name       - The name of the port alias that is specified in the SPL source file, if it
+                   exists. If it does not exist, it is the unqualified local name that is
+                   used for the port on the operator invocation.
+      metric     - The set of metrics available for this output port.
+      connection - Connections from the PE output port to other PE input ports.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:sequence>
+    <xsd:element name="metric" type="metricType" minOccurs="0" maxOccurs="unbounded"/>
+    <xsd:element name="connection" type="peConnectionType" minOccurs="0" maxOccurs="unbounded"/>
+  </xsd:sequence>
+  <xsd:attribute name="streamName" type="xsd:string" use="optional"/>
+  <xsd:attribute name="name" type="xsd:string" use="optional"/>
+  <xsd:attribute name="index" type="xsd:nonNegativeInteger" use="required"/>
+</xsd:complexType>
+
+<!-- inputPortType -->
+<xsd:complexType name="inputPortType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This provides information about an input port for a PE or operator.
+      The following information is provided for an input port:
+
+      index  - The index of the input port. For operators, the ports are
+               numbered by the order that they appear in an input
+               specification on an operator.
+      name   - The name of the port alias that is specified in the SPL source file,
+               if it exists. If it does not exist, it is the unqualified local name
+               that is used for the port on the operator invocation.
+      metric - The set of metrics available for this input port.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:sequence>
+    <xsd:element name="metric" type="metricType" minOccurs="0" maxOccurs="unbounded"/>
+  </xsd:sequence>
+  <xsd:attribute name="name" type="xsd:string" use="optional"/>
+  <xsd:attribute name="index" type="xsd:nonNegativeInteger" use="required"/>
+</xsd:complexType>
+
+<!-- peConnectionType -->
+<xsd:complexType name="peConnectionType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This provides information about a connection from a PE output
+      port to a PE input port. The following information is available for
+      the connection:
+
+      inputPeId  - The ID of the PE that is the target of this connection.
+      inputPortIndex - The port for the input PE that is the target of this
+                   connection
+      state      - The connection state.
+      required   - Whether the connection is required for IBM Streams
+                   to start processing messages. Possible values are:
+                   true for a required (static) connection, and
+                   false for an optional (dynamic) connection.
+      metric     - The set of metrics available for this connection.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:sequence>
+    <xsd:element name="metric" type="metricType" minOccurs="0" maxOccurs="unbounded"/>
+  </xsd:sequence>
+  <xsd:attribute name="inputPeId" type="xsd:unsignedLong" use="required"/>
+  <xsd:attribute name="inputPortIndex" type="xsd:nonNegativeInteger" use="required"/>
+  <xsd:attribute name="state" use="optional" type="connectionStateType"/>
+  <xsd:attribute name="required" type="xsd:boolean" use="optional" default="true"/>
+</xsd:complexType>
+
+</xsd:schema>

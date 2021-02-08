@@ -1,0 +1,525 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<reference id="spldoc_reference_operator_model">
+<title>SPL 연산자 모델</title>
+<refbody>
+<section id="overview">
+<p>
+연산자 모델은 C++ 기본 연산자 또는 Java 기본 연산자를 설명하는 데 사용할 수 있습니다. Java 연산자 모델에 포함될 수 있는 요소 세트는 JVM 관련 구성에 사용되는 특수 요소를 제외하면
+C++ 연산자 모델에 포함될 수 있는 요소의 엄격한 하위 세트입니다.
+</p>
+</section>
+<section id="context">
+<title outputclass="splhead-1">컨텍스트</title>
+<p>
+context 요소는 특정 매개변수 또는 연산자의 포트와 연관되지 않고 연산자 전체에 적용되는 특성을 설명합니다. 연산자 모델의 다른 위치에서 참조되는 공통 정의 또한 포함합니다.
+</p>
+<dl>
+  <dlentry id="context__description">
+    <dt>설명</dt>
+    <dd>선택사항인 description 요소는 연산자에 대한 개요를 제공합니다.</dd>
+  </dlentry>
+  <dlentry id="context__metrics">
+    <dt>메트릭</dt>
+    <dd>선택사항인 metrics 요소는 element 연산자에 의해 노출되는 메트릭 목록을 포함합니다.
+이는 metric 요소의 목록으로 구조화되며, 각 metric 요소는 이름, 설명 및 종류를 포함합니다.
+      <dl>
+        <dlentry id="context__metrics_kind_counter">
+          <dt>종류: Counter</dt>
+          <dd>값이 줄어들거나 늘어나지 않는 메트릭을 나타냅니다.
+          </dd>
+        </dlentry>
+        <dlentry id="context__metrics_kind_gauge">
+          <dt>종류: Gauge</dt>
+          <dd>값을 자유롭게 변경할 수 있는(늘어나거나 줄어들 수 있음) 메트릭을 나타냅니다.
+          </dd>
+        </dlentry>
+        <dlentry id="context__metrics_kind_time">
+          <dt>종류: Time</dt>
+          <dd>특정 시점을 표시하는 메트릭을 나타냅니다.
+          </dd>
+        </dlentry>
+      </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="context__customliterals">
+    <dt>사용자 정의 리터럴</dt>
+    <dd>선택사항인 customLiterals 요소는 연산자의 매개변수 구성에 표시될 수 있는 ID를 캡처합니다. 이는 enumeration 요소의 목록으로 구조화됩니다. 예를 들면, Source 연산자가 다양한 소스 형식을 지원할 수 있으며, 이 경우 다음 값을 포함하는 FileFormat이라는 열거가 있을 수 있습니다: <tt>{csv, xml, bin}</tt>.
+    </dd>
+  </dlentry>
+  <dlentry id="context__customoutputfunctions">
+    <dt>사용자 정의 출력 함수(C++ 전용)</dt>
+    <dd>선택사항인 customOutputFunctions 요소는 연산자가 출력 속성 지정에서 사용하는 출력 함수 프로토타입을 캡처합니다. 이는 customOutputFunction 요소의 목록으로 구조화되며,
+각 열거는 이름과 출력 함수 프로토타입의 목록을 포함합니다. 예를 들면, Aggregate 연산자가 관계형 집계를 지원할 수 있으며, 이 경우 다음 출력 함수를 포함하는
+RelationalAggs라는 열거가 있을 수 있습니다:
+<tt>{Min, Max, Avg, Sum 등}</tt>.
+    </dd>
+  </dlentry>
+  <dlentry id="context__dependencies">
+    <dt>종속성(선택사항)</dt>
+    <dd>각각 라이브러리 종속성을 나타내는, 하나 이상의 라이브러리 요소의 시퀀스입니다.
+라이브러리 요소 형식은 연산자 모델에 대해 사용되는 형식과 정확히 같습니다.
+     <dl>
+        <dlentry id="context__dependencies__description">
+          <dt>설명(선택사항)</dt>
+          <dd>라이브러리에 대한 설명입니다.
+          </dd>
+        </dlentry>
+        <dlentry id="context__dependencies__managedlibrary">
+          <dt>관리 라이브러리</dt>
+          <dd>개별 라이브러리 아티팩트의 세부사항을 지정합니다. 경로는 @ 부호로 묶인 환경 변수를 포함할 수 있으며(예: <tt>@FOO_FFT_HOME@/lib</tt>), 이는 컴파일 시간에 SPL 컴파일러에 의해 완전히 분석됩니다.
+            <dl>
+              <dlentry id="context__dependencies__managedlibrary__lib">
+                <dt>lib(선택사항)</dt>
+                <dd>C++ 컴파일러의 <tt>-l</tt> 인수에 전달할 이름을
+지정합니다(예: <tt>fft</tt>는 링커에 전달될 때 <tt>-lfft</tt>로 변환됨).
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__libpath">
+                <dt>libPath(선택사항)</dt>
+                <dd>C++ 컴파일러의 <tt>-L</tt> 인수에 전달될 경로를 지정합니다.
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__includepath">
+                <dt>includePath(선택사항)</dt>
+                <dd>C++ 컴파일러의 <tt>-I</tt> 인수에 전달될 경로를 지정합니다.
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__command">
+                <dt>command(선택사항)</dt>
+                <dd>프로그램에 대한 경로로, 이 프로그램은 <tt>includePath, libPath</tt> 및 <tt>lib</tt>
+정보를 검색하기 위해 실행됩니다. 프로그램에 대한 경로가 상대적인 경우에는 연산자 모델의 디렉토리를 루트로
+간주합니다. 프로그램은 세 번 실행되며 매번 다른 인수, 즉 <tt>lib, libPath</tt> 및 <tt>includePath</tt>를
+사용하여 실행됩니다. 이러한 실행의 표준 출력이 읽히며 각 행(공백으로 앞뒤가 구분되어 있음)이 실행의 유형에 따라
+<tt>lib, libPath</tt> 및 <tt>includePath</tt> 요소 중 하나에 추가됩니다. #으로 시작되는 행은 무시됩니다. 상대적 경로의 경우에는 연산자 모델 XML 문서가 있는 디렉토리가 루트로 간주됩니다.
+                </dd>
+              </dlentry>
+            </dl>
+          </dd>
+        </dlentry>
+    </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="context__providessinglethreadedexecutioncontext">
+    <dt>단일 스레드 실행 컨텍스트 제공(C++ 전용)</dt>
+    <dd><p><tt>providesSingleThreadedContext</tt> 요소는 실행의 플로우와 관련된 연산자의
+스레딩 시맨틱에 대해 설명합니다. 연산자는 다음 조건 하에서만 단일 스레드 실행 컨텍스트를 제공합니다.
+      <ul>
+        <li>처리 메소드가 동시에 호출되지 않는 한 동시 제출 호출을 수행하지 않습니다.</li>
+        <li>제출을 트리거한 처리 호출이 완료되기 전에 제출 호출이 완료됩니다.</li>
+      </ul>
+    </p>
+    <p>소스 및 비소스 연산자에는 모두 처리 메소드가 있으며, 위 정의는 전역에 적용됩니다. 이 정의에 따라,
+연산자에 처리 호출에 의해 트리거되지 않는 제출 호출이 있는 경우(예: 시간 기반 이벤트에 의해 호출되는 제출 호출)
+해당 연산자는 단일 스레드 실행 컨텍스트를 제공하지 않습니다. 이 정의는 제출을 트리거한 처리 호출을 실행하는 스레드와
+동일한 스레드에서 제출 호출이 실행되도록 요구하지 않는다는 점을 참고하십시오(일반적으로는 동일한 스레드에서 실행됨).
+    </p>
+    <p>이 특성에는 다음과 같은 몇 가지 유효한 값이 있습니다.
+<ul>
+  <li><tt>Never:</tt> 이 연산자의 인스턴스는 단일 스레드 실행 컨텍스트를 제공하지 않습니다.</li>
+  <li><tt>Always:</tt> 이 연산자의 인스턴스가 항상 단일 스레드 실행 컨텍스트를 제공합니다.</li>
+  <li><tt>WindowBound:</tt> 이 연산자의 인스턴스 중 시간 기반 창 제거 정책 또는 시간 기반 창 트리거 정책을 지정하지 않는 인스턴스는 단일 스레드 실행 컨텍스트를 제공합니다.</li>
+  <li><tt>WindowEvictionBound:</tt> 이 연산자의 인스턴스 중 시간 기반 창 제거 정책을 지정하지 않는 인스턴스는 단일 스레드 실행 컨텍스트를 제공합니다.</li>
+  <li><tt>WindowTriggerBound:</tt> 이 연산자의 인스턴스 중 시간 기반 창 트리거 정책을 지정하지 않는 인스턴스는 단일 스레드 실행 컨텍스트를 제공합니다.</li>
+  <li><tt>WindowPartitionEvictionBound:</tt> 이 연산자의 인스턴스는 파티션 제거를 구현하기 위해 스레드를 사용합니다. 튜플이 onWindowPartitionEvictionSelection 이벤트에서 제출되는 경우에는 이 설정을 사용하십시오.</li>
+</ul>
+    </p>
+<p>
+예를 들어 <tt>Filter</tt> 연산자를 고려해 보십시오. 해당 처리 메소드가 동시에 호출되지 않는 한 <tt>Filter</tt> 연산자는
+동시 제출 호출을 수행하지 않습니다. 해당 제출 호출은 수신 튜플에 의해 트리거됩니다. 처리 호출을 통해 튜플을 수신하면,
+이 연산자는 수신된 튜플이 필터 조건을 전달하며 제출 호출이 이를 트리거한 처리 호출이 완료되기 전에 완료되는 경우
+제출 호출을 수행합니다. 결과적으로
+<tt>Filter</tt> 연산자의 모든 인스턴스는 단일 스레드 컨텍스트를 제공하며
+<tt>Always</tt> 설정이 적합합니다.
+</p>
+<p>
+구현 참고: <tt>providesSingleThreadedContext</tt> 요소는 SPL 런타임이 불필요한 스레드 동기화를 수행하지 않을 수 있게 해 줍니다. 이를 값 Never로 설정하면 모든 연산자에서 문제가 발생하지 않지만, 이렇게 하면 연산자가 단일 스레드 컨텍스트를 제공하는 경우
+동기화 오버헤드를 줄여주는 최적화를 수행할 수 없게 됩니다. 연산자에서 구현하는 스레딩 시맨틱과 불일치하는 Never 외의 값을 지정하면
+정의되지 않은 동작이 발생합니다.
+</p>
+    </dd>
+  </dlentry>
+  <dlentry id="context__incrementalcompilationstrategy">
+    <dt>증분 컴파일 전략(C++ 전용)</dt>
+    <dd><p>컴파일러가 연산자의 증분 컴파일을 어떻게 관리해야 하는지 지정합니다. 선택사항은 다음과 같습니다.
+       <ul>
+         <li><tt>SourceDependent</tt>: 이 모드에서 컴파일러는 연산자 소스가 최신 상태가 아닌 경우에만 해당 연산자의 SPL 소스 또는 코드 생성 프로그램을 사용하여 연산자 소스를 다시 생성합니다. 이는 기본 모드입니다.</li>
+         <li><tt>ResultDependent:</tt> 이 모드에서 컴파일러는 항상 연산자 소스를 생성하지만, 소스 파일이 컴파일 이전에 존재하던 소스 파일과 다른 경우에만 소스 파일을 갱신합니다. 연산자 코드 생성 프로그램이
+         SPL 소스에 지정된 매개변수화에 의해 캡처되지 않는 외부 구성에 의존하는 경우에는 이 모드를 사용하십시오.
+         </li>
+       </ul>
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__allowCustomLogic">
+    <dt>사용자 정의 로직 허용(C++ 전용)</dt>
+    <dd><p>이 선택적 요소는 연산자 사용에서 두 상태 중 하나( <tt>onTuple</tt> 또는 <tt>onPunct</tt> 처리)를 지정하는 logic 절을 둘 수 있는지 설정합니다. false로 설정되면 지정된 연산자에 대해 logic 절을 지정할 수 없습니다. 기본값(이 요소가 지정되지 않은 경우 포함)은 true입니다.
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__codetemplate">
+    <dt>코드 템플리트</dt>
+    <dd><p>이 선택적 요소는 연산자의 코드 템플리트를 하나 이상 지정합니다.
+이러한 템플리트는 IDE의 컨텍스트별 컨텐츠 보조 메뉴 및 SPLDOC 문서에 표시됩니다.
+각 코드 템플리트에는 이름을 지정하는 name 속성, 이를 설명하는 description 요소, 그리고 해당 템플리트의 표준 유형 코드를 포함하는 문자열인 value 요소가 있습니다.
+템플리트가 IDE에서 사용되는 경우에는 표준 유형 코드가 소스 코드에 임베드됩니다.
+${name} 양식의 코드 부분이 사용자가 사용자 정의해야 하는 부분을 표시하기 위해
+사용됩니다. IDE는 ${}에 지정된 ID를 사용하여 사용자 정의 가능한 부분을 표시합니다. Barrier 연산자의 한 가지 예는 다음과 같습니다.
+</p>
+<p>
+<!-- START NON-TRANSLATABLE -->
+<codeblock>
+&lt;codeTemplates>
+  &lt;codeTemplate name="Barrier">
+    &lt;description>Basic Barrier template&lt;/description>
+    &lt;template>
+      &lt;![CDATA[
+        stream&lt;${schema}> ${outputStream} = Barrier(${inputStream1};${inputStream2})
+        {
+          param
+            ${parameter}: ${parameterExpression};
+          output
+            ${outputStream}: ${outputExpression};
+          ${cursor}
+        }
+      ]]&gt;
+    &lt;template>
+  &lt;/codeTemplate>
+&lt;/codeTemplates>
+</codeblock>
+<!-- END NON-TRANSLATABLE -->
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__splexpressiontree">
+    <dt>SPL 표현식 트리(C++ 전용)</dt>
+    <dd><p>일반 C++
+    기본 연산자에서 사용할 SPL 표현식 트리의 생성을 제어하는 선택적 요소입니다.</p>
+      <ul>
+      <li><tt>param</tt> - <tt>true</tt>로 설정되면 매개변수에 대해 SPL 표현식 트리가 생성됩니다.</li>
+      <li><tt>output</tt> - <tt>true</tt>로 설정되면 출력에 대해 SPL 표현식 트리가 생성됩니다.</li>
+      <li><tt>cppCode</tt> - <tt>true</tt>로 설정되면 생성된 연산자 인스턴스 XML의 각 노드가 템플리트를 사용하여 C++ 코드로 확장됩니다.
+이 C++ 코드는 SPL 표현식의 C++ 코드를 생성하는 데 사용될 수 있습니다. 예를 들면, 다음 SPL 코드의 경우:
+<p>
+<codeblock>
+param predicates : {a = "a" == In.letter, b = "b" == In.letter};
+</codeblock>
+</p>
+<p>
+생성되는 SPL 표현식 트리는 다음과 같은 컨텐츠를 포함합니다.
+</p>
+<p>
+<!-- START NON-TRANSLATABLE -->
+<codeblock>
+&lt;expressionTree cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})">
+  &lt;literal cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})" type="1">
+    &lt;tuple count="2" cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})" type="1">
+      &lt;attr id="a">
+        &lt;value cppCode="({Lhs} == {Rhs})" type="2">
+          &lt;expn cppCode="({Lhs} == {Rhs})">
+            &lt;binary cppCode="({Lhs} == {Rhs})" op="==" type="2">
+              &lt;lhs cppCode="SPL::rstring("a")">
+                &lt;literal cppCode="SPL::rstring("a")" type="0">"a"&lt;/literal>
+              &lt;/lhs>
+              &lt;rhs cppCode="iport$0.get_letter()">
+                &lt;attribute attribute="letter" cppCode="iport$0.get_letter()" type="0">
+                  &lt;lhs cppCode="iport$0">
+                    &lt;stream cppCode="iport$0" name="In" port="0" type="3"/>
+                  &lt;/lhs>
+                &lt;/attribute>
+              &lt;/rhs>
+            &lt;/binary>
+          &lt;/expn>
+        &lt;/value>
+      &lt;/attr>
+</codeblock>
+<!-- END NON-TRANSLATABLE -->
+</p>
+<p>
+템플리트(예: <tt>{Lhs}, {attr:0}</tt>)는 코드 대체를 올바르게 정의하기 위해 사용됩니다.
+</p>
+<p>
+이러한 표현식은 SPL 표현식을 나타내지만, 쉽게 실행할 수 있는 양식으로 사용 가능합니다.
+Perl 오브젝트는 <tt>SPL::Operator::Instance::ExpressionTree</tt>로부터 파생되며 종류, 유형
+그리고 표현식 필드에 대한 액세스 방법을 갖습니다. <tt>ExpressionTreeVisitor</tt>는 표현식 트리의
+실행을 쉽게 하기 위해 제공되는 방문자 패턴입니다. 자세한 정보는
+<i>IBM Streams Processing Language 코드 생성 API 문서</i>를 참조하십시오.
+</p>
+      </li>
+      </ul>
+    </dd>
+   </dlentry>
+   <dlentry id="context__capability">
+    <dt>운영 체제 기능(C++ 전용)</dt>
+    <dd><p>이 선택적 요소 목록은 연산자의 특수 권한을 지정합니다. IBM Streams는 capability 요소를 통해 Linux 기능을 지원합니다. 사용자는 원하는 만큼의 요소를 포함시켜 연산자에서 정확히 필요로 하는 권한을 지정할 수 있습니다. 예를 들면,
+<tt>&lt;capability&gt;CAP_NET_RAW+eip&lt;/capability&gt;</tt>는 연산자가 원시 소켓에 대한 액세스 권한을 필요로 함을 표시합니다. PE 프로세스가 특수 운영 체제 기능을 사용하여 실행되는 것을 허용하도록 IBM Streams 인스턴스를 구성해야 한다는 점을 참고하십시오.
+    </p></dd>
+   </dlentry>
+</dl>
+</section>
+
+<section id="input_port_set">
+<title outputclass="splhead-1">입력 포트 세트</title>
+<p>
+입력 포트는 포트 세트로 정의됩니다. 포트 세트는 동일한 구성을 공유하는 고정된 수의 포트입니다.
+이를 통해 여러 포트에 대해 동일한 구성이 반복되지 않습니다. 포트 세트는 개방 상태가 될 수도 있으며,
+이 경우에는 동일한 구성의 포트를 영(0)개 이상 포함할 수 있습니다. inputPorts 요소는 영(0)개 이상의
+inputPortSet 요소를 포함하며, 그 뒤에는 선택적 inputPortOpenSet 요소가 포함됩니다.
+</p>
+<dl>
+  <dlentry id="input_port_set__cardinality">
+    <dt>카디널리티</dt>
+    <dd>포트 세트가 나타내는 포트의 수를 정의합니다. 이 특성은 비개방 포트 세트에 적용됩니다.
+    </dd>
+  </dlentry>
+  <dlentry  id="input_port_set__optional">
+    <dt>선택사항</dt>
+    <dd>입력 포트 세트가 선택사항인지 지정하는 부울 값입니다.
+    </dd>
+  </dlentry>
+    <dlentry  id="input_port_set__controlport">
+    <dt>제어 포트</dt>
+    <dd>선택적 controlPort 요소는 컴파일러에게 이 포트에서 수신하는 튜플이 연산자를 제어하기 위해서만 사용되며,
+튜플이 이 포트에서 처리될 때 추가 튜플이 제출되지 않을 것임을 알립니다.
+지정되지 않는 경우에는 값이 false입니다. 연산자 그래프의 루프는 교착 상태 또는 무한 재귀를 발생시킬 수 있으므로 SPL 컴파일러는 이러한 루프가 발견되면
+경고를 생성합니다. controlPort를 true로 설정하면 이 포트에서 추가 튜플을 제출하지 않으며, 이는 예상된(그리고 무해한)
+피드백 루프임을 컴파일러에게 알리게 되므로 이 포트에 대해 경고가 생성되지 않습니다.
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowingmode">
+    <dt>Windowing 모드</dt>
+    <dd>windowingMode 요소는 포트에 대한 유효한 Windowing 구성을 지정합니다. 옵션에는 NonWindowed, Windowed 및 OptionallyWindowed가 있습니다.
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowpunctuationinputmode">
+    <dt>창 구두점 입력 모드</dt>
+    <dd>
+windowPunctuationInputMode 요소는 입력 포트의 구두점 시맨틱을 지정합니다. 유효한 옵션은 다음과 같습니다.
+<ul>
+<li><tt>Expecting</tt> - 이 포트는 연산자가 올바르게 작동하도록 하기 위해 창 구두점을 기대하고 있으며 따라서 구두점이 있는 스트림이 제공되어야 합니다.</li>
+<li><tt>Oblivious</tt> - 이 포트는 연산자가 올바르게 작동하도록 하는 데 구두점을 필요로 하지 않으며 따라서 여기에 연결될 수 있는 연결에 대한 제한사항은 없습니다.</li>
+<li><tt>WindowBound</tt> - 이 포트는 구두점 기반 창의 경우 Expecting 포트이며, 그 외의 경우에는 Oblivious 포트입니다.</li>
+</ul>
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowexpressionmode">
+    <dt>창 표현식 모드</dt>
+    <dd>이 요소는 컴파일러에게 유효한 Windowing 표현식의 유형을 알립니다. 지정되지 않은 경우 기본값은 <tt>Constant</tt>입니다.
+    <ul>
+      <li><tt>Constant</tt> - <tt>count</tt>, <tt>time</tt> 및 <tt>delta</tt>의 표현식은 컴파일 시
+    평가할 수 있는 상수이거나 입력 튜플 속성이 유효한지 참조하지 않는
+    런타임 표현식이어야 합니다.</li>
+      <li><tt>AttributeFree</tt> - 표현식은 입력 튜플 속성을 참조할 수 없습니다. time<tt>((int32) getSubmissionTimeValue("timeParam"))</tt>와 같은
+표현식을 사용할 수 있습니다. delta의 경우에는 두 번째 인수만 런타임 속성이 없는 표현식이 될 수 있습니다. 첫 번째 인수는 여전히 입력 스트림의 속성입니다.</li>
+    </ul>
+   </dd><!-- windowexpressionmode -->
+  </dlentry>
+  <dlentry id="input_port_set_rewriteallowedforwindowexpression">
+    <dt>창 표현식에 대한 다시 쓰기 허용됨(C++ 전용)</dt>
+    <dd>true로 설정되는 경우 이 부울 요소는 컴파일러에게 <tt>rewriteAllowed</tt> 요소가 매개변수 값에 표시되는 표현식을 다시 쓰는 것과 같은 방식으로 창 표현식을 다시 쓸 수 있음을 알립니다. rewriteAllowed 요소에
+대한 자세한 정보는 <tt>Parameters</tt>를 참조하십시오. 만약 <tt>rewriteAllowedForWindowExpression</tt> 요소가 지정되지 않은 경우에는 값이 기본적으로 false로 설정됩니다. <tt>rewriteAllowedForWindowExpression</tt>은 C++ 기본 연산자에서
+값을 리터럴로 검사하는 경우 false(또는 생략)여야 합니다.
+    </dd>
+  </dlentry>
+  <dlentry id="input_port_set_tuplemutationallowed">
+    <dt>튜플 변경 허용됨</dt>
+    <dd>tupleMutationAllowed 요소는 입력 포트에 연결된 처리 로직(이는 연산자의 처리 함수와 연관된 로직, 그리고 SPL 코드에 지정된 onTuple 절의 일부로서 수행된 처리를 모두 포함함)이
+수신 튜플을 변경할 수 있는지 정의합니다. 수신되는 튜플을 수정하고자 하는 연산자의 경우에는 이를 true로 설정할 수 있습니다.
+   </dd>
+  </dlentry>
+</dl>
+
+</section>
+<section  id="output_port_set">
+  <title outputclass="splhead-1">출력 포트 세트</title>
+  <p>
+출력 포트는 입력 포트와 마찬가지로 포트 세트로 정의됩니다. 포트 세트는 동일한 구성을 공유하는 고정된 수의 포트입니다. 이를 통해 여러 포트에 대해 동일한 구성이 반복되지 않습니다. 포트 세트는 개방 상태가 될 수도 있으며,
+이 경우에는 동일한 구성의 포트를 영(0)개 이상 포함할 수 있습니다. outputPorts 요소는 영(0)개 이상의
+outputPortSet 요소를 포함하며, 그 뒤에는 선택적 outputPortOpenSet 요소가 포함됩니다.
+  </p>
+  <dl>
+  <dlentry  id="output_port_set__cardinality">
+    <dt>카디널리티</dt>
+    <dd>포트 세트가 나타내는 포트의 수를 정의합니다. 이 특성은 비개방 포트 세트에 적용됩니다.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__optional">
+    <dt>선택사항</dt>
+    <dd>출력 포트 세트가 선택사항인지 지정하는 부울 값입니다.
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set_expressionmode">
+    <dt>표현식 모드(C++ 전용)</dt>
+    <dd>
+expressionMode 요소는 이 포트에 대해 수행되는 속성 지정의 유효한 구문을 설명합니다.
+CustomLiteral의 expressionMode 값은 출력 포트에 대해 유효하지 않으며
+컴파일 오류를 발생시킨다는 점을 참고하십시오. 표현식 모드에 대해 유효한 값은 다음과 같습니다.
+<ul>
+<li><tt>Attribute:</tt> 이는 이 포트의 출력 속성에 대해 수행되는 지정이 스트림 속성이어야 함을 의미합니다. 예: output <tt>Out : x = In.y;</tt>. 잘못된 예는 <tt>x = In.y.z</tt>입니다.</li>
+<li><tt>AttributeFree:</tt> 이는 이 포트의 출력 속성에 대해 수행되는 지정이 입력 스트림 속성을 참조할 수 없음을 의미합니다. 예: output <tt>Out : x = 3 + random(3);</tt>. 잘못된 예는 <tt>x = In.x + 3</tt>입니다.</li>
+<li><tt>Constant:</tt> 이는 이 포트의 출력 속성에 대해 수행되는 지정이 컴파일 시간에 상수로 평가되는 값이어야 함을 의미합니다. 예: output <tt>Out : x = 3 + pow(2, 3);</tt>. 잘못된 예는 <tt>x = random(3)</tt>입니다.</li>
+<li><tt>Expression:</tt> 이는 가장 유연한 표현식 모드로, 올바른 유형의 모든 SPL 표현식은 이 포트의 출력 속성에 대한 지정으로 표시될 수 있습니다. 예: output<tt> Out : x = A.y + B.z;</tt>.</li>
+<li><tt>Nonexistent:</tt> 이는 이 포트에 대해 SPL 소스에 출력 속성 지정을 지정할 수 없음을 의미합니다.</li>
+</ul>
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set__autoassignment">
+    <dt>자동 지정</dt>
+    <dd>
+<tt>autoAssignment</tt> 요소는 지정되지 않은 속성을 입력 포트의 속성에서 자동으로 지정할 수 있는지 정의합니다.
+true로 설정되면 SPL 컴파일러는 지정되지 않은 출력 속성이 출력 섹션에 명시적 지정이 있는 것처럼 연산자 호출을 다시 씁니다(컴파일 시간에). 지정이 누락된 각 출력 속성의 경우 이름 및 유형이 동일하거나
+이름이 동일하고 유형이 <tt>T</tt>인
+입력 속성이 여기에 지정됩니다. 여기서 출력 속성 유형은
+<tt>optional&lt;T&gt;</tt>입니다.
+이러한 입력 속성이 없거나 둘 이상 있는 경우에는
+컴파일 시간에 오류가 보고됩니다. expressionMode 값 Constant는 autoAssignment 값 true와 호환되지 않는다는 점을 참고하십시오.
+이 조합을 지정하면 컴파일 오류가 발생합니다.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__completeassignment">
+    <dt>완전 지정</dt>
+    <dd>
+<tt>completeAssignment</tt> 요소는 연산자의 유효한 호출을 위해서 모든 출력 포트 속성을 지정해야 하는지 정의합니다. 이는 컴파일 시간에 확인됩니다. 연산자의 연산자 모델에 이 요소가 true로 설정되어 있고 이 연산자의 지정된 인스턴스에 대해
+자동 지정 단계(요청된 경우) 후 지정이 없는 출력 속성이 있는 경우에는 오류가 보고됩니다.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__rewriteallowed">
+    <dt>다시 쓰기 허용됨(C++ 전용)</dt>
+    <dd>
+<tt>rewriteAllowed</tt> 요소는 컴파일러가 이 포트의 출력 속성 지정에 표시된 표현식을 다시 쓸 수 있는지 지정합니다.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__outputfunctions">
+    <dt>출력 함수</dt>
+    <dd>
+outputFunctions 요소는 출력 속성 지정에 표시될 수 있는 유효한 사용자 정의 출력 함수를 정의합니다.
+이 요소는 선택사항입니다. 이 요소는 있는 경우 두 하위 요소(사용자 정의 출력 함수 유형의 이름을 정의하는 type 요소(예: RelationalAggs), 출력 속성의
+자동 지정을 수행할 때 사용되는 기본 출력 함수를 정의하는 default 요소)를 포함합니다. 이 값은 사용되는 사용자 정의 출력 함수 유형에 대해
+유효한 함수 이름이어야 합니다(예: RelationalAggs의 경우 Last). 사용자 코드가 출력 함수를 기대하는 포트에 대해 출력 함수 없이 출력 속성 지정을
+지정하는 경우에는 기본 출력 함수가 자동으로 삽입됩니다.
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set__finalpunctuationoutputscope">
+    <dt>최종 구두점 포트 범위</dt>
+    <dd>
+선택적 요소인 <tt>finalPunctuationPortScope</tt> 요소는 최종 구두점 전달을 위해 SPL 언어 런타임에서 사용하는 입력 포트 세트를
+지정합니다. 기본적으로 입력 및 출력 포트가 모두 있는 연산자는 자동으로 최종 구두점을 입력 포트에서 출력 포트로 전달합니다. 이는 최종 구두점이 모든 입력 포트에서 수신되면 출력 포트에서 최종 구두점을 생성함으로써 이뤄집니다. finalPunctuationPortScope는
+최종 구두점을 전달하는 데 사용되는 입력 포트 세트를 제한하는 데 사용할 수 있습니다. 이 요소는 전달에 사용되는 입력 포트 세트를
+비어 있는 세트로 설정함으로써 최종 구두점의 자동 전달을 끄는 데 사용할 수도 있습니다. 이 경우에는 연산자 개발자가 출력 포트에
+최종 구두점이 전달되도록 해야 합니다.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__windowpunctuationoutputmode">
+    <dt>창 구두점 출력 모드</dt>
+    <dd>
+windowPunctuationOutputMode는 출력 포트의 창 구두점 시맨틱을 지정합니다. 선택사항은 다음과 같습니다.
+<ul>
+<li><tt>Generating</tt> - 이 포트가 창 구두점을 생성합니다.</li>
+<li><tt>Free</tt> - 이 포트에는 창 구두점이 없습니다.</li>
+<li><tt>Preserving</tt> - 이 포트는 수신한 창 구두점을 유지합니다. 연산자에 둘 이상의 입력 포트가 있는 경우에는
+어느 입력 포트의 구두점이 유지되는지 식별하기 위해 windowPunctuationInputPort 요소를 반드시 지정해야 합니다.</li>
+</ul>
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__tuplemutationallowed">
+    <dt>튜플 변경 허용됨</dt>
+    <dd>
+<tt>tupleMutationAllowed</tt> 요소는 제출 호출을 통해 이 포트에 제출된 출력 튜플을 다운스트림 연산자가 변경할 수 있도록 이 연산자가 허용하는지 정의합니다. true로 설정되면 연산자의 처리 로직은 이 포트에 제출하는 튜플이 제출 호출의 결과로서 수정될 것으로 예상해야 합니다.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__windowpunctuationinputport">
+    <dt>창 구두점 입력 포트</dt>
+    <dd>
+위에서 언급한 바와 같이, <tt>windowPunctuationInputPort</tt> 요소는 입력 포트를 구두점 유지 출력 포트와 연관시킵니다. 이 요소는 출력 포트의 창 구두점 모드가 Preserving인 경우에만 지정할 수 있습니다.
+windowPunctuationInputPort는 -1로 설정될 수 있으며, 이 경우 시맨틱은 windowPunctuationInputPort 요소가 누락된 것과 동일합니다.
+창 구두점에 대한 구두점 전달은 SPL 언어 런타임에 의해 자동으로 수행되지
+않으며(최종 구두점과 달리) 연산자에 의해 구현되는 동작에 대해 SPL 컴파일러에 알리기 위해 연산자 모델이 사용된다는 점은 반드시 알아야 합니다. 자세한 정보는
+<i>IBM Streams Processing Language 툴킷 개발 참조서</i>를 참조하십시오.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__outputassignmentportscope">
+    <dt>출력 지정 포트 범위</dt>
+    <dd>
+<tt>outputAssignmentPortScope</tt> 요소는 이 포트의 출력 지정에 표시될 수 있는 입력 포트 속성을 선택적으로 제한합니다.
+ 범위가 지정된 경우에는
+이 범위에 의해 지정된 포트의 속성만 해당 포트의 출력 지정에 표시될 수 있습니다.
+    </dd>
+  </dlentry>
+</dl>
+</section>
+
+<section id="parameters">
+<title outputclass="splhead-1">매개변수</title>
+<p>
+parameters 요소는 연산자를 구성하는 데 사용할 수 있는 유효한 매개변수를 설명합니다.
+이러한 매개변수 구성에 대해 유효한 구문도 설명합니다.
+</p>
+<dl>
+  <dlentry id="parameters__allowany">
+    <dt>모두 허용</dt>
+    <dd>이 요소는 연산자가 제한사항 없이 임의의 매개변수를 가질 수 있는지 결정하는 부울 플래그입니다.
+연산자는 임의의 매개변수를 가질 수 있지만, 여전히 추가 매개변수 및 연관된 제한사항을 지정합니다.
+    </dd><!-- Allow Any -->
+  </dlentry>
+  <dlentry id="parameters__parameter">
+    <dt>매개변수</dt>
+    <dd><p>각 parameter 요소에는 여러 하위 요소가 포함됩니다.
+    </p>
+      <dl>
+       <dlentry id="parameters__parameter__name">
+         <dt>이름</dt>
+         <dd><tt>name</tt> 요소는 SPL 소스 코드에 표시될 매개변수의 이름입니다.
+예를 들면, <tt>Functor</tt> 연산자는 <tt>filter</tt> 매개변수를 가질 수 있습니다.</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__description">
+         <dt>설명</dt>
+         <dd>이 매개변수에 대한 선택적 설명입니다.</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__optional">
+         <dt>선택사항</dt>
+         <dd>이 매개변수가 선택사항인지 지정하는 부울 값입니다. false 값은 이 매개변수를 SPL 소스 코드에 지정해야 함을 내포합니다. </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__rewriteallowed">
+         <dt>다시 쓰기 허용됨(C++ 전용)</dt>
+         <dd>이 부울 매개변수는 컴파일러가 리터럴(컴파일 시간 평가 단계의 결과 포함)을 값이 런타임 시 로드되는 변수로 대체하여 이 매개변수의 값에 표시되는 표현식을 다시 쓸 수 있도록 허용합니다. 이는 컴파일러가 연산자에 대해 매개변수 구성이 미세하게 다른, 더 짧은 코드를 생성할 수 있게 해 줍니다. 특정한 경우, 연산자 코드 생성 프로그램에서는 발견되는 특정 값에 따라 다른 코드를 생성하거나
+컴파일 시간 유효성 검증을 수행하기 위해 매개변수 값을 파악하려 할 수 있습니다.
+예를 들면, <tt>format: csv</tt>는 Source 연산자에 대해 특화된 코드를 생성할 수 있습니다. 이러한 경우에는
+표현식 다시 쓰기를 꺼야 합니다.</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__expressionmode">
+         <dt>표현식 모드</dt>
+         <dd>
+           <ul>
+             <li><tt>Attribute</tt> - 매개변수 값을 스트림 속성으로 제한합니다.</li>
+             <li><tt>AttributeFree</tt> - 매개변수 값이 스트림 속성에 대한 참조를 포함하지 않는 표현식입니다.</li>
+             <li><tt>Constant(C++ 전용)</tt> - 매개변수 값이 컴파일 시간에 상수로 평가되는 값이어야 합니다.</li>
+             <li><tt>CustomLiteral</tt> - 매개변수 값을 모델의 컨텍스트 섹션에 정의된 사용자 정의 리터럴 열거 중 하나에서 유효한 값으로 제한합니다.</li>
+             <li><tt>Expression(C++ 전용)</tt> - 가장 유연한 표현식 모드로, 올바른 유형의 모든 SPL 표현식은 매개변수 값으로 표시될 수 있습니다. </li>
+           </ul>
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__type">
+         <dt>유형</dt>
+         <dd>매개변수의 <tt>type</tt>은 해당 값의 SPL 유형(예: <tt>list&lt;ustring></tt>)
+또는 사용자 정의 리터럴 이름(예: <tt>SourceFormat</tt>)입니다. 유형은 생략될 수도 있으며, 이 경우 모든 SPL 유형이 일치합니다. 매개변수의 type 하위 요소는 비어 있는 값을 가질 수 있으며, 이 경우 시맨틱은 type 요소가 누락된 것과 동일합니다.
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__cardinality">
+         <dt>카디널리티</dt>
+         <dd>매개변수가 허용하는 최대 값 수입니다. 생략되거나 값 -1의 경우에는 값의 수가 무한한 것으로 간주됩니다. 매개변수 값의 수는 카디널리티와 일치해야 합니다. cardinality 하위 요소는 -1 값을 가질 수 있으며, 이 경우 시맨틱은
+cardinality 요소가 누락된 것과 동일합니다.
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__portScope">
+         <dt>포트 범위(C++ 전용)</dt>
+         <dd>이 요소는 매개변수 값에 표시되는 스트림 속성을 특정 입력 포트 또는 입력 포트 목록으로 제한하는 데 사용됩니다. 포트 인덱스는 0부터 시작합니다. 생략되는 경우에는 스트림 속성에 제한사항이 없습니다.
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__customOutputFunction">
+         <dt>사용자 정의 출력 함수(C++ 전용)</dt>
+         <dd>이 매개변수의 선택적 요소는 context 요소에 정의된 사용자 정의 함수 세트의 이름을 지정하며, 해당 세트에 정의된 함수가 매개변수의 컴파일 중에 표시되도록 합니다. output 절에서 사용할 때와 마찬가지로, 매개변수가 있는 사용자 정의 출력 함수를 포함하는 올바른 C++ 코드를 생성하는 것은 연산자의 몫입니다.
+         </dd>
+       </dlentry>
+      </dl>
+    </dd><!-- Parameter -->
+  </dlentry>
+</dl> <!-- Parameters -->
+</section>
+</refbody>
+</reference>

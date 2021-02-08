@@ -1,0 +1,149 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use KeyedJoinCommon;
+    KeyedJoinCommon::verify($model);
+    my $replacementKey1 = $model->getParameterByName("ReplacementKey1");
+    my $rkey1Initializer = SPL::CodeGen::getParameterCppInitializer($replacementKey1);
+    my $replacementKey2 = $model->getParameterByName("ReplacementKey2");
+    my $rkey2Initializer = SPL::CodeGen::getParameterCppInitializer($replacementKey2);
+    my $eqCond1 = $model->getParameterByName("EqualityCondition1");
+    my $eqCond1Initializer = SPL::CodeGen::getParameterCppInitializer($eqCond1);
+    my $eqCond2 = $model->getParameterByName("EqualityCondition2");
+    my $eqCond2Initializer = SPL::CodeGen::getParameterCppInitializer($eqCond2);
+
+    my $lhsInputPort = $model->getInputPortAt(0);
+    my $rhsInputPort = $model->getInputPortAt(1);
+    my $outputPort = $model->getOutputPortAt(0);
+    my $lhsInTupleName = $lhsInputPort->getCppTupleName();
+    my $rhsInTupleName = $rhsInputPort->getCppTupleName();
+    my $outTupleType = $outputPort->getCppTupleType();
+
+%>
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+MY_OPERATOR::MY_OPERATOR()
+: MY_BASE_OPERATOR()
+{
+}
+
+MY_OPERATOR::~MY_OPERATOR()
+{
+    for (Replacement1Table::iterator it = _replacement1Table.begin(); it != _replacement1Table.end(); it++)
+        delete it->second;
+    for (Replacement2Table::iterator it = _replacement2Table.begin(); it != _replacement2Table.end(); it++)
+        delete it->second;
+    for (Match1Index::iterator it = _match1Index.begin(); it != _match1Index.end(); it++)
+        delete it->second;
+    for (Match2Index::iterator it = _match2Index.begin(); it != _match2Index.end(); it++)
+        delete it->second;
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+    if (port == 0) {
+        IPort0Type const & <%=$lhsInTupleName%> = static_cast<IPort0Type const&>(tuple);
+
+        Replacement1KeyType rkey (<%=$rkey1Initializer%>);
+
+        AutoMutex am (_mutex);
+
+        Replacement1Table::iterator rit = _replacement1Table.find(rkey);
+        if (rit==_replacement1Table.end()) {
+          _replacement1Table.insert(std::make_pair(rkey, new IPort0Type(<%=$lhsInTupleName%>)));
+        } else {
+            const IPort0Type& <%=$lhsInTupleName%> = *rit->second;
+            MatchKeyType omkey (<%=$eqCond1Initializer%>);
+            Match1Index::iterator mit = _match1Index.find(omkey);
+            mit->second->erase(rkey);
+            if (mit->second->empty()) {
+                delete mit->second;
+                _match1Index.erase (mit);
+            }
+            *rit->second = <%=$lhsInTupleName%>;
+        }
+
+        MatchKeyType mkey (<%=$eqCond1Initializer%>);
+        Match1Index::iterator mit = _match1Index.find(mkey);
+        if (mit == _match1Index.end()) {
+            std::tr1::unordered_set<Replacement1KeyType>* mset = new std::tr1::unordered_set<Replacement1KeyType>();
+            _match1Index.insert (std::make_pair(mkey, mset));
+            mset->insert (rkey);
+        } else
+            mit->second->insert (rkey);
+
+        // Now the matching
+        Match2Index::iterator mit2 = _match2Index.find(mkey);
+        if (mit2 == _match2Index.end())
+            return;
+
+        // okay, it matched, send the right output
+        std::tr1::unordered_set<Replacement2KeyType>::iterator sit;
+        for (sit = mit2->second->begin(); sit != mit2->second->end(); sit++) {
+            Replacement2Table::iterator rit2 = _replacement2Table.find(*sit);
+            IPort1Type const & <%=$rhsInTupleName%> = static_cast<IPort1Type const&>(*rit2->second);
+            <%SPL::CodeGen::emitSubmitOutputTuple($outputPort, $lhsInputPort);%>
+        }
+    } else {
+        // port 1
+        IPort1Type const & <%=$rhsInTupleName%> = static_cast<IPort1Type const&>(tuple);
+
+        Replacement2KeyType rkey (<%=$rkey2Initializer%>);
+
+        AutoMutex am(_mutex);
+
+        Replacement2Table::iterator rit = _replacement2Table.find(rkey);
+        if (rit==_replacement2Table.end()) {
+          _replacement2Table.insert(std::make_pair(rkey, new IPort1Type(<%=$rhsInTupleName%>)));
+        } else {
+            const IPort1Type& <%=$rhsInTupleName%> = *rit->second;
+            MatchKeyType omkey (<%=$eqCond2Initializer%>);
+            Match2Index::iterator mit = _match2Index.find(omkey);
+            mit->second->erase(rkey);
+            if (mit->second->empty()) {
+                delete mit->second;
+                _match2Index.erase (mit);
+            }
+            *rit->second = <%=$rhsInTupleName%>;
+        }
+
+        MatchKeyType mkey (<%=$eqCond2Initializer%>);
+        Match2Index::iterator mit = _match2Index.find(mkey);
+        if (mit == _match2Index.end()) {
+            std::tr1::unordered_set<Replacement2KeyType>* mset = new std::tr1::unordered_set<Replacement2KeyType>();
+            _match2Index.insert (std::make_pair(mkey, mset));
+            mset->insert (rkey);
+        } else
+            mit->second->insert (rkey);
+
+        // Now the matching
+        Match1Index::iterator mit2 = _match1Index.find(mkey);
+        if (mit2 == _match1Index.end())
+            return;
+
+        // okay, it matched, send the right output
+        std::tr1::unordered_set<Replacement1KeyType>::iterator sit;
+        for (sit = mit2->second->begin(); sit != mit2->second->end(); sit++) {
+            Replacement1Table::iterator rit2 = _replacement1Table.find(*sit);
+            IPort0Type const & <%=$lhsInTupleName%> = static_cast<IPort0Type const&>(*rit2->second);
+            <%SPL::CodeGen::emitSubmitOutputTuple($outputPort, $rhsInputPort);%>
+        }
+    }
+
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

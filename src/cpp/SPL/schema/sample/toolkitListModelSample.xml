@@ -1,0 +1,10 @@
+<toolkitList
+    xmlns="http://www.ibm.com/xmlns/prod/streams/spl/toolkitList"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/toolkitList toolkitListModel.xsd">
+    <toolkit directory="path/to/toolkitDir" />
+    <toolkit listFile="another/path/to/toolkitList.xml" />
+    <toolkit directory="another/path/to/toolkitDir" />
+    <toolkit directory="/foo" listFile="another/path/to/toolkitList.xml" />
+    <toolkit />
+</toolkitList>

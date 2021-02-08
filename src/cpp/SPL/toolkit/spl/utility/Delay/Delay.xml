@@ -1,0 +1,128 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Delay.html">
+The `Delay` operator is used to delay a stream by an amount while it keeps the inter-arrival times of tuples and punctuation intact.
+
+# Checkpointed data
+
+When the `Delay` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Delay` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+When drain processing, the `Delay` operator waits until all delayed tuples are submitted.
+When reset processing, the operator discards all delayed tuples.
+Logic state variables (if present) are also automatically checkpointed and restored.
+
+**Note**:
+* It is recommended for the `Delay` operator to have a small **bufferSize**
+as to not delay the completion of a drain for a significant time.
+* It is recommended for the `Delay` operator to be run by the same thread
+(that is to say, fused and without threaded ports) as the start operator of the region
+to reduce the number of pending input tuples to be processed during a drain and reset.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Delay` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Delay` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `Delay` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring name, uint32 age&gt; Beat = Beacon() {}
+        // with delay only
+        stream&lt;rstring name, uint32 age&gt; Delayed1 = Delay(Beat)
+        {
+          param delay : 2.5;
+        }
+        // with delay and buffer size
+        stream&lt;rstring name, uint32 age&gt; Delayed2 = Delay(Beat)
+        {
+          param delay      : 2.5;
+                bufferSize : 250u;
+        }
+    }
+
+</description>
+      <iconUri size="16">delay_16.gif</iconUri>
+      <iconUri size="32">delay_32.gif</iconUri>
+      <providesSingleThreadedContext>Never</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Delay">
+          <description>Basic Delay template</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = Delay(${inputStream})  {
+            param
+                delay: ${delayInSeconds};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>delay</name>
+        <description>Specifies the delay to be introduced in seconds.</description>
+        <optional>false</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>bufferSize</name>
+        <description>
+Specifies the maximum number of tuples and punctuation that might be buffered by the operator.
+Its default value is `1000`.
+When the buffer is full, the incoming tuples and punctuation are blocked until there is space in the buffer.
+The final punctuation marker is not forwarded until the buffer is drained.
+        </description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Delay` operator is configurable with a single input port, which ingests tuples to be delayed.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Delay` operator is configurable with a single output port, which produces delayed tuples.
+This output port schema must match the input port schema.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

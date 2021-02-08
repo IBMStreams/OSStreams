@@ -1,0 +1,229 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    my $delay = $model->getParameterByName("delay");
+    my $bufferSize = $model->getParameterByName("bufferSize");
+    $delay = $delay->getValueAt(0)->getCppExpression();
+
+    if (defined $bufferSize) {
+        $bufferSize = $bufferSize->getValueAt(0)->getCppExpression();
+    } else {
+        $bufferSize = "1000";
+    }
+
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+MY_OPERATOR::MY_OPERATOR()
+: MY_BASE_OPERATOR(), _delay (<%=$delay%>),
+  _maxSize(<%=$bufferSize%>), _currentSize(0), _shuttingDown(false)
+{
+    if (_maxSize == 0)
+        _maxSize = 1;
+    <%if ($isInConsistentRegion) {%>
+        _crContext = static_cast<ConsistentRegionContext *>
+            (getContext().getOptionalContext(CONSISTENT_REGION));
+    <%}%>
+    <%if (SPL::CodeGen::hasEventTimeContext($model)) {%>eventTimeContext_.setMode(EventTimeContext::outputEventTime);<%}%>
+}
+
+MY_OPERATOR::~MY_OPERATOR()
+{
+    clearQueue();
+}
+
+void MY_OPERATOR::clearQueue() {
+    for (std::list<DelayType>::iterator it=_queue.begin(); it!=_queue.end(); ++it) {
+        DataType& item = it->first;
+        if (item.isTuple()) {
+            delete item.tuple;
+        }
+    }
+    _queue.clear();
+}
+
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads (1);
+}
+
+void MY_OPERATOR::process(uint32_t)
+{
+    SPLAPPTRC(L_DEBUG, "Delay startup...", SPL_OPER_DBG);
+    while (!_shuttingDown) {
+        DataType* item;
+
+        double targetTime;
+        {
+            AutoMutex am(_mutex);
+            while (_currentSize==0) {
+                _consCV.wait(_mutex);
+                if (_shuttingDown)
+                    goto Done;
+            }
+
+        }
+        {
+            <%if ($isInConsistentRegion) {%>
+                ConsistentRegionPermit crp(_crContext);
+            <%}%>
+            {
+                AutoMutex am(_mutex);
+                if (_currentSize == 0) {
+                    continue;
+                }
+                item = &(_queue.begin()->first);
+                targetTime = _queue.begin()->second;
+            }
+
+            // Delay for the final marker was taken in-line
+            // in process(Punctuation)
+            if (item->isPunct() && item->punct == Punctuation::FinalMarker)
+                goto Done;
+
+            // okay, we have something, delay if we need to
+            double currentTime = SPL::Functions::Time::getTimestampInSecs();
+            if (targetTime > currentTime)
+                getPE().blockUntilShutdownRequest(targetTime-currentTime);
+
+            // Now send it
+            if (item->isTuple()) {
+                submit(*(item->tuple), 0);
+                delete item->tuple;
+                item->tuple = NULL;
+            } else if (item->isPunct()) {
+                submit(item->punct, 0);
+            }
+            else {
+                // Not tuple or punct.  We can just throw this away.
+            }
+
+            {
+                // Adjust the queue after the submit to
+                // avoid drainers running ahead of this submit.
+                AutoMutex am(_mutex);
+                _queue.pop_front();
+                if (--_currentSize == _maxSize-1)
+                    _prodCV.signal();
+
+                // Anyone waiting to drain?
+                if (_currentSize == 0)
+                    _flushCV.signal();
+            }
+        }
+
+    }
+  Done:
+    {
+        // Ensure we clean up nicely
+        AutoMutex am(_mutex);
+        _currentSize = 0;
+        _prodCV.signal();
+        _flushCV.signal();
+    }
+    SPLAPPTRC(L_DEBUG, "Delay shutdown...", SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::process(DataType& item)
+{
+    AutoMutex am(_mutex);
+    DelayType d(item, SPL::Functions::Time::getTimestampInSecs() + _delay);
+    while (_currentSize == _maxSize) {
+        // need to wait for an empty slot
+        _prodCV.wait(_mutex);
+        if (_shuttingDown)
+            return;
+    }
+    ++_currentSize;
+    _queue.push_back (d);
+    if (_currentSize == 1)
+        _consCV.signal();
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+    DataType item(tuple.clone());
+    process (item);
+}
+
+void MY_OPERATOR::processWatermark(Punctuation const & wm, uint32_t port)
+{
+     DataType item(wm);
+     process (item);
+}
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    AutoMutex am(_mutex);
+    _shuttingDown = true;
+    _prodCV.broadcast();
+    _consCV.broadcast();
+    <%if ($isInConsistentRegion or $ckptKind ne "none") {%>
+        _flushCV.broadcast();
+    <%}%>
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+    if (punct == Punctuation::FinalMarker) {
+        // Wait for others to drain before the final marker is
+        // automatically forwarded by the infrastructure
+        getPE().blockUntilShutdownRequest(_delay);
+        {
+            AutoMutex am(_mutex);
+            while (_currentSize && !_shuttingDown) {
+                // need to wait until all empty
+                _flushCV.wait(_mutex);
+            }
+            if(_shuttingDown) return;
+        }
+    }
+
+    DataType item(punct);
+    process (item);
+}
+
+<% if ($isInConsistentRegion) { %>
+void MY_OPERATOR::drain()
+{
+    AutoMutex am(_mutex);
+    while (_currentSize != 0) {
+        _flushCV.wait(_mutex);
+    }
+}
+
+<% }
+   if ($isInConsistentRegion or $ckptKind ne "none") { %>
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    resetToInitialState();
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    AutoMutex am(_mutex);
+
+    clearQueue();
+
+    _currentSize = 0;
+}
+<% } %>
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

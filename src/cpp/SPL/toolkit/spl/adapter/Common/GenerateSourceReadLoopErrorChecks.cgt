@@ -1,0 +1,103 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// defines for error checking conditions
+#define CHECK_FAIL      \
+    if (failedRead)                                   \
+        _numInvalidTuples.incrementValueNoLock()
+<% if ($parsing eq "fast") {%>
+    #define DO_ERROR(msg) \
+        do { \
+        <%if ($model->getContext()->getKind() eq 'spl.utility::Parse') {%> \
+          if (fs.eof() && (_draining||_reset)) doSubmit = false;   \
+          else \
+        <%}%> \
+            failedRead = true; \
+        } while (0)
+    #define DO_ERROR_FILESOURCE(msg) DO_ERROR(msg)
+    #define CHECK_ERROR(msg) \
+        <%if ($model->getContext()->getKind() eq 'spl.utility::Parse') {%> \
+          if (fs.eof() && (_draining||_reset)) doSubmit = false;   \
+        <%}%>
+<% } elsif ($parsing eq "strict") {%>
+    #define DO_ERROR(msg)                             \
+        do { \
+        <%if ($model->getContext()->getKind() eq 'spl.utility::Parse') {%> \
+	if (!fs.good() && (_draining||_reset)) { \
+           doSubmit = false;   \
+        } else {                    \
+        <%}%> \
+          _numInvalidTuples.incrementValueNoLock();   \
+          SPLTRACEMSGANDTHROW(SPLRuntimeFileSourceOperator, L_ERROR, msg, SPL_OPER_DBG);  \
+        <%if ($model->getContext()->getKind() eq 'spl.utility::Parse') {%> \
+        } \
+	<%}%> \
+        } while (0)
+    #define DO_ERROR_FILESOURCE(msg) DO_ERROR(msg)
+    #define CHECK_ERROR(msg)                          \
+        if (fs.fail() && !getPE().getShutdownRequested()) \
+            DO_ERROR(msg)
+<% } elsif ($parsing eq "permissive") {%>
+    #define DO_ERROR(msg) {                        \
+        <%if ($model->getContext()->getKind() eq 'spl.utility::Parse') {%> \
+	if (!fs.good() && (_draining||_reset)) { \
+           doSubmit = false;   \
+        }                      \
+        else \
+        <%}%> \
+        { \
+        failedRead = true;     \
+        <%if ($model->getContext()->getKind() eq 'spl.adapter::FileSource') {%> \
+            const FormattableMessage& $origMsg = msg; \
+            SPLTRACEMSG(L_ERROR,  SPL_APPLICATION_RUNTIME_FILE_SOURCE_SINK_FILENAME (pathName, $origMsg.key() + ": " + $origMsg), SPL_OPER_DBG);     \
+        <%} else {%>                                  \
+            SPLTRACEMSG(L_ERROR, msg, SPL_OPER_DBG);  \
+        <%}%>                                         \
+        _numInvalidTuples.incrementValueNoLock();     \
+        <%if ($format ne 'bin') {%>                   \
+            std::string errorString;                  \
+            fs.clear();                               \
+            std::getline (fs, errorString);           \
+            continue;                                 \
+        <%} else {%>                                  \
+            doSubmit = false;                         \
+            <%if ($model->getContext()->getKind() ne 'spl.adapter::UDPSource') {%> \
+                break;                                \
+            <%}%>                                     \
+        <%}%>                                         \
+        } \
+        }
+    #define DO_ERROR_FILESOURCE(msg) {                \
+        failedRead = true;                            \
+        SPLTRACEMSG(L_ERROR, msg, SPL_OPER_DBG);      \
+        <%if ($format ne 'bin') {%>                   \
+            fs.clear();                               \
+            std::string errorString;                  \
+            fs.clear();                               \
+            std::getline (fs, errorString);           \
+            continue;                                 \
+        <%} else {%>                                  \
+            _numInvalidTuples.incrementValueNoLock(); \
+            doSubmit = false;                         \
+            <%if ($model->getContext()->getKind() ne 'spl.adapter::UDPSource') {%>\
+                break;                                \
+            <%}%>                                     \
+        <%}%>                                         \
+    }
+    #define CHECK_ERROR(msg)                          \
+        if (fs.fail())                                \
+            DO_ERROR(msg)
+<%}%>

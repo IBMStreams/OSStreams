@@ -1,0 +1,568 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- WARNING...This is a generated file.  Changes made to this file will be lost -->
+
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/sourceCode"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:common="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/sourceCode"
+  elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+  <xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/common" schemaLocation="commonModel.xsd"/>
+
+  <!-- Root element containing the model -->
+  <xs:element name="sourceModel" type="sourceModelType"/>
+
+  <xs:complexType name="sourceModelType">
+    <xs:sequence>
+      <xs:element name="sourceFile" type="sourceFileType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="sourceFileType">
+    <xs:sequence>
+      <xs:element name="compilationUnit" type="compilationUnitType"/>
+    </xs:sequence>
+    <xs:attribute name="uri" use="required" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="sourceLocationType">
+    <xs:attribute name="line" use="required" type="xs:integer"/>
+    <xs:attribute name="column" use="required" type="xs:integer"/>
+  </xs:complexType>
+
+  <xs:complexType name="extendedSourceLocationType">
+    <xs:attribute name="startLine" use="required" type="xs:integer"/>
+    <xs:attribute name="startColumn" use="required" type="xs:integer"/>
+    <xs:attribute name="endLine" use="required" type="xs:integer"/>
+    <xs:attribute name="endColumn" use="required" type="xs:integer"/>
+  </xs:complexType>
+
+  <xs:complexType name="splDocDescriptionType">
+    <xs:sequence>
+      <xs:element name="description" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="splDocAnnotationType">
+    <xs:complexContent>
+      <xs:extension base="splDocDescriptionType">
+        <xs:attribute name="name" type="xs:string"/>
+        <xs:attribute name="target" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="splDocType">
+    <xs:sequence>
+      <xs:element name="description" type="splDocDescriptionType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="annotation" type="splDocAnnotationType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+
+  <xs:complexType name="compilationUnitType">
+    <xs:sequence>
+      <xs:element name="splDoc" type="splDocType" minOccurs="0"/>
+      <xs:element name="splNamespace" type="splNamespaceType" minOccurs="0"/>
+      <xs:element name="useDirectives" type="useDirectivesType" minOccurs="0"/>
+      <xs:element name="definitions" type="definitionsType" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="definitionsType">
+    <xs:sequence>
+      <xs:element name="typeDefinition" type="typeDefinitionType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="functionDefinition" type="functionDefinitionType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="compositeDefinition" type="compositeDefinitionType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="splNamespaceType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="splDoc" type="splDocType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="name" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="useDirectivesType">
+    <xs:sequence>
+      <xs:element name="useDirective" type="useDirectiveType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="useDirectiveType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:attribute name="namespaceName" use="required" type="xs:string"/>
+        <xs:attribute name="tail" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="compositeDefinitionType">
+    <xs:complexContent>
+      <xs:extension base="extendedSourceLocationType">
+        <xs:sequence>
+          <xs:element name="compositeHead" type="compositeHeadType"/>
+          <xs:element name="compositeBody" type="compositeBodyType"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="compositeHeadType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="splDoc" type="splDocType" minOccurs="0"/>
+          <xs:element name="modifiers" type="compositeModifiersType" minOccurs="0"/>
+          <xs:element name="inputs" type="compositeInputsType" minOccurs="0"/>
+          <xs:element name="outputs" type="compositeOutputsType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="name" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="compositeModifiersType">
+    <xs:sequence>
+      <xs:element name="modifier" type="compositeModifierType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="compositeModifierType">
+    <xs:attribute name="name" use="required" type="compositeModifierEnumType"/>
+  </xs:complexType>
+
+  <xs:simpleType name="compositeModifierEnumType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="public"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="compositeOutputsType">
+    <xs:sequence>
+      <xs:element name="oport" type="compositePortType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="compositeInputsType">
+    <xs:sequence>
+      <xs:element name="iport" type="compositePortType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="compositePortType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:attribute name="name" use="required" type="xs:string"/>
+        <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="type" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="compositeBodyType">
+    <xs:sequence>
+      <xs:element name="types" type="compositeTypesType" minOccurs="0"/>
+      <xs:element name="parameters" type="compositeParametersType" minOccurs="0"/>
+      <xs:element name="graph" type="compositeGraphType" minOccurs="0"/>
+      <xs:element name="configs" type="configsType" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="compositeParametersType">
+    <xs:sequence>
+      <xs:element name="parameter" type="compositeParameterType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="compositeParameterType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="expressionMode" type="compositeParameterExpressionModeType"/>
+        </xs:sequence>
+        <xs:attribute name="name" use="required" type="xs:string"/>
+        <xs:attribute name="defaultValue" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationParametersType">
+    <xs:sequence>
+      <xs:element name="parameter" type="operatorInvocationParameterType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="compositeGraphType">
+    <xs:sequence>
+      <xs:element name="operatorInvocation" type="operatorInvocationType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationBodyType">
+    <xs:sequence>
+      <xs:element name="logic" type="operatorInvocationLogicType" minOccurs="0"/>
+      <xs:element name="windows" type="operatorInvocationWindowsType" minOccurs="0"/>
+      <xs:element name="parameters" type="operatorInvocationParametersType" minOccurs="0"/>
+      <xs:element name="outputAssignments" type="operatorInvocationOutputAssignmentsType" minOccurs="0"/>
+      <xs:element name="configs" type="configsType" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="compositeTypesType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="type" type="typeDefinitionType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationWindowsType">
+    <xs:sequence>
+      <xs:element name="window" type="operatorInvocationWindowType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="configsType">
+    <xs:sequence>
+      <xs:element name="config" type="configType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationWindowType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="evictionPolicy" type="windowPolicyType"/>
+          <xs:element name="triggerPolicy" type="windowPolicyType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="windowType" use="required" type="windowTypeEnumType"/>
+        <xs:attribute name="partitioned" use="required" type="xs:boolean"/>
+        <xs:attribute name="portName" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="windowPolicyType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:attribute name="kind" use="required" type="windowPolicyKindEnumType"/>
+        <xs:attribute name="size" type="xs:string"/>
+        <xs:attribute name="attribute" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:simpleType name="windowPolicyKindEnumType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="count"/>
+      <xs:enumeration value="time"/>
+      <xs:enumeration value="delta"/>
+      <xs:enumeration value="punct"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="windowTypeEnumType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="tumbling"/>
+      <xs:enumeration value="sliding"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="configType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="option" type="configOptionType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="name" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="configOptionType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="parameter" type="configValueParameterType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="value" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="configValueParameterType">
+    <xs:attribute name="value" use="required" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationType">
+    <xs:sequence>
+      <xs:element name="operatorInvocationHead" type="operatorInvocationHeadType"/>
+      <xs:element name="operatorInvocationBody" type="operatorInvocationBodyType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationHeadType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="splDoc" type="splDocType" minOccurs="0"/>
+          <xs:element name="outputs" type="operatorInvocationOutputsType" minOccurs="0"/>
+          <xs:element name="inputs" type="operatorInvocationInputsType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="operatorName" use="required" type="xs:string"/>
+        <xs:attribute name="invocationAlias" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationOutputsType">
+    <xs:sequence>
+      <xs:element name="output" type="operatorInvocationOutputType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationInputsType">
+    <xs:sequence>
+      <xs:element name="input" type="operatorInvocationInputType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationParameterType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="value" type="expressionType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="name" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="expressionType">
+    <xs:attribute name="expr" use="required" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationOutputAssignmentsType">
+    <xs:sequence>
+      <xs:element name="outputAssignment" type="operatorInvocationOutputAssignmentType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationOutputAssignmentType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="attributeAssignment" type="operatorInvocationAttributeAssignmentType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="portName" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationLogicType">
+    <xs:sequence>
+      <xs:element name="onProcess" type="onProcessType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="onTuple" type="onTupleType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="onPunct" type="onPunctType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="hasState" use="required" type="xs:boolean"/>
+  </xs:complexType>
+
+  <xs:complexType name="functionModifiersType">
+    <xs:sequence>
+      <xs:element name="modifier" type="functionModifierType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="functionModifierType">
+    <xs:attribute name="name" use="required" type="functionModifierEnumType"/>
+  </xs:complexType>
+
+  <xs:simpleType name="functionModifierEnumType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="public"/>
+      <xs:enumeration value="stateful"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="functionParametersType">
+    <xs:sequence>
+      <xs:element name="parameter" type="functionParameterType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="functionHeadType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="splDoc" type="splDocType" minOccurs="0"/>
+          <xs:element name="modifiers" type="functionModifiersType" minOccurs="0"/>
+          <xs:element name="parameters" type="functionParametersType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="name" use="required" type="xs:string"/>
+        <xs:attribute name="returnType" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationOutputType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:attribute name="streamName" use="required" type="xs:string"/>
+        <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="type" use="required" type="xs:string"/>
+        <xs:attribute name="alias" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationInputType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="istream" type="operatorInvocationInputStreamType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="alias" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="onProcessType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType"/>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationInputStreamType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:attribute name="name" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="onTupleType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:attribute name="portName" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="onPunctType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:attribute name="portName" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="operatorInvocationAttributeAssignmentType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="value" type="expressionType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="name" use="required" type="xs:string"/>
+        <xs:attribute name="outputFunction" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="functionDefinitionType">
+    <xs:complexContent>
+      <xs:extension base="extendedSourceLocationType">
+        <xs:sequence>
+          <xs:element name="functionHead" type="functionHeadType"/>
+          <xs:element name="functionBody" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="functionParameterType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="modifiers" type="functionParameterModifiersType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="type" use="required" type="xs:string"/>
+        <xs:attribute name="name" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="functionParameterModifiersType">
+    <xs:sequence>
+      <xs:element name="modifier" type="functionParameterModifierType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="functionParameterModifierType">
+    <xs:attribute name="name" use="required" type="functionParameterModifierEnumType"/>
+  </xs:complexType>
+
+  <xs:simpleType name="functionParameterModifierEnumType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="mutable"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="typeDefinitionType">
+    <xs:complexContent>
+      <xs:extension base="extendedSourceLocationType">
+        <xs:sequence>
+          <xs:element name="splDoc" type="splDocType" minOccurs="0"/>
+          <xs:element name="modifiers" type="typeModifiersType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="name" use="required" type="xs:string"/>
+        <xs:attribute name="value" use="required" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="typeModifiersType">
+    <xs:sequence>
+      <xs:element name="modifier" type="typeModifierType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="typeModifierType">
+    <xs:attribute name="name" use="required" type="typeModifierEnumType"/>
+  </xs:complexType>
+
+  <xs:simpleType name="typeModifierEnumType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="public"/>
+      <xs:enumeration value="static"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="compositeParameterExpressionModeType">
+    <xs:attribute name="mode" use="required" type="compositeParameterExpressionModeEnumType"/>
+    <xs:attribute name="type" type="xs:string"/>
+  </xs:complexType>
+
+   <xs:simpleType name="compositeParameterExpressionModeEnumType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="operator"/>
+      <xs:enumeration value="function"/>
+      <xs:enumeration value="attribute"/>
+      <xs:enumeration value="expression"/>
+      <xs:enumeration value="type"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+</xs:schema>

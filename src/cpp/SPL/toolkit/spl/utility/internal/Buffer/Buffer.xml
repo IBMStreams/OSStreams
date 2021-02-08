@@ -1,0 +1,59 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+  	<context>
+      <description>Buffer to support consistent regions.
+Buffer can be used in a consistent region.  For each sequence in the consistent
+region, it creates an ordered list of tuples.  As each tuple is received on its
+input port, it copies the tuple to the list for the current sequence, then
+forwards the tuple.  On reset, it replays the stored tuples from the
+sequence to which it was reset.  When a checkpoint is retired, it discards
+the list of tuples from the identified sequence, as well as any earlier
+sequences it may still have.
+
+Limitations
+If this is used as an operator-driven start operator, it never initiates a drain.
+If this is used in an autonomous region, its store of tuples will grow
+continually until it fails.
+When replaying tuples, the original order is preserved, but the time between
+tuples is not.
+Recommendations
+This operator might be useful as a much lighter bridge from an autonomous
+region to a consistent region.  It offers a lower assurance against data loss.
+If a reset is needed because of a failure of any other operator in the
+consistent region, the Buffer operator will be able to replay the tuples
+from the failed sequence.  However, if the Buffer operator itself fails,
+data will be lost.
+</description>
+      <providesSingleThreadedContext>Never</providesSingleThreadedContext>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>OptionallyWindowed</windowingMode>
+        <windowPunctuationInputMode>WindowBound</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

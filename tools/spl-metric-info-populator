@@ -1,0 +1,78 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use warnings;
+use XML::Simple;
+use Getopt::Std;
+
+sub badUsage($)
+{
+   my ($rc) = @_;
+   print "Usage: spl-metric-info-populator.pl [-h] -i infile.xml -o outfile.h\n";
+   print "    -h             Print this help information\n";
+   print "    -i <filename>  .xml file containing the metric inforamtion\n";
+   print "    -o <filename>  .h file used for metric population\n";
+   exit($rc);
+}
+
+my %opts;
+getopts('hi:o:', \%opts);
+
+badUsage(0) if ($opts{'h'});
+
+my $inFile = $opts{'i'};
+my $outFile = $opts{'o'};
+badUsage(1) unless ($inFile);
+badUsage(1) unless ($outFile);
+
+my $xml = new XML::Simple;
+my $data = $xml->XMLin($inFile, KeepRoot => 1, ForceArray => 1, KeyAttr => []);
+open (OUTFILE, ">${outFile}") or die "Cannot open ${outFile} for writing: $!\n";
+
+my $sm = $data->{'srm:systemMetricsMetadata'}->[0];
+my $peMetrics = $sm->{'srm:peMetricsMetadata'}->[0];
+generateCode($peMetrics, "PE");
+my $peIportMetrics = $sm->{'srm:peInputPortMetricsMetadata'}->[0];
+generateCode($peIportMetrics, "PEInputPort");
+my $peOportMetrics = $sm->{'srm:peOutputPortMetricsMetadata'}->[0];
+generateCode($peOportMetrics, "PEOutputPort");
+my $operMetrics = $sm->{'srm:operatorMetricsMetadata'}->[0];
+generateCode($operMetrics, "Operator");
+my $operIportMetrics = $sm->{'srm:operatorInputPortMetricsMetadata'}->[0];
+generateCode($operIportMetrics, "OperatorInputPort");
+my $operOportMetrics = $sm->{'srm:operatorOutputPortMetricsMetadata'}->[0];
+generateCode($operOportMetrics, "OperatorOutputPort");
+
+sub generateCode
+{
+    my ($xml, $type) = @_;
+    my $metric = $xml->{'srm:metric'};
+    return if !$metric;
+    print OUTFILE "\n";
+    my $count = scalar(@{$metric});
+    for (my $i = 0; $i < $count; $i++) {
+        my $m = @{$metric}[$i];
+        my $name = $m->{name};
+        my $kind = $m->{kind};
+        my $description = $m->{'srm:description'}->[0];
+        $description =~ s/\"/\\\"/g;
+        print OUTFILE "    info_[${type}][\"${name}\"] =\n";
+        print OUTFILE "        SystemMetricInfo(\"${name}\", ${i}, \"${description}\", Metric::${kind});\n";
+    }
+}

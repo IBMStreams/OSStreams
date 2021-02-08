@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--Arbortext, Inc., 1988-2005, v.4002-->
+<!DOCTYPE reference PUBLIC "-//IBM//DTD DITA IBM Reference//EN"
+ "ibm-reference.dtd">
+<!--BEGIN_REPEAT_MSG-->
+<reference id="LCMSGID" xml:lang="LANGCODE">
+<title><msgnum>UCMSGID</msgnum></title>
+<refbody>
+<section>
+<msgph>MSGTEXT</msgph>
+</section>
+</refbody>
+</reference>
+<!--END_REPEAT_MSG-->
+

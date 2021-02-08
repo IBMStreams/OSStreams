@@ -1,0 +1,150 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Switch.html">
+The `Switch` operator is used to temporarily stop tuples from flowing.
+The switch is either open (tuples are blocked) or closed (tuples are flowing).
+
+The `Switch` operator can be used to hold tuples until a downstream operator is ready to process them.
+
+# Checkpointed data
+
+When the `Switch` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Switch` operator is not supported in a consistent region.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Switch` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Switch` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `Switch` operator.
+
+    composite Main {
+      graph
+
+        // SPL Operator used to read initialization data
+        stream&lt;MappingData&gt; M = FileSource() {param file : "initData";}
+
+        // Source of tuples to be processed
+        stream&lt;Data&gt; = .....
+
+        // Switch to hold up Data tuples until downstream operator is initialized
+        // initialStatus defaults to false (Switch is open/blocked)
+        stream&lt;Data&gt; SData = Switch (Data; Control) {
+            param status : true;
+            // any Control tuple causes the switch to allow tuples to flow
+        }
+
+        (stream&lt;ProcessedData&gt; PData;
+         stream&lt;int32 dummy&gt; Control) = Custom (SData; M) {
+            logic state : { mutable map&lt;rstring,rstring&gt; dataMap; }
+                // use the initialization data to set up data structures
+                onTuple M: insertM (dataMap, M.key, M.value);
+                // let the SData tuples start flowing when we hit the end of the initialization data
+                onPunct M: submit ({ dummy = 1}, Control);
+                onTuple SData: { /* process input using initialized dataMap */
+                    submit ({ m = dataMap[SData.k]}, PData);
+                               }
+        }
+    }
+
+</description>
+      <iconUri size="16">switch_16.gif</iconUri>
+      <iconUri size="32">switch_32.gif</iconUri>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Switch">
+          <description>Basic Switch template</description>
+          <template>stream&lt;${dataStream}&gt; ${outputStream} = Switch(${dataStream};${controlStream})   {
+            param
+                state: ${state};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>initialStatus</name>
+        <description>
+Specifies whether the operator starts in the open or closed.
+If you do not specify this parameter, the default value is false, which means tuples are blocked.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>status</name>
+        <description>
+Specifies whether the switch is open or closed.
+The expression is evaluated each time that a tuple arrives on the second (control) port.
+If the expression has a value of true, the switch allows tuples to flow through.
+If the expression has a value of false, the switch prevents tuples from flowing.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+        <portScope><port>1</port></portScope>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Switch` operator has two input ports. The first input port is the data port and holds the tuples to be switched.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+      <inputPortSet>
+        <description>
+The second input port is the control port and is used to open and close the switch.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <controlPort>true</controlPort>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Switch` operator is configurable with a single output port.
+The schema of the output port must match that of the first input port.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <windowPunctuationInputPort>0</windowPunctuationInputPort>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

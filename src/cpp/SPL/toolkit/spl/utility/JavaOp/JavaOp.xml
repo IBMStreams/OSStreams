@@ -1,0 +1,205 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context verificationModule="verify">
+      <description>
+The `JavaOp` operator is used to call out to operators implemented in Java by using the Java Operator API.
+
+In addition to the parameters listed, arbitrary constant parameters are allowed.
+These parameters are specific to the operator and can be read by the operator's class.
+
+# Checkpointed data
+
+`JavaOp` is a wrapper operator, so the contents of its checkpoint depends on the implementation of the Java operator.
+
+# Behavior in a consistent region
+
+`JavaOp` is a wrapper operator, so its behavior in a consistent region depends on the behavior that is defined by the used Java class.
+
+# Checkpointing behavior in an autonomous region
+
+If the StateHandler interface is not implemented, setting `config checkpoint` clause has no effect at runtime and no data is checkpointed.
+
+If the StateHandler interface is implemented and the operator is configured with `config checkpoint : periodic(T)`, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+
+If the StateHandler interface is implemented and the operator is configured with `config checkpoint : operatorDriven`, at runtime a call to `CheckpointContext::createCheckpoint()` would cauase the state of the operator to be checkpointed.
+
+# Examples
+
+This example uses the `JavaOp` operator.
+
+    // Invocation of Java operator using the the JavaOp operator
+    // from the SPL toolkit.
+    //
+    // Creates a stream containing the Java VM's system properties
+    stream&lt;ustring name, ustring value, set&lt;ustring&gt; tags&gt; SystemProperties
+     = JavaOp()
+    {
+      param
+        // Class name of the Java Operator to be invoked.
+        // Set to a class that implements com.ibm.streams.operator.Operator
+        //
+        className : "com.ibm.streams.operator.samples.sources.SystemPropertySource";
+        // Where the class is located. A list of jar files or
+        // directories containing the required classes for the
+        // Operator instance.
+        // In this case the class is from the set of samples
+        // provided with the Java Operator API and thus is always
+        // in the class path.
+
+        classLibrary: "";
+
+        // Arbitrary JVM arguments can be passed using vmArg.
+        // When multiple Java operators invocations are fused
+        // together or executed in standalone mode they must
+        // have identical vmArg values.
+        // To avoid different vmArgs settings, it is
+        // recommended that system properties set in vmArg
+        // are limited to those that must be set during JVM startup.
+        // Other properties may be set by initialization Java code
+        // of the Operator instance.
+
+        vmArg: "-Xmx128m";
+
+        // JavaOp allows additional arbitrary parameters that
+        // are made available to the Operator instance through
+        // methods on the OperatorContext api. A parameter may
+        // have one or more values
+        //
+        // SystemProperties class puts the value of the parameter
+        // tags as the tags attribute for any system property that
+        // starts with the value of the tagged parameter.
+
+        tagged: "java.";
+        tags: "system", "vm";
+    }
+
+      </description>
+      <iconUri size="16">javaOperator_16.gif</iconUri>
+      <iconUri size="32">javaOperator_32.gif</iconUri>
+      <metrics>
+<description>
+`JavaOp` is a wrapper operator, so any metrics reported depend on the implementation of the Java operator.
+</description>
+      </metrics>
+      <libraryDependencies>
+        <library>
+          <cmn:description docHref="doc/${nl}/doc/javaop.html">javaop-jni</cmn:description>
+           <cmn:managedLibrary>
+              <cmn:lib>streams-stdtk-javaop</cmn:lib>
+              <cmn:includePath>../../../impl/include</cmn:includePath>
+           </cmn:managedLibrary>
+        </library>
+        <library>
+           <cmn:description>java-jni</cmn:description>
+           <cmn:managedLibrary>
+              <!-- Include path is specified by JNI but path is specific to the JVM implementation. -->
+              <cmn:lib></cmn:lib>
+              <cmn:includePath>@JAVA_HOME@/include</cmn:includePath>
+              <cmn:command>../../../impl/bin/JavaOp_vmpath.sh</cmn:command>
+           </cmn:managedLibrary>
+        </library>
+        <library>
+           <cmn:description>pthreads</cmn:description>
+           <cmn:managedLibrary>
+              <cmn:lib>pthread</cmn:lib>
+           </cmn:managedLibrary>
+        </library>
+        <library>
+           <cmn:description>dl</cmn:description>
+           <cmn:managedLibrary>
+              <cmn:lib>dl</cmn:lib>
+           </cmn:managedLibrary>
+        </library>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Never</providesSingleThreadedContext>
+
+      <!-- ResultDependent to ensure the Java generated code is -->
+      <!-- always re-generated and compiled even if the SPL -->
+      <!-- does not change -->
+      <incrementalCompilationStrategy>ResultDependent</incrementalCompilationStrategy>
+      <splExpressionTree param="true"/>
+    </context>
+    <parameters>
+      <!-- Disallow re-write for className and classLibrary to ensure -->
+      <!-- generated operators do not share a single instance that would -->
+      <!-- result in only java code generated for one operator -->
+      <!-- Defect 31415: Do not enter a description here -->
+      <allowAny>true</allowAny>
+      <parameter>
+        <name>className</name>
+        <description>
+Specifies the full class name of the operator that is used to process and submit tuples.</description>
+        <optional>false</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>classLibrary</name>
+        <description>
+Specifies an application-specific class path that is required by the operator's class.
+The expressions correspond to a JAR file or a directory that contains Java classes.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+      </parameter>
+      <parameter>
+        <name>vmArg</name>
+        <description>
+Specifies command-line arguments that are passed to the Java virtual machine that the operator runs within.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+      </parameter>
+      <parameter>
+        <name>generated</name>
+        <description>
+If this parameter value is `true`, the compilation generates classes and interfaces specific to the operator and its ports.
+By default, the parameter value is `false`.</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortOpenSet>
+        <description>
+The `JavaOp` operator is configurable with zero or more input ports, which ingest the input tuples.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>OptionallyWindowed</windowingMode>
+        <windowPunctuationInputMode>WindowBound</windowPunctuationInputMode>
+        <windowExpressionMode>AttributeFree</windowExpressionMode>
+      </inputPortOpenSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortOpenSet>
+        <description>
+The `JavaOp` operator is configurable with zero or more output ports, which produce the submitted tuples.</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+      </outputPortOpenSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

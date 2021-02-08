@@ -1,0 +1,1240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/application/v4200"
+  xmlns:adl="http://www.ibm.com/xmlns/prod/streams/application"
+  xmlns:mr="http://www.ibm.com/xmlns/prod/streams/runtime/utils/mr"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:tt="http://www.ibm.com/xmlns/prod/streams/spl/tupleType"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/application/v4200"
+  elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/runtime/utils/mr"
+           schemaLocation="../../UTILS/MessageRecordingTypes.xsd"/>
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/tupleType"
+           schemaLocation="../../SPL/Core/tupleTypeModel.xsd"/>
+
+<!-- top-level elements: for these elements we need the XSD compiler to create
+     XML serialization and de-serialization functions
+-->
+
+<xs:element name="application" type="applicationType"/>
+<xs:element name="applicationSet" type="applicationSetType"/>
+<xs:element name="context" type="contextType"/>
+<xs:element name="streamProperties" type="streamPropertiesType"/>
+<xs:element name="streamProperty" type="streamPropertyType"/>
+
+<!-- applicationSetType -->
+  <xs:complexType name="applicationSetType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure defines an application set and it is tied to a particular version of IBM Streams. An application set has a human-readable name as well as a description.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="description" type="xs:string" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="splApplication" type="applicationType" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" use="required" type="xs:token"/>
+  </xs:complexType>
+
+<!-- applicationType -->
+  <xs:complexType name="applicationType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure defines an SPL application. An application consists of a set of configurations that capture how an application was built from the corresponding SPL source code.  An application consists of: (1) Physical entities to be deployed and managed by the runtime: (a) a collection of processing elements, corresponding to the physical implementation of an SPL application; and (2) Logical entities to be used by development, debugging, and visualization tooling, mapping physical entities to constructs in the SPL program defining the application: (a) a collection of composite operators corresponding to the logical organization of an SPL application as specified by the composites element; and (b) a collection of toolkits that defines the operators used by this application.  An application has a human-readable name, an application scope used for scoping purposed, a version (used for provisioning decisions), a data and applicatin directories, an optional checkpoint directory (where the checkpointed state will be periodically deposited), and a tracing level.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="contextType">
+        <xs:sequence>
+          <xs:element name="primitiveOperDefinitions" type="primitiveOperDefinitionsType"/>
+          <xs:element name="composites" type="compositesType"/>
+          <xs:element name="toolkits" type="toolkitsType"/>
+          <xs:element name="customMetrics" type="customMetricsType" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="parallelRegions" type="parallelRegionsType" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="submissionTimeValues" type="submissionTimeValuesType" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="submissionTimeConfiguration" type="submissionTimeConfigurationType" minOccurs="0" maxOccurs="1"/>
+        </xs:sequence>
+        <xs:attribute name="name" use="required" type="xs:token"/>
+        <xs:attribute name="applicationScope" use="required" type="xs:string"/>
+        <xs:attribute name="version" use="optional" type="xs:token"/>
+        <xs:attribute name="dataDirectory" use="optional" type="xs:string"/>
+        <xs:attribute name="applicationDirectory" use="required" type="xs:string"/>
+        <xs:attribute name="outputDirectory" use="required" type="xs:string"/>
+        <xs:attribute name="checkpointDirectory" use="optional" type="xs:string"/>
+        <xs:attribute name="adlPath" use="optional" type="xs:string"/>
+        <xs:attribute name="buildId" use="required" type="xs:string"/>
+        <xs:attribute name="bundle" use="required" type="xs:string"/>
+        <xs:attribute name="standaloneApplicationDirectory" use="optional" type="xs:string"/>
+        <xs:attribute name="avoidRuntimeYield" use="required" type="avoidRuntimeYieldType"/>
+        <xs:attribute name="productVersion" use="required" type="xs:token"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- avoidRuntimeYieldType -->
+  <xs:simpleType name="avoidRuntimeYieldType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the allowed values for avoidRuntimeYield
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="auto"/>
+      <xs:enumeration value="yes"/>
+      <xs:enumeration value="no"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- contextType -->
+  <xs:complexType name="contextType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure defines context information for applications, jobs, and PEs, including toolkits, libraries, hostpools, and tuple types (which specify the format or schema for tuples flowing on a stream and accepted by input ports).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="libraries" type="librariesType"/>
+      <xs:element name="hostpools" type="hostpoolsType"/>
+      <xs:element name="tupleTypes" type="tupleTypesType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- envVarsType -->
+  <xs:complexType name="envVarsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of environment variable settings.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="envVar" type="envVarType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- envVarType -->
+  <xs:complexType name="envVarType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure an environment variable setting with a name-value pair.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="name" use="required" type="xs:token"/>
+    <xs:attribute name="value" use="required" type="xs:string"/>
+  </xs:complexType>
+
+<!-- librariesType -->
+  <xs:complexType name="librariesType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of library definitions.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="library" type="libraryType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- libraryType -->
+  <xs:complexType name="libraryType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores information about a particular library. The index is used for internal references (within the same application set). Name and version uniquely identify a library asset.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="name" use="required" type="xs:string"/>
+    <xs:attribute name="version" use="optional" type="xs:token"/>
+  </xs:complexType>
+
+ <!-- toolkitsType -->
+  <xs:complexType name="toolkitsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of toolkit definitions.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="toolkit" type="toolkitType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- toolkitType -->
+  <xs:complexType name="toolkitType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores information about a particular toolkit. The index is used for internal references (within the same application set). The uri refers to the specific URI defining the location of the toolkit and is optional (i.e., toolkits might be located through the provisioning API using name and version). Name and version uniquely identify a toolkit asset.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="uri" use="optional" type="xs:string"/>
+    <xs:attribute name="name" use="required" type="xs:string"/>
+    <xs:attribute name="version" use="required" type="xs:token"/>
+  </xs:complexType>
+
+<!-- customMetricsType -->
+  <xs:complexType name="customMetricsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure defines a set of custom metrics that can be used by operator
+        definitions to define the names and descriptions of metrics.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="customMetric" type="customMetricType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- customMetricType -->
+  <xs:complexType name="customMetricType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure describes one custom metric. It gives the index into the metrics table,
+        the name of the metric, the description of the metric, and the kind of the metric.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="description" type="xs:string"/>
+    </xs:sequence>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="name" use="required" type="xs:token"/>
+    <xs:attribute name="kind" use="required" type="customMetricKindType"/>
+  </xs:complexType>
+
+<!-- Type for metric kind. -->
+  <xs:simpleType name="customMetricKindType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Gauge"/>
+      <xs:enumeration value="Counter"/>
+      <xs:enumeration value="Time"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- hostpoolsType -->
+  <xs:complexType name="hostpoolsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of host pool definitions.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="hostpool" type="hostpoolType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- hostpoolType -->
+  <xs:complexType name="hostpoolType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores information about a particular host pool. The name is the hostpool name from the SPL program. The index is used for internal references (within the same application set). A host pool can explicitly list all of the hosts it employs or, optionally, specify how many hosts it needs (to be assigned at runtime). The members of the hostpool can be exclusively assigned to this hostpool, or shared with other hostpools. Optionally, a set of tags can be defined that specify what hosts are eligible for this hostpool.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="host" type="hostType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="tag" type="tagType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" use="required" type="xs:token"/>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="size" use="optional" type="xs:unsignedLong"/>
+    <xs:attribute name="membershipMode" use="required" type="membershipModeType"/>
+  </xs:complexType>
+
+<!-- hostType -->
+  <xs:complexType name="hostType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores information about a particular host, in particular, its name.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="hostname" use="required" type="xs:string"/>
+  </xs:complexType>
+
+  <!-- tagType -->
+  <xs:complexType name="tagType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores information about a tag for a host.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="name" use="required" type="xs:string"/>
+  </xs:complexType>
+
+<!-- membershipModeType -->
+  <xs:simpleType name="membershipModeType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the allowed membership modes.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="shared"/>
+      <xs:enumeration value="exclusive"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- tupleTypesType -->
+  <xs:complexType name="tupleTypesType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of tuple type definitions.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="tupleType" type="tupleTypeType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- tupleTypeType -->
+  <xs:complexType name="tupleTypeType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a particular tuple type definition. The index is used for internal references (within the same application set). A tuple type consists of a sequence of attribute definitions.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="attribute" type="attributeType" minOccurs="1" maxOccurs="unbounded"/>
+      <xs:element name="tuple" type="tt:tupleType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- attributeType -->
+  <xs:complexType name="attributeType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a particular tuple attribute, defined as a name-value pair..
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="name" use="required" type="xs:token"/>
+    <xs:attribute name="type" use="required" type="xs:token"/>
+  </xs:complexType>
+
+<!-- primitiveOperDefinitionsType -->
+  <xs:complexType name="primitiveOperDefinitionsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a collection of primitive operator definitions.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="primitiveOperDefinition" type="primitiveOperDefinitionType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- primitiveOperDefinitionType -->
+  <xs:complexType name="primitiveOperDefinitionType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a primitive operator definition. An operator has a kind, an index number, custom metrics, and 0 or more SPL annotations.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="customMetricIndicies" type="customMetricIndiciesType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="capability" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="kind" use="required" type="xs:token"/>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="toolkitIndex" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="runtimeType" use="required" type="operatorRuntimeType"/>
+  </xs:complexType>
+
+<!-- customMetricIndiciesType -->
+  <xs:complexType name="customMetricIndiciesType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure holds indicies into the custom metric table.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="customMetricIndex" type="xs:unsignedLong" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- languageType -->
+  <xs:simpleType name="languageType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the programming languages in which a processing element was coded and from which its executable binary came from.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="C++"/>
+      <xs:enumeration value="Java"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- operatorRuntimeType -->
+  <xs:simpleType name="operatorRuntimeType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the runtime that a given operator needs to run on top of.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="SPL_CPlusPlus"/>
+      <xs:enumeration value="SPL_Java"/>
+      <xs:enumeration value="Java"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- sharedObjectType -->
+  <xs:complexType name="sharedObjectType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the shared object for an operator. The execution wrapper consists of an optional container around the actual processing element container that enables the processing element to be executed under a debugger such as gdb or a memory profiler such as valgrind, or yet simply be executed in a separate xterm.  The uri is a reference to the actual binary code for the operator. In this case, the uri represents the executable URI directly, rather than factors it out as is the case for other URIs represented in the ADL.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="wrapper" type="xs:token"/>
+      <xs:element name="uri" type="xs:string"/>
+    </xs:sequence>
+    <xs:attribute name="class" use="required" type="xs:token"/>
+  </xs:complexType>
+
+<!-- dependenciesType -->
+  <xs:complexType name="dependenciesType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of library dependencies.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="dependency" type="libraryDependencyType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- libraryDependencyType -->
+  <xs:complexType name="libraryDependencyType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a particular library dependency and refers back to the list of libraries used by an application set.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="libIndex" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- resourcesType -->
+  <xs:complexType name="resourcesType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a set of resources used by a PE. These include a particular host, a particular host pool, a co- or ex-location setting, or an isolation request.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="hostLocation" type="hostLocationType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="poolLocation" type="poolLocationType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="coLocation" type="coLocationType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="exLocation" type="exLocationType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="isolation" use="optional" type="xs:boolean"/>
+  </xs:complexType>
+
+<!-- partitionsType -->
+  <xs:complexType name="partitionsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a set of partitioning restrictions imposed by an operator. These include co- or ex-location setting, or an isolation request.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="coLocation" type="coLocationType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="exLocation" type="exLocationType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="isolation" use="optional" type="xs:boolean"/>
+  </xs:complexType>
+
+<!-- hostLocationType -->
+  <xs:complexType name="hostLocationType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure specifies a particular host setting for placing a particular PE.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="hostname" use="required" type="xs:string"/>
+  </xs:complexType>
+
+<!-- poolLocationType -->
+  <xs:complexType name="poolLocationType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure specifies a particular entry (i.e., a host), inpoolIndex, in a particular host pool, poolIndex, for placing a particular PE.
+      </xs:documentation>
+    </xs:annotation>
+
+    <xs:attribute name="poolIndex" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="inpoolIndex" use="optional" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- coLocationType -->
+  <xs:complexType name="coLocationType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure specifies a particular co-location id for a PE.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="colocId" use="required" type="xs:token"/>
+  </xs:complexType>
+
+<!-- exLocationType -->
+  <xs:complexType name="exLocationType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure specifies a particular ex-location id for a PE.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="exlocId" use="required" type="xs:token"/>
+  </xs:complexType>
+
+
+<!-- encodingType -->
+  <xs:simpleType name="encodingType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the the possible byte-encoding configurations: network byte order (NBO), little endian (LE), and big endian (BE).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="NBO"/>
+      <xs:enumeration value="LE"/>
+      <xs:enumeration value="BE"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- transportType -->
+  <xs:simpleType name="transportType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the possible transport layers that the runtime system can use.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="TCP"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- nameBasedImportType -->
+  <xs:complexType name="nameBasedImportType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents one particular stream importing by name. This indicates the application (via the applicationName attribute), the specific instance of the spl.adapter::Import, i.e., the import operator (defined by the importOperName attribute) used for the importing, the specific stream (via the streamName attribute) to be routed to an input port, and a unique import index. Optionally, an applicationScope might be specified for runtime scoping.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="applicationName" use="required" type="xs:token"/>
+    <xs:attribute name="streamName" use="required" type="xs:token"/>
+    <xs:attribute name="applicationScope" use="optional" type="xs:string"/>
+  </xs:complexType>
+
+<!-- propertyBasedImportType -->
+  <xs:complexType name="propertyBasedImportType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents one particular property-based import subscription. It includes the subscription expression, the specific instance of the spl.adapter::Import, i.e., the import SPL operator (defined by the importOperName attribute) used for the importing, a unique import index, and an optional application scope to be considered (defined by the applicationScope attribute).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="subscription" use="required" type="xs:string"/>
+    <xs:attribute name="applicationScope" use="optional" type="xs:string"/>
+  </xs:complexType>
+
+<!-- streamPropertiesType -->
+  <xs:complexType name="streamPropertiesType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a collection of stream property definitions.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="property" type="streamPropertyType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- streamPropertyType -->
+  <xs:complexType name="streamPropertyType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a stream property, identified by the name and type attributes and populated with one or more values (values with a cardinality greater than one necessarily indicate a list-based property).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="value" minOccurs="1" maxOccurs="unbounded" type="xs:string"/>
+    </xs:sequence>
+    <xs:attribute name="name" use="required" type="xs:token"/>
+    <xs:attribute name="type" use="required" type="xs:token"/>
+  </xs:complexType>
+
+<!-- checkpointingType -->
+  <xs:complexType name="checkpointingType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the specific checkpointing settings used by an operator. It includes the checkpoint policy and the optional period between checkpointing operations.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="policy" use="required" type="checkpointPolicyType"/>
+    <xs:attribute name="period" use="optional" type="xs:double"/>
+  </xs:complexType>
+
+<!-- checkpointPolicyType -->
+  <xs:simpleType name="checkpointPolicyType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the possible checkpoint policies an operator can use.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="periodic"/>
+      <xs:enumeration value="operatorDriven"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- runtimeConstantsType -->
+  <xs:complexType name="runtimeConstantsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a collection of operator runtime constants.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="runtimeConstant" type="runtimeConstantType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- runtimeConstantType -->
+  <xs:complexType name="runtimeConstantType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a particular runtime constant. It includes compile-time name and value attributes as well as optional index into the submission time argument table.  If the submission time argument index is present, the information in that table will be used to populate the runtime constant value.   If the defaultValue is present, the information represents the user supplied default value.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="name" use="required" type="xs:token"/>
+    <xs:attribute name="value" use="required" type="xs:string"/>
+    <xs:attribute name="submissionTimeValueIndex" use="optional" type="xs:unsignedLong"/>
+    <xs:attribute name="defaultValue" use="optional" type="xs:string"/>
+  </xs:complexType>
+
+<!-- submissionTimeValuesType -->
+  <xs:complexType name="submissionTimeValuesType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of submission time argument definitions.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="submissionTimeValue" type="submissionTimeValueType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- submissionTimeValueType -->
+  <xs:complexType name="submissionTimeValueType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores information about submission time arguments.  The kind field is one of named/namedList.  'compositeName' is the location of the use, as namespace::compositeName. 'name' is the name of the desired argument.  The 'value' attribute is an SPL literal value corresponding the the type indicated by 'kind' and when set specifies the value that will override a compile time value in associated operator runtimeConstantType elements.  Job submission tooling is responsible for setting this value. If there is no 'defaultValue', a value must be defined at submission time.  If there is a default value, it will be encoded as a string in the defaultValue attribute.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="kind" use="required" type="submissionTimeValueKindType"/>
+    <xs:attribute name="compositeName" use="required" type="xs:string"/>
+    <xs:attribute name="name" use="required" type="xs:string"/>
+    <xs:attribute name="value" use="optional" type="xs:string"/>
+    <xs:attribute name="required" use="required" type="xs:boolean"/>
+    <xs:attribute name="defaultValue" use="optional" type="xs:string"/>
+  </xs:complexType>
+
+  <!-- submissionTimeValueKindType -->
+  <xs:simpleType name="submissionTimeValueKindType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="named"/>
+      <xs:enumeration value="namedList"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- submissionTimeConfigurationType -->
+  <xs:complexType name="submissionTimeConfigurationType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of submission time configuration definitions.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="submissionTimeConfigParm" type="submissionTimeConfigurationParameterType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- submissionTimeConfigurationParameterType -->
+  <xs:complexType name="submissionTimeConfigurationParameterType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores information about submission time configuration parameters.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="name" use="required" type="xs:token"/>
+    <xs:attribute name="value" use="required" type="xs:string"/>
+  </xs:complexType>
+
+<!-- threadedPortType -->
+  <xs:complexType name="threadedPortType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores configurations of a threaded port. It includes a congestion policy (via the congestionPolicy attribute) and a limit on the internal queue (via the queueSize attribute).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="congestionPolicy" use="required" type="congestionPolicyType"/>
+    <xs:attribute name="queueSize" use="optional" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- congestionPolicyType -->
+  <xs:simpleType name="congestionPolicyType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the possible congestion policies a multi-threaded input port may define. If 'wait' is specified, a full queue will result in the thread depositing into the queue to block until there is free space in the queue.  If 'dropLast' is specified, a full queue will result in dropping the last tuple received. If 'dropFirst' is similar, but drops the oldest tuple in the queue when the queue is full.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="wait"/>
+      <xs:enumeration value="dropFirst"/>
+      <xs:enumeration value="dropLast"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- compositesType -->
+  <xs:complexType name="compositesType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores information on an application's composite operators. This includes where their source codes are located (via the sourceUris element), information on their specification (via the compositeOpers element), as well as information on their instantiation and use in the application (via the compositeOpersInstances element).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="sourceUris" type="urisType"/>
+      <xs:element name="compositeOperDefinitions" type="compositeOperDefinitionsType"/>
+      <xs:element name="compositeOperInstances" type="compositeOperInstancesType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- urisType -->
+  <xs:complexType name="urisType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a collection of URIs.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="uri" type="uriType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- uriType -->
+  <xs:complexType name="uriType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores information about URIs. It has an index (used for factoring out multiple uses of this URI throughout an application) and the path specification (defined by the path attribute).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="index" type="xs:unsignedLong"/>
+    <xs:attribute name="path" type="xs:string"/>
+  </xs:complexType>
+
+<!-- compositeOperDefinitionsType -->
+  <xs:complexType name="compositeOperDefinitionsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a collection of composite operator definitions.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="compositeOperDefinition" type="compositeOperDefinitionType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- compositeOperDefinitionType -->
+  <xs:complexType name="compositeOperDefinitionType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure defines a composite operator. The location in the source code is captured by the basic type this structure inherits from. This definition includes an optional description, an optional set of SPL annotations, an index (used for factoring out multiple uses of this composite), the kind of this operator, which defines its namespace lineage (i.e., in the form namespace::name), an optional reference to the toolkit that defines this composite (if not defined, the composite is defined in the present application), the number of composite input ports and output ports.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="description" type="xs:string" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="splAnnotation" type="splAnnotationType" minOccurs="0" maxOccurs="unbounded"/>
+          <xs:element name="annotation" type="annotationType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="kind" use="required" type="xs:token"/>
+        <xs:attribute name="numberOfInputPorts" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="numberOfOutputPorts" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="toolkitIndex" use="optional" type="xs:unsignedLong"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- sourceLocationType -->
+  <xs:complexType name="sourceLocationType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores an application source code location for different SPL language constructs. The sourceIndex refers to the specific URI defining the source code file (note that the collection of URIs used in the application set is factored out) where the definition is, and startLine and endLine refer to the specific lines where the definition begins and ends, respectively.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="sourceIndex" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="startLine" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="endLine" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- compositeOperInstancesType -->
+  <xs:complexType name="compositeOperInstancesType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a collection of composite operator instances.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="compositeOperInstance" type="compositeOperInstanceType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- compositeOperInstanceType -->
+  <xs:complexType name="compositeOperInstanceType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure defines a composite operator instance. The location in the source code is captured by the basic type this structure inherits from. This definition includes an optional description, the set of composite and primitive operators it employs (defined via the compositeOperInstance and primitiveOperInstance elements, respectively), a name, a unique index for it (unique accross primitive and composite operator instances), and an index to the composite operator definition (defined by the compositeOperIndex attribute).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="description" type="xs:string" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="inputPorts" type="compositeOperInstancePortsType" minOccurs="0"/>
+          <xs:element name="outputPorts" type="compositeOperInstancePortsType" minOccurs="0"/>
+          <xs:element name="compositeOperInstance" type="compositeOperInstanceType" minOccurs="0" maxOccurs="unbounded"/>
+          <xs:choice minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="primitiveOperInstance" type="primitiveOperInstanceType"/>
+            <xs:element name="primitiveImportOperInstance" type="primitiveImportOperInstanceType"/>
+            <xs:element name="primitiveExportOperInstance" type="primitiveExportOperInstanceType"/>
+          </xs:choice>
+          <xs:element name="splAnnotation" type="splAnnotationType" minOccurs="0" maxOccurs="unbounded"/>
+          <xs:element name="annotation" type="annotationType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="name" use="required" type="xs:token"/>
+        <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="definitionIndex" use="required" type="xs:unsignedLong"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- compositeOperInstancePortsType -->
+  <xs:complexType name="compositeOperInstancePortsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a composite operator instance's ports.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="port" type="compositeOperInstancePortType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- compositeOperInstancePortType -->
+  <xs:complexType name="compositeOperInstancePortType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a composite operator instance's port. It includes a list of incoming connections and outgoing connections.
+           - Composite operator instance input port incoming connections: These are connections into the port, which come from
+               - output ports of operator instances that share their enclosing composite operator instance with this one,
+               - input ports of the composite operator instance that encloses this one.
+           - Composite operator instance input port outgoing connections: These are connections out of the port, which go into
+               - the input ports of operator instances that are directly contained within this one (one level down).
+           - Composite operator instance output port incoming connections: These are connections into the port, which come from
+               - output ports of operator instances that are directly contained within this one (one level down).
+           - Composite operator instance output port outgoing connections: These are connections out of the port, which go into
+               - the input ports of operator instances that share their enclosing composite  operator instance with this one,
+               - the output ports of the composite opeartor instance that encloses this one.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="incomingConnections" type="operInstancePortConnectionsType" minOccurs="0"/>
+      <xs:element name="outgoingConnections" type="operInstancePortConnectionsType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- operInstancePortConnectionsType -->
+  <xs:complexType name="operInstancePortConnectionsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores the connections of an operator instance port.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="connection" type="operInstancePortConnectionType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- operInstancePortConnectionType -->
+  <xs:complexType name="operInstancePortConnectionType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a connection of an operator instance port, including the operator name, operator index,  the port index, and port type.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="operName" use="optional" type="xs:token"/>
+    <xs:attribute name="operIndex" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="portIndex" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="portKind" use="required" type="portKindType"/>
+  </xs:complexType>
+
+<!-- portKindType -->
+  <xs:simpleType name="portKindType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the port kinds: input or output
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="input"/>
+      <xs:enumeration value="output"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- primitiveOperInstanceBaseType -->
+  <xs:complexType name="primitiveOperInstanceBaseType">
+    <xs:complexContent>
+      <xs:extension base="sourceLocationType">
+        <xs:sequence>
+          <xs:element name="description" type="xs:string" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="splAnnotation" type="splAnnotationType" minOccurs="0" maxOccurs="unbounded"/>
+          <xs:element name="inputPorts" type="primitiveOperInstanceInputPortsType" minOccurs="0"/>
+          <xs:element name="outputPorts" type="primitiveOperInstanceOutputPortsType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="definitionIndex" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="name" use="required" type="xs:token"/>
+        <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+
+<!-- primitiveImportOperInstanceType -->
+  <xs:complexType name="primitiveImportOperInstanceType">
+    <xs:complexContent>
+      <xs:extension base="primitiveOperInstanceBaseType">
+        <xs:choice>
+          <xs:element name="nameBasedImport" type="nameBasedImportType"/>
+          <xs:element name="propertyBasedImport" type="propertyBasedImportType"/>
+        </xs:choice>
+        <xs:attribute name="filter" type="xs:string" use="optional"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- exportCongestionPolicyType -->
+  <xs:simpleType name="exportCongestionPolicyType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the possible congestion policies an exported stream can use.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="wait"/>
+      <xs:enumeration value="dropConnection"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- primitiveExportOperInstanceType -->
+  <xs:complexType name="primitiveExportOperInstanceType">
+    <xs:complexContent>
+      <xs:extension base="primitiveOperInstanceBaseType">
+        <xs:sequence minOccurs="0" maxOccurs="1">
+          <xs:element name="properties" type="streamPropertiesType"/>
+        </xs:sequence>
+        <xs:attribute name="streamName" use="optional" type="xs:string"/>
+        <xs:attribute name="allowFilter" type="xs:boolean" use="optional"/>
+        <xs:attribute name="congestionPolicy" type="exportCongestionPolicyType" use="optional"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- primitiveOperInstanceType -->
+  <xs:complexType name="primitiveOperInstanceType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure defines a primitive operator instance. The location in the source code is captured by the basic type this structure inherits from. This definition includes the operators input and output ports, the operator's kind (e.g., spl.adapter::FileSource), and its name (e.g., TradeQuote), a unique index for it (unique accross primitive and composite operator instances), and a reference to the toolkit that defines this operator. Note that the reference to the physical operator instance can be used to access the operator name, however, it is also included here because of the need for referencing pseudo import/export operators from the port properties of the physical operator instances that have imported and exported streams.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="primitiveOperInstanceBaseType">
+        <xs:sequence>
+          <xs:element name="envVars" type="envVarsType"/>
+          <xs:element name="resources" type="resourcesType"/>
+          <xs:element name="checkpointing" type="checkpointingType" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="runtimeConstants" type="runtimeConstantsType"/>
+          <xs:element name="display" type="runtimeConstantType" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="sharedObject" type="sharedObjectType"/>
+          <xs:element name="jvmArguments" type="jvmArgumentsType" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="partitions" type="partitionsType" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="annotation" type="annotationType" minOccurs="0" maxOccurs="unbounded"/>
+          <xs:element name="tracing" type="mr:tracingType" minOccurs="0" maxOccurs="1"/>
+        </xs:sequence>
+        <xs:attribute name="optimized" use="required" type="xs:boolean"/>
+        <xs:attribute name="restartable" use="required" type="xs:boolean"/>
+        <xs:attribute name="relocatable" use="required" type="xs:boolean"/>
+        <xs:attribute name="singleThreadedOnOutputs" use="required" type="xs:boolean"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- jvmArgumentsType -->
+  <xs:complexType name="jvmArgumentsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a set of 0 or more jvm arguments. The existence of this
+        data structure indicates that the operator requires a jvm to function.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="jvmArgument" type="jvmArgumentType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- jvmArgumentType -->
+  <xs:simpleType name="jvmArgumentType">
+    <xs:annotation>
+      <xs:documentation>
+        This type defines the content of a jvmArguments element
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string"/>
+  </xs:simpleType>
+
+<!-- primitiveOperInstanceInputPortsType -->
+  <xs:complexType name="primitiveOperInstanceInputPortsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a primitive operator instance's input ports.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="port" type="primitiveOperInstanceInputPortType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- primitiveOperInstanceOutputPortsType -->
+  <xs:complexType name="primitiveOperInstanceOutputPortsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a primitive operator instance's output ports.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="port" type="primitiveOperInstanceOutputPortType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- primitiveOperInstancePortType -->
+  <xs:complexType name="primitiveOperInstancePortType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the common aspects of a primitiveOperInstanceInputPortType and primitiveOperInstanceOutputPortType
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="connections" type="operInstancePortConnectionsType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="tupleTypeIndex" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="encoding" use="required" type="encodingType"/>
+    <xs:attribute name="transport" use="required" type="transportType"/>
+    <xs:attribute name="name" use="required" type="xs:token"/>
+    <xs:attribute name="isMutable" use="required" type="xs:boolean"/>
+  </xs:complexType>
+
+<!-- primitiveOperInstanceInputPortType -->
+  <xs:complexType name="primitiveOperInstanceInputPortType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a primitive operator instance's input port.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="primitiveOperInstancePortType">
+        <xs:sequence>
+          <xs:element name="threadedPort" type="threadedPortType" minOccurs="0" maxOccurs="1"/>
+        </xs:sequence>
+        <xs:attribute name="isControl" use="optional" type="xs:boolean"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- primitiveOperInstanceOutputPortType -->
+  <xs:complexType name="primitiveOperInstanceOutputPortType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a primitive operator instance's output port.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="primitiveOperInstancePortType">
+        <xs:attribute name="streamName" use="required" type="xs:token"/>
+        <xs:attribute name="viewable" use="optional" type="xs:boolean"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- annotationListEntryValueType -->
+  <xs:complexType name="annotationListEntryValueType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a value as part of a list of values
+      </xs:documentation>
+    </xs:annotation>
+    <xs:choice>
+      <xs:element name="tuple" type="annotationTupleValueType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="list" type="annotationListValueType" minOccurs="0" maxOccurs="1"/>
+    </xs:choice>
+    <!-- required if the value is a primitive value. ie: not a a list or tuple  -->
+    <xs:attribute name="value" use="optional" type="xs:string"/>
+  </xs:complexType>
+
+<!-- annotationListValueType -->
+  <xs:complexType name="annotationListValueType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a set of values for a list
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="listEntry" type="annotationListEntryValueType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- annotationAttributeValueType -->
+  <xs:complexType name="annotationAttributeValueType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores an attribute name/value
+      </xs:documentation>
+    </xs:annotation>
+    <xs:choice>
+      <xs:element name="tuple" type="annotationTupleValueType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="list" type="annotationListValueType" minOccurs="0" maxOccurs="1"/>
+    </xs:choice>
+    <xs:attribute name="key" use="required" type="xs:token"/>
+    <!-- required if the attribute's value is a primitive value. ie: not a a list or tuple  -->
+    <xs:attribute name="value" use="optional" type="xs:string"/>
+  </xs:complexType>
+
+
+<!-- annotationTupleValueType -->
+  <xs:complexType name="annotationTupleValueType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a set of annotation attribute/value pairs
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="attr" type="annotationAttributeValueType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- annotationType -->
+  <xs:complexType name="annotationType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores annotations and their key/value pairs.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+        <xs:element name="tuple" type="annotationTupleValueType" minOccurs="1" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="tag" use="required" type="xs:token"/>
+  </xs:complexType>
+
+<!-- splAnnotationType -->
+  <xs:complexType name="splAnnotationType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores SPL source annotations and their key/value pairs.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+        <xs:element name="value" type="splAnnotationValueType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="tag" use="required" type="xs:token"/>
+    <xs:attribute name="internal" use="optional" type="xs:boolean"/>
+  </xs:complexType>
+
+<!-- splAnnotationValueType -->
+  <xs:complexType name="splAnnotationValueType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores SPL source annotation key/value pairs.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:simpleContent>
+    	<xs:extension base="xs:string">
+        <xs:attribute name="key" use="required" type="xs:token"/>
+        <xs:attribute name="type" use="required" type="xs:token"/>
+        <xs:attribute name="submissionTimeValueIndex" use="optional" type="xs:unsignedLong"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="parallelRegionsType">
+    <xs:sequence>
+      <xs:element name="parallelRegion" minOccurs="0" maxOccurs="unbounded" type="parallelRegionType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="parallelRegionType">
+    <xs:sequence>
+      <xs:element name="parallelOperator" type="parallelOperatorType" minOccurs="1" maxOccurs="1"/>
+      <xs:element name="parallelWidth" type="parallelWidthType" minOccurs="1" maxOccurs="1"/>
+      <xs:element name="replicateHostTag" type="tagType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" use="required" type="xs:string"/>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+  <xs:complexType name="parallelOperatorType">
+    <xs:sequence>
+      <xs:element name="splitter" type="parallelRegionSplitterType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="operIndex" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+  <xs:complexType name="parallelRegionSplitterType">
+    <xs:sequence>
+      <xs:element name="attributes" type="partitioningAttributesType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="kind" use="required" type="splitterKind"/>
+    <xs:attribute name="iportIndex" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="portSelector" use="optional" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:simpleType name="splitterKind">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="RoundRobin"/>
+      <xs:enumeration value="Hash"/>
+      <xs:enumeration value="Broadcast"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="partitioningAttributesType">
+    <xs:sequence>
+      <xs:element name="attribute" type="partitioningAttributeType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="partitioningAttributeType">
+    <xs:attribute name="name" use="required" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="parallelWidthType">
+    <xs:sequence>
+      <xs:choice>
+        <xs:element name="constantWidth" type="xs:unsignedLong"/>
+        <xs:element name="submissionTimeParameterIndexForWidth" type="xs:unsignedLong"/>
+      </xs:choice>
+      <xs:element name="submissionTimeWidth" type="xs:unsignedLong" minOccurs="0" maxOccurs="1" />
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

@@ -1,0 +1,403 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use File::Basename;
+use Getopt::Long qw(:config no_ignore_case bundling) ;
+use Config;
+use Cwd qw(abs_path getcwd);
+
+sub usage
+{
+    print STDERR "\n";
+    print STDERR "Usage: " . basename($0) . "[--help] [--langList lang1,lang2,...] [--nlPath path] [--genRoot root]\n";
+    print STDERR "\n";
+    print STDERR "Create decorated translation files.\n";
+    print STDERR "\n";
+    print STDERR "Modes (mutually exclusive):\n";
+    print STDERR "--xlf           Generate files in gen via the xlf process.\n";
+    print STDERR "--dita          Generate files in gen via the dita process.\n";
+    print STDERR "\n";
+    print STDERR "Parameters:\n";
+    print STDERR "--nlPath        The path for the translated files.\n";
+    print STDERR "--genRoot       The root path for the gen files.\n";
+    print STDERR "                The full path is assumed to be: genRoot/com/ibm/streams/messages.\n";
+    print STDERR "--langList      The list of languages to create in gen.\n";
+    print STDERR "--ditaTemplate  The template file used during dita processing.\n";
+}
+
+################## MAIN ###############
+
+# Parameters
+
+my $HELP = 0;
+my $XLF = 0;
+my $DITA = 0;
+my $DEBUG = 0;
+my $LANGLIST;
+my $NLPATH;
+my $GENROOT;
+my $DITATEMPLATE;
+my $GENPATH = "com/ibm/streams/messages";
+my $GENBASEPATH = "com/ibm/streams/messages";
+my $SED = $Config{osname} eq "darwin" ? "gsed" : "sed";
+
+my $result = GetOptions("h|help" => \$HELP,
+                         "x|xlf" => \$XLF,
+                     "dita|dita" => \$DITA,
+                       "d|debug" => \$DEBUG,
+                 "ll|langList:s" => \$LANGLIST,
+                   "nl|nlPath:s" => \$NLPATH,
+                  "gr|genRoot:s" => \$GENROOT,
+                  "gp|genPath:s" => \$GENPATH,
+             "gbp|genBasePath:s" => \$GENBASEPATH,
+             "dt|ditaTemplate:s" => \$DITATEMPLATE,
+);
+
+#
+# Usage
+#
+if (!$result || $HELP) {
+    usage();
+    exit($result ? 0 : 1) ;
+}
+
+#
+# Vars
+#
+my $TOOLS = dirname(abs_path($0));
+my $XLIF2ICUCONVERTER = "com.ibm.icu.dev.tool.localeconverter/XLIFF2ICUConverter";
+my $FORMATMSGDOCS = "com.ibm.streams.build.messagegenerator.FormatMsgDocs";
+my $GENERATEMESSAGES = "com.ibm.streams.build.messagegenerator.GenerateMessageKeyConstants";
+my $ERRORCOUNT = 0;
+
+#
+# Mode Parameter Checking
+#
+if ($XLF && $DITA) {
+    print STDERR "ERROR - dita and xlf are mutually exclusive.\n";
+    usage();
+    exit(1) ;
+}
+
+if (!($XLF || $DITA)) {
+    print STDERR "ERROR - either dita or xlf must be set.\n";
+    usage();
+    exit(1) ;
+}
+
+#
+# Dita Parameter Checking
+#
+if ($DITA && !$DITATEMPLATE) {
+    print STDERR "ERROR - Dita processing requires a dita template file.\n";
+    usage();
+    exit(1) ;
+}
+
+#
+# Are the paths real?
+#
+if (! -e $NLPATH) {
+    print STDERR "Error: Source path $NLPATH not found.\n";
+    usage();
+    exit(1) ;
+}
+
+#
+# Echo parameters
+#
+if ($DEBUG) {
+    print  "*****************************\n";
+    print  "* Parameters:\n";
+    print  "*****************************\n";
+    print  "XLF          = $XLF\n";
+    print  "DITA         = $DITA\n";
+    print  "DITATEMPLATE = $DITATEMPLATE\n";
+    print  "NLPATH       = $NLPATH\n";
+    print  "GENROOT      = $GENROOT\n";
+    print  "GENPATH      = $GENPATH\n";
+}
+
+#
+# XLIFF
+#
+my @XLIFFJARS = glob "$ENV{'SOURCE_PATH'}/build/targets/icu4j-tools/*.jar";
+if (@XLIFFJARS == 0) {
+    print STDERR "Package icu4j-tools must be built.\n";
+    exit 1;
+}
+if (@XLIFFJARS != 1) {
+    print STDERR "Too many versions for package icu4j-tools.\n";
+    exit 1;
+}
+my $XLIFFCP = $XLIFFJARS[0];
+
+#
+# Message generator
+#
+my @MSGGENJARS = glob "$ENV{'SOURCE_PATH'}/build/targets/streams.build.messagegenerator/*.jar";
+if (@MSGGENJARS == 0) {
+    print STDERR "Missing dependent package message-generator.\n";
+    exit 1;
+}
+if (@MSGGENJARS != 1) {
+    print STDERR "Too many versions for dependent package message-generator.\n";
+    exit 1;
+}
+my $MSGGENCP = $MSGGENJARS[0];
+
+#
+# Process the files.
+#
+processFiles();
+
+if ($ERRORCOUNT) {
+    print "There were $ERRORCOUNT errors during processing.\n";
+    exit(1);
+}
+
+exit(0);
+
+#
+# processFiles
+#
+sub processFiles {
+    my @langList = ('en');
+    push @langList, split(/,/, $LANGLIST);
+    #
+    # Create gen directories if they do not exist
+    #
+    if (!(-e "$GENROOT/$GENPATH")) {
+        runcmd("mkdir -p $GENROOT/$GENPATH");
+    }
+    #
+    # All the english XLF files in $NLPATH
+    #
+    my @allnlFileNames = grep /^[^_]+\.xlf$/, glob "$NLPATH/*.xlf";
+    foreach my $filepath (@allnlFileNames) {
+        my $file = basename($filepath);
+        print "Processing file $file ...\n" if $DEBUG;
+        #
+        # Split the file into two parts so that you can create the "language
+        # decorated" filename
+        #
+        $file =~ /^([^.]*)(\.[^.]*)$/;
+        my $fileprefix = $1;
+        my $filesuffix = $2;
+        #
+        # Process the file
+        #
+        foreach my $lang (@langList) {
+            print "Processing language $lang ...\n" if $DEBUG;
+            my $filedecorated = $fileprefix . "_" . $lang . $filesuffix;
+            #
+            # Gen each file from src to gen via xlf
+            #
+            if ($XLF) {
+                #
+                # xlf the English file the first time
+                #
+                if ($lang eq 'en') {
+                    if (xlfProcess($file,$NLPATH,1)) { #LAW
+                        #
+                        # Copy non-decorated English to _en and update src with _en
+                        #
+                        (my $name,my $dir,my $ext) = fileparse($file,'\..*');
+                        runcmd("cp -f $GENROOT/$GENPATH/$name.java $GENROOT/$GENPATH/$name\_en.java");
+                        runcmd("perl -p -i -e 's/$name/$name\_en/g' $GENROOT/$GENPATH/$name\_en.java");
+                    }
+                }
+                else {
+                    xlfProcess($filedecorated,$NLPATH,0);
+                }
+            }
+        }
+        #
+        # Process the file if dita
+        #
+        if ($DITA) {
+            ditaProcess($file);
+        }
+    }
+}
+
+#
+# xlfProcess
+#
+#
+sub xlfProcess {
+    (my $L_FILE,my $L_NLPATH, my $L_EN) = @_;
+    #
+    # Print processing information
+    #
+    print "\n" if $DEBUG;
+    print "*****************************\n" if $DEBUG;
+    print "* In xlf process\n" if $DEBUG;
+    print "*****************************\n" if $DEBUG;
+    print "L_FILE = $L_FILE\n" if $DEBUG;
+    print "L_NLPATH  = $L_NLPATH\n" if $DEBUG;
+    print "L_EN      = $L_EN\n" if $DEBUG;
+    #
+    # Get the file name from name.type
+    #
+    (my $name,my $dir,my $ext) = fileparse($L_FILE,'\..*');
+    #
+    # Get the bundle name and language. Also capture country if there is one
+    #
+    my @values = split('_',$name);
+    my $bundlename = $values[0];
+    my $language = $values[1];
+    my $countrycode="";
+    if ( @values > 2) {
+        $countrycode=$values[2];
+    }
+    #
+    # Is the gen uptodate?  Return if so. -C returns the floating-point number
+    # of days SINCE the last change time. So in this case a smaller number
+    # means a newer file. The comparison will seem backwards but it's not.
+    #
+    if (-e "$GENROOT/$GENPATH/$name.java" &&
+        -C "$L_NLPATH/$L_FILE" > -C "$GENROOT/$GENPATH/$name.java") {
+        print "Uptodate: $L_NLPATH/$L_FILE has not changed since $GENROOT/$GENPATH/$name.java was last generated.\n" if $DEBUG;
+        return 0;
+    }
+    else {
+        print "Not uptodate: $L_NLPATH/$L_FILE has changed since $GENROOT/$GENPATH/$name.java was last generated.\n" if $DEBUG;
+    }
+    #
+    # This env var should be set to LANG=en_US.UTF-8. If english then specify -c
+    # (build from source tag) otherwise need to use -t (build from target tag);
+    # remove -r from non en
+    #
+    print "XLIF2ICU name = $name\n" if $DEBUG;
+    if ($L_EN) {
+    	runcmd("java -cp $XLIFFCP $XLIF2ICUCONVERTER -s $L_NLPATH -d $L_NLPATH -c $name -r $L_FILE");
+    } else {
+     	runcmd("java -cp $XLIFFCP $XLIF2ICUCONVERTER -s $L_NLPATH -d $L_NLPATH -t $name  $L_FILE");
+    }
+    #
+    # Run genrb
+    #
+    (my $replaceValue = $GENPATH) =~ s/\//./g;
+    print "genrb bundlename = $bundlename\n" if $DEBUG;
+    print "genrb package = $replaceValue\n" if $DEBUG;
+    print "genrb name.txt = $name.txt\n" if $DEBUG;
+    runcmd("genrb -j -b $bundlename --java-package $replaceValue -s $L_NLPATH -d $GENROOT/$GENPATH $name.txt");
+    runcmd("rm -f $L_NLPATH/$name.txt");
+    #
+    # We don't need this for now but leaving for history.  For zh_CN (Simplified
+    # Chinese) we need to do some special processing on the generated resource
+    # bundle e.g. MyBundle_zh_CN.xlf the zh is the language the CN is the
+    # country or region.  The genrb command generates the java resource bundle
+    # with only the language MyBundle_zh.java and we need it generated with
+    # language_country i.e. MyBundle_zh_CN.java
+    #
+    # if ( ($countrycode eq "CN") ) {
+    #   move the $name.java to $name_$countrycode.java
+    #
+    #	  print "* Note: \n";
+    #   print "* Need to fix $GENROOT/$GENPATH/$bundlename\_$language.java to have the $countrycode\n";
+    #   print "* in the file name and the class name.\n";
+    #
+    #   runcmd("mv $GENROOT/$GENPATH/$bundlename\_$language.java  $GENROOT/$GENPATH/$name.java");
+    #   runcmd("perl -p -i -e 's/$bundlename\_$language/$name/g' $GENROOT/$GENPATH/$name.java");
+    #}
+    #
+    # Run GenerateMessageKeyConstants
+    # For install run
+    # GenerateInstallMessageKeyConstants the same way
+    #
+    if ($L_EN) {
+        my $nameKey = $name . "Key";
+        (my $genBasePath = $GENBASEPATH) =~ s/\//./g;
+        print STDERR "GenerateMessageKey nameKey = $nameKey\n" if $DEBUG;
+        print STDERR "GenerateMessageKey name.xlf = $name.xlf\n" if $DEBUG;
+        runcmd("java -cp $MSGGENCP $GENERATEMESSAGES -s $L_NLPATH -d $GENROOT -p $replaceValue -c $nameKey $name.xlf");
+        runcmd("$SED -i '2 i\\import $genBasePath.*;' $GENROOT/$GENPATH/$nameKey.java");
+    }
+    elsif ($DEBUG) {
+        my $tempnamekey=$bundlename . "Key";
+        print STDERR "Skipping the call to generate the $tempnamekey.java constant file. ";
+        print STDERR "This is only generated for the english version of $name.xlf *****\n";
+    }
+
+    return 1;
+}
+
+#
+# ditaProcess
+#
+sub ditaProcess {
+    (my $L_FILE) = @_;
+    #
+    # Print parameters
+    #
+    print "\n" if $DEBUG;
+    print "*****************************\n" if $DEBUG;
+    print "* In dita process\n" if $DEBUG;
+    print "*****************************\n" if $DEBUG;
+    print "L_FILE  = $L_FILE\n" if $DEBUG;
+    #
+    # Get the file name from name.type
+    #
+    (my $name,my $dir,my $ext) = fileparse($L_FILE,'\..*');
+    #
+    # Create gen directories if they do not exist
+    #
+    if (!(-e "$GENROOT/dita/$name")) {
+        runcmd("mkdir -p $GENROOT/dita/$name");
+    }
+    #
+    # Grab the files in the dita directory
+    #
+    my @ditas = glob "$GENROOT/dita/$name/*";
+    #
+    # Check if any file in the dita directory is out of date
+    #
+    if (@ditas && (-C "$NLPATH/$L_FILE" > -C $ditas[0])) {
+        print "$NLPATH/$L_FILE has not changed since the last DITA generation.\n" if $DEBUG;
+        return;
+    }
+    else {
+        print "$NLPATH/$L_FILE has changed since the last DITA generation.\n" if $DEBUG;
+    }
+    #
+    # Run the format command
+    #
+    runcmd("java -cp $MSGGENCP $FORMATMSGDOCS -i $name -o $GENROOT/dita/$name -f $NLPATH/$L_FILE -t $DITATEMPLATE");
+}
+
+#
+# Run commands and collect errors
+#
+sub runcmd($)
+{
+  my $plstatus = 0;
+  my $L_cmd = shift;
+  print "Running command: $L_cmd\n" if $DEBUG;
+  my $ploutput = `$L_cmd`;
+  $plstatus = $? >> 8;
+  if ($plstatus != 0) {
+      print "ERROR: command $L_cmd failed with return code ${plstatus}...\n";
+      print "OUTPUT:\n";
+      print "$ploutput\n";
+      $ERRORCOUNT += 1;
+      return $plstatus;
+  }
+}

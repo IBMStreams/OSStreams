@@ -1,0 +1,44 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use GateCommon;
+    GateCommon::verify($model);
+
+SPL::CodeGen::headerPrologue($model);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR
+{
+public:
+    MY_OPERATOR();
+
+    virtual void process(Tuple const & tuple, uint32_t port);
+    virtual void process(Punctuation const & punct, uint32_t port);
+
+    virtual void prepareToShutdown();
+
+private:
+    uint32_t   _maxUnackedTupleCount;           // maximum allowed to be unack'ed
+    int32_t    _unackedCount;                   // current number of tuples unacked
+    Mutex      _mutex;
+    CV         _waitForACKs;
+    volatile bool _done;                        // finished processing (shutdown or Final punct)
+    uint32_t   _numWaiting;                     // number of threads waiting for an ack
+
+
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

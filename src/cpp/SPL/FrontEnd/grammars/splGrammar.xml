@@ -1,0 +1,3441 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<?xml-stylesheet type="text/xsl" href="grammar2html.xsl"?>
+<grammar>
+<!-- compilationUnit     //-&gt; splNamespace? useDirective* (compositeDef | functionDef | standAloneTypeDef)* EOF -->
+   <production name="compilationUnit" order="0" gen="yes">
+      <sequence>
+         <nonTerminal name="splNamespace" repetition="?">
+         </nonTerminal>
+         <nonTerminal name="useDirective" repetition="*">
+         </nonTerminal>
+         <group repetition="*">
+            <choice>
+               <sequence>
+                  <nonTerminal name="compositeDef">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="functionDef">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="standAloneTypeDef">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+         <specialTerminal>EOF</specialTerminal>
+      </sequence>
+   </production>
+
+<!-- splNamespace        //-&gt; &apos;namespace&apos; namespaceName &apos;;&apos; -->
+   <production name="splNamespace" order="1" gen="yes">
+      <sequence>
+         <terminal>namespace</terminal>
+         <nonTerminal name="namespaceName">
+         </nonTerminal>
+         <terminal>;</terminal>
+      </sequence>
+   </production>
+
+<!-- namespaceName       //-&gt; identifier (&apos;.&apos; identifier)* -->
+   <production name="namespaceName" order="2" gen="yes">
+      <sequence>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>.</terminal>
+               <nonTerminal name="identifier">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- useDirective        //-&gt; &apos;use&apos; namespaceName &apos;::&apos; ( star | identifier ) &apos;;&apos; -->
+   <production name="useDirective" order="3" gen="yes">
+      <sequence>
+         <terminal>use</terminal>
+         <nonTerminal name="namespaceName">
+         </nonTerminal>
+         <terminal>::</terminal>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="star">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+         <terminal>;</terminal>
+      </sequence>
+   </production>
+
+<!-- star                //-&gt; &apos;*&apos; -->
+   <production name="star" order="4" gen="no">
+      <sequence>
+         <terminal>*</terminal>
+      </sequence>
+   </production>
+
+<!-- compositeDef        //-&gt; compositeHead compositeBody -->
+   <production name="compositeDef" order="5" gen="no">
+      <sequence>
+         <nonTerminal name="compositeHead">
+         </nonTerminal>
+         <nonTerminal name="compositeBody">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- compositeHead       //-&gt; compositeModifiers &apos;composite&apos; identifier compositeInOut -->
+   <production name="compositeHead" order="6" gen="no">
+      <sequence>
+         <nonTerminal name="compositeModifiers">
+         </nonTerminal>
+         <terminal>composite</terminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <nonTerminal name="compositeInOut">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- compositeModifiers  //-&gt; compositeModifier? -->
+   <production name="compositeModifiers" order="7" gen="no">
+      <sequence>
+         <nonTerminal name="compositeModifier" repetition="?">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- compositeModifier   //-&gt; &apos;public&apos; -->
+   <production name="compositeModifier" order="8" gen="no">
+      <sequence>
+         <terminal>public</terminal>
+      </sequence>
+   </production>
+
+<!-- compositeInOut      //-&gt; ( | &apos;(&apos; &apos;)&apos; | &apos;(&apos; compositeOut ( &apos;;&apos; compositeIn  &apos;)&apos; | &apos;)&apos; ) | &apos;(&apos; compositeIn ( &apos;;&apos; compositeOut &apos;)&apos; | &apos;)&apos; ) ) -->
+   <production name="compositeInOut" order="9" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+               </sequence>
+               <sequence>
+                  <terminal>(</terminal>
+                  <terminal>)</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>(</terminal>
+                  <nonTerminal name="compositeOut">
+                  </nonTerminal>
+                  <group>
+                     <choice>
+                        <sequence>
+                           <terminal>;</terminal>
+                           <nonTerminal name="compositeIn">
+                           </nonTerminal>
+                           <terminal>)</terminal>
+                        </sequence>
+                        <sequence>
+                           <terminal>)</terminal>
+                        </sequence>
+                     </choice>
+                  </group>
+               </sequence>
+               <sequence>
+                  <terminal>(</terminal>
+                  <nonTerminal name="compositeIn">
+                  </nonTerminal>
+                  <group>
+                     <choice>
+                        <sequence>
+                           <terminal>;</terminal>
+                           <nonTerminal name="compositeOut">
+                           </nonTerminal>
+                           <terminal>)</terminal>
+                        </sequence>
+                        <sequence>
+                           <terminal>)</terminal>
+                        </sequence>
+                     </choice>
+                  </group>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- compositeOut        //-&gt; &apos;output&apos; compositePort_pc -->
+   <production name="compositeOut" order="10" gen="no">
+      <sequence>
+         <terminal>output</terminal>
+         <nonTerminal name="compositePort_pc">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- compositeIn         //-&gt; &apos;input&apos; compositePort_pc -->
+   <production name="compositeIn" order="11" gen="no">
+      <sequence>
+         <terminal>input</terminal>
+         <nonTerminal name="compositePort_pc">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- compositePort       //-&gt; identifier | streamType identifier -->
+   <production name="compositePort" order="12" gen="no">
+      <choice>
+         <sequence>
+            <nonTerminal name="identifier">
+            </nonTerminal>
+         </sequence>
+         <sequence>
+            <nonTerminal name="streamType">
+            </nonTerminal>
+            <nonTerminal name="identifier">
+            </nonTerminal>
+         </sequence>
+      </choice>
+   </production>
+
+<!-- streamType          //-&gt; &apos;stream&apos; tupleArgs -->
+   <production name="streamType" order="13" gen="no">
+      <sequence>
+         <terminal>stream</terminal>
+         <nonTerminal name="tupleArgs">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- compositeBody       //-&gt; &apos;{&apos; compositeBodyClause* &apos;}&apos; -->
+   <production name="compositeBody" order="14" gen="no">
+      <sequence>
+         <terminal>{</terminal>
+         <nonTerminal name="compositeBodyClause" repetition="*">
+         </nonTerminal>
+         <terminal>}</terminal>
+      </sequence>
+   </production>
+
+<!-- compositeBodyClause //-&gt; formalClause | typeClause | sharedClause | graphClause | configClause -->
+   <production name="compositeBodyClause" order="15" gen="no">
+      <choice>
+         <sequence>
+            <nonTerminal name="formalClause">
+            </nonTerminal>
+         </sequence>
+         <sequence>
+            <nonTerminal name="typeClause">
+            </nonTerminal>
+         </sequence>
+         <sequence>
+            <nonTerminal name="sharedClause">
+            </nonTerminal>
+         </sequence>
+         <sequence>
+            <nonTerminal name="graphClause">
+            </nonTerminal>
+         </sequence>
+         <sequence>
+            <nonTerminal name="configClause">
+            </nonTerminal>
+         </sequence>
+      </choice>
+   </production>
+
+<!-- formalClause        //-&gt; &apos;param&apos; compositeFormal+  -->
+   <production name="formalClause" order="16" gen="no">
+      <sequence>
+         <terminal>param</terminal>
+         <nonTerminal name="compositeFormal" repetition="+">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- typeClause          //-&gt; &apos;type&apos; typeDef+ -->
+   <production name="typeClause" order="17" gen="no">
+      <sequence>
+         <terminal>type</terminal>
+         <nonTerminal name="typeDef" repetition="+">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- sharedClause        //-&gt; &apos;var&apos; sharedVarDef+ -->
+   <production name="sharedClause" order="18" gen="no">
+      <sequence>
+         <terminal>var</terminal>
+         <nonTerminal name="sharedVarDef" repetition="+">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- graphClause         //-&gt; &apos;graph&apos; opInvoke+ -->
+   <production name="graphClause" order="19" gen="no">
+      <sequence>
+         <terminal>graph</terminal>
+         <nonTerminal name="opInvoke" repetition="+">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- configClause        //-&gt; &apos;config&apos; config+ -->
+   <production name="configClause" order="20" gen="no">
+      <sequence>
+         <terminal>config</terminal>
+         <nonTerminal name="config" repetition="+">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- compositeFormal     //-&gt; expressionMode identifier compositeFormalInit -->
+   <production name="compositeFormal" order="21" gen="no">
+      <sequence>
+         <nonTerminal name="expressionMode">
+         </nonTerminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <nonTerminal name="compositeFormalInit">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- compositeFormalInit //-&gt; (&apos;;&apos; | &apos;:&apos; opActual) -->
+   <production name="compositeFormalInit" order="22" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>;</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>:</terminal>
+                  <nonTerminal name="opActual">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- opActual            //-&gt; ( (typeNameContents &apos;;&apos;)=&gt; typeNameContents &apos;;&apos; | (type &apos;;&apos;)=&gt; type &apos;;&apos; | expr_pc &apos;;&apos;) -->
+   <production name="opActual" order="23" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="typeNameContents">
+                        </nonTerminal>
+                        <terminal>;</terminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="typeNameContents">
+                  </nonTerminal>
+                  <terminal>;</terminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="type">
+                        </nonTerminal>
+                        <terminal>;</terminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="type">
+                  </nonTerminal>
+                  <terminal>;</terminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="expr_pc">
+                  </nonTerminal>
+                  <terminal>;</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- config             //-&gt; identifier &apos;:&apos; expr_pc &apos;;&apos; -->
+   <production name="config" order="24" gen="no">
+      <sequence>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <terminal>:</terminal>
+         <nonTerminal name="expr_pc">
+         </nonTerminal>
+         <terminal>;</terminal>
+      </sequence>
+   </production>
+
+<!-- opInvoke            //-&gt; opInvokeHead opInvokeBody -->
+   <production name="opInvoke" order="25" gen="no">
+      <sequence>
+         <nonTerminal name="opInvokeHead">
+         </nonTerminal>
+         <nonTerminal name="opInvokeBody">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- opInvokeHead        //-&gt; ( &apos;(&apos; &apos;)&apos; asAlias &apos;=&apos; opName opInputs | opOutput &apos;=&apos; opName opInputs | opOutputs asAlias_q &apos;=&apos; opName opInputs) -->
+   <production name="opInvokeHead" order="26" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>(</terminal>
+                  <terminal>)</terminal>
+                  <nonTerminal name="asAlias">
+                  </nonTerminal>
+                  <terminal>=</terminal>
+                  <nonTerminal name="opName">
+                  </nonTerminal>
+                  <nonTerminal name="opInputs">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="opOutput">
+                  </nonTerminal>
+                  <terminal>=</terminal>
+                  <nonTerminal name="opName">
+                  </nonTerminal>
+                  <nonTerminal name="opInputs">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="opOutputs">
+                  </nonTerminal>
+                  <nonTerminal name="asAlias_q">
+                  </nonTerminal>
+                  <terminal>=</terminal>
+                  <nonTerminal name="opName">
+                  </nonTerminal>
+                  <nonTerminal name="opInputs">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- opOutputs           //-&gt; &apos;(&apos; opOutput_ps &apos;)&apos; -->
+   <production name="opOutputs" order="27" gen="no">
+      <sequence>
+         <terminal>(</terminal>
+         <nonTerminal name="opOutput_ps">
+         </nonTerminal>
+         <terminal>)</terminal>
+      </sequence>
+   </production>
+
+<!-- opOutput            //-&gt; streamType identifier ( | asAlias) -->
+   <production name="opOutput" order="28" gen="no">
+      <sequence>
+         <nonTerminal name="streamType">
+         </nonTerminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <group>
+            <choice>
+               <sequence>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="asAlias">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- asAlias_q           //-&gt; ( | asAlias) -->
+   <production name="asAlias_q" order="29" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="asAlias">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- asAlias             //-&gt; &apos;as&apos; identifier -->
+   <production name="asAlias" order="30" gen="no">
+      <sequence>
+         <terminal>as</terminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- opName              //-&gt; ( (namespaceName &apos;::&apos;)=&gt; namespaceName &apos;::&apos; identifier | identifier) -->
+   <production name="opName" order="31" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="namespaceName">
+                        </nonTerminal>
+                        <terminal>::</terminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="namespaceName">
+                  </nonTerminal>
+                  <terminal>::</terminal>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- opInputs            //-&gt; &apos;(&apos; portInputs_ps? &apos;)&apos; -->
+   <production name="opInputs" order="32" gen="no">
+      <sequence>
+         <terminal>(</terminal>
+         <nonTerminal name="portInputs_ps" repetition="?">
+         </nonTerminal>
+         <terminal>)</terminal>
+      </sequence>
+   </production>
+
+<!-- portInputs          //-&gt; ( id_pc ( | asAlias ) | streamType id_pc ( | asAlias ) ) -->
+   <production name="portInputs" order="33" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="id_pc">
+                  </nonTerminal>
+                  <group>
+                     <choice>
+                        <sequence>
+                        </sequence>
+                        <sequence>
+                           <nonTerminal name="asAlias">
+                           </nonTerminal>
+                        </sequence>
+                     </choice>
+                  </group>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="streamType">
+                  </nonTerminal>
+                  <nonTerminal name="id_pc">
+                  </nonTerminal>
+                  <group>
+                     <choice>
+                        <sequence>
+                        </sequence>
+                        <sequence>
+                           <nonTerminal name="asAlias">
+                           </nonTerminal>
+                        </sequence>
+                     </choice>
+                  </group>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- opInvokeBody        //-&gt; &apos;{&apos; opInvokeBodyClause* &apos;}&apos; -->
+   <production name="opInvokeBody" order="34" gen="no">
+      <sequence>
+         <terminal>{</terminal>
+         <nonTerminal name="opInvokeBodyClause" repetition="*">
+         </nonTerminal>
+         <terminal>}</terminal>
+      </sequence>
+   </production>
+
+<!-- opInvokeBodyClause  //-&gt; (logicClause | windowClause | actualClause | outputClause | configClause ) -->
+   <production name="opInvokeBodyClause" order="35" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="logicClause">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="windowClause">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="actualClause">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="outputClause">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="configClause">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- logicClause         //-&gt; &apos;logic&apos; opInvokeLogic+ -->
+   <production name="logicClause" order="36" gen="no">
+      <sequence>
+         <terminal>logic</terminal>
+         <nonTerminal name="opInvokeLogic" repetition="+">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- windowClause        //-&gt; &apos;window&apos; opInvokeWindow+ -->
+   <production name="windowClause" order="37" gen="no">
+      <sequence>
+         <terminal>window</terminal>
+         <nonTerminal name="opInvokeWindow" repetition="+">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- actualClause        //-&gt; &apos;param&apos; opInvokeActual+ -->
+   <production name="actualClause" order="38" gen="no">
+      <sequence>
+         <terminal>param</terminal>
+         <nonTerminal name="opInvokeActual" repetition="+">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- outputClause        //-&gt; &apos;output&apos; opInvokeOutput+ -->
+   <production name="outputClause" order="39" gen="no">
+      <sequence>
+         <terminal>output</terminal>
+         <nonTerminal name="opInvokeOutput" repetition="+">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- opInvokeLogic       //-&gt; ( keySTATE &apos;:&apos; opInvokeState | &apos;onTuple&apos; identifier &apos;:&apos; stmt | &apos;onPunct&apos; identifier &apos;:&apos; stmt | &apos;onWatermark&apos; identifier &apos;:&apos; stmt) -->
+   <production name="opInvokeLogic" order="40" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="keySTATE">
+                  </nonTerminal>
+                  <terminal>:</terminal>
+                  <nonTerminal name="opInvokeState">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>onTuple</terminal>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+                  <terminal>:</terminal>
+                  <nonTerminal name="stmt">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>onPunct</terminal>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+                  <terminal>:</terminal>
+                  <nonTerminal name="stmt">
+                  </nonTerminal>
+               </sequence>
+<!--
+               // STREAMS_SPL_EVENTTIME_CUSTOM_SUPPORT
+               <sequence>
+                  <terminal>onWatermark</terminal>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+                  <terminal>:</terminal>
+                  <nonTerminal name="stmt">
+                  </nonTerminal>
+               </sequence>
+-->
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- opInvokeState       //-&gt; ( localDecl | &apos;{&apos; localDecl+ ) -->
+   <production name="opInvokeState" order="41" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="localDecl">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>{</terminal>
+                  <nonTerminal name="localDecl" repetition="+">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- opInvokeWindow      //-&gt; identifier &apos;:&apos; expr_pc &apos;;&apos; -->
+   <production name="opInvokeWindow" order="42" gen="no">
+      <sequence>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <terminal>:</terminal>
+         <nonTerminal name="expr_pc">
+         </nonTerminal>
+         <terminal>;</terminal>
+      </sequence>
+   </production>
+
+<!-- opInvokeActual      //-&gt; identifier &apos;:&apos; opActual -->
+   <production name="opInvokeActual" order="43" gen="no">
+      <sequence>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <terminal>:</terminal>
+         <nonTerminal name="opActual">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- opInvokeOutput      //-&gt; identifier &apos;:&apos; outputAssign_pc &apos;;&apos; -->
+   <production name="opInvokeOutput" order="44" gen="no">
+      <sequence>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <terminal>:</terminal>
+         <nonTerminal name="outputAssign_pc">
+         </nonTerminal>
+         <terminal>;</terminal>
+      </sequence>
+   </production>
+
+<!-- outputAssign        //-&gt; identifier &apos;=&apos; expr -->
+   <production name="outputAssign" order="45" gen="no">
+      <sequence>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <terminal>=</terminal>
+         <nonTerminal name="expr">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- functionDef         //-&gt; functionHead blockStmtNoScope -->
+   <production name="functionDef" order="46" gen="no">
+      <sequence>
+         <nonTerminal name="functionHead">
+         </nonTerminal>
+         <nonTerminal name="blockStmtNoScope">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- functionHead        //-&gt; functionModifiers returnType identifier &apos;(&apos; functionFormal_pc? &apos;)&apos; -->
+   <production name="functionHead" order="47" gen="no">
+      <sequence>
+         <nonTerminal name="functionModifiers">
+         </nonTerminal>
+         <nonTerminal name="returnType">
+         </nonTerminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <terminal>(</terminal>
+         <nonTerminal name="functionFormal_pc" repetition="?">
+         </nonTerminal>
+         <terminal>)</terminal>
+      </sequence>
+   </production>
+
+<!-- functionModifiers   //-&gt; functionModifier* -->
+   <production name="functionModifiers" order="48" gen="no">
+      <sequence>
+         <nonTerminal name="functionModifier" repetition="*">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- functionModifier    //-&gt; (&apos;public&apos; | &apos;stateful&apos;) -->
+   <production name="functionModifier" order="49" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>public</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>stateful</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- functionFormal      //-&gt; formalModifiers type identifier -->
+   <production name="functionFormal" order="50" gen="no">
+      <sequence>
+         <nonTerminal name="formalModifiers">
+         </nonTerminal>
+         <nonTerminal name="type">
+         </nonTerminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- formalModifiers     //-&gt; formalModifier* -->
+   <production name="formalModifiers" order="51" gen="no">
+      <sequence>
+         <nonTerminal name="formalModifier" repetition="*">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- formalModifier      //-&gt; &apos;mutable&apos; -->
+   <production name="formalModifier" order="52" gen="no">
+      <sequence>
+         <terminal>mutable</terminal>
+      </sequence>
+   </production>
+
+<!-- sharedVarDef        //-&gt; sharedVarModifiers type identifier eqExpr_q sharedVarConfigs -->
+   <production name="sharedVarDef" order="53" gen="no">
+      <sequence>
+         <nonTerminal name="sharedVarModifiers">
+         </nonTerminal>
+         <nonTerminal name="type">
+         </nonTerminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <nonTerminal name="eqExpr_q">
+         </nonTerminal>
+         <nonTerminal name="sharedVarConfigs">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- eqExpr_q            //-&gt; ( | &apos;=&apos; expr ) -->
+   <production name="eqExpr_q" order="54" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+               </sequence>
+               <sequence>
+                  <terminal>=</terminal>
+                  <nonTerminal name="expr">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- sharedVarModifiers  //-&gt; sharedVarModifier* -->
+   <production name="sharedVarModifiers" order="55" gen="no">
+      <sequence>
+         <nonTerminal name="sharedVarModifier" repetition="*">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- sharedVarModifier   //-&gt; (&apos;public&apos; | &apos;static&apos; | &apos;mutable&apos;) -->
+   <production name="sharedVarModifier" order="56" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>public</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>static</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>mutable</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- sharedVarConfigs    //-&gt; ( &apos;;&apos; | &apos;{&apos; configClause &apos;}&apos;) -->
+   <production name="sharedVarConfigs" order="57" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>;</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>{</terminal>
+                  <nonTerminal name="configClause">
+                  </nonTerminal>
+                  <terminal>}</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- stmtOrType          //-&gt; (stmt | standAloneTypeDef) -->
+   <production name="stmtOrType" order="58" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="stmt">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="standAloneTypeDef">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- stmt                //-&gt; ( (localModifiers type identifier)=&gt; localDecl | (&apos;{&apos;)=&gt; blockStmt | stmtOther) -->
+   <production name="stmt" order="59" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="localModifiers">
+                        </nonTerminal>
+                        <nonTerminal name="type">
+                        </nonTerminal>
+                        <nonTerminal name="identifier">
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="localDecl">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <terminal>{</terminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="blockStmt">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="stmtOther">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- stmtNoScope         //-&gt; ( (localModifiers type identifier)=&gt; localDecl | (&apos;{&apos;)=&gt; blockStmtNoScope | stmtOther ) -->
+   <production name="stmtNoScope" order="60" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="localModifiers">
+                        </nonTerminal>
+                        <nonTerminal name="type">
+                        </nonTerminal>
+                        <nonTerminal name="identifier">
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="localDecl">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <terminal>{</terminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="blockStmtNoScope">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="stmtOther">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- stmtOther           //-&gt; (exprStmt | ifStmt | forStmt | whileStmt | breakStmt | continueStmt | returnStmt) -->
+   <production name="stmtOther" order="61" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="exprStmt">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="ifStmt">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="forStmt">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="whileStmt">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="breakStmt">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="continueStmt">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="returnStmt">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- localDecl           //-&gt; localModifiers type localDeclItem_pc &apos;;&apos; -->
+   <production name="localDecl" order="62" gen="no">
+      <sequence>
+         <nonTerminal name="localModifiers">
+         </nonTerminal>
+         <nonTerminal name="type">
+         </nonTerminal>
+         <nonTerminal name="localDeclItem_pc">
+         </nonTerminal>
+         <terminal>;</terminal>
+      </sequence>
+   </production>
+
+<!-- localModifiers      //-&gt; localModifier* -->
+   <production name="localModifiers" order="63" gen="no">
+      <sequence>
+         <nonTerminal name="localModifier" repetition="*">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- localModifier       //-&gt; &apos;mutable&apos; -->
+   <production name="localModifier" order="64" gen="no">
+      <sequence>
+         <terminal>mutable</terminal>
+      </sequence>
+   </production>
+
+<!-- localDeclItem       //-&gt; identifier eqExpr_q -->
+   <production name="localDeclItem" order="65" gen="no">
+      <sequence>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <nonTerminal name="eqExpr_q">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- blockStmt           //-&gt; &apos;{&apos; stmtOrType* &apos;}&apos; -->
+   <production name="blockStmt" order="66" gen="no">
+      <sequence>
+         <terminal>{</terminal>
+         <nonTerminal name="stmtOrType" repetition="*">
+         </nonTerminal>
+         <terminal>}</terminal>
+      </sequence>
+   </production>
+
+<!-- blockStmtNoScope    //-&gt; &apos;{&apos; stmtOrType* &apos;}&apos; -->
+   <production name="blockStmtNoScope" order="67" gen="no">
+      <sequence>
+         <terminal>{</terminal>
+         <nonTerminal name="stmtOrType" repetition="*">
+         </nonTerminal>
+         <terminal>}</terminal>
+      </sequence>
+   </production>
+
+<!-- exprStmt            //-&gt; expr &apos;;&apos; -->
+   <production name="exprStmt" order="68" gen="no">
+      <sequence>
+         <nonTerminal name="expr">
+         </nonTerminal>
+         <terminal>;</terminal>
+      </sequence>
+   </production>
+
+<!-- ifStmt              //-&gt; &apos;if&apos; &apos;(&apos; expr &apos;)&apos; stmt ( (&apos;else&apos;)=&gt; elseClause | ) -->
+   <production name="ifStmt" order="69" gen="no">
+      <sequence>
+         <terminal>if</terminal>
+         <terminal>(</terminal>
+         <nonTerminal name="expr">
+         </nonTerminal>
+         <terminal>)</terminal>
+         <nonTerminal name="stmt">
+         </nonTerminal>
+         <group>
+            <choice>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <terminal>else</terminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="elseClause">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- elseClause          //-&gt; &apos;else&apos; stmt -->
+   <production name="elseClause" order="70" gen="no">
+      <sequence>
+         <terminal>else</terminal>
+         <nonTerminal name="stmt">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- forStmt             //-&gt; &apos;for&apos; forInit stmtNoScope -->
+   <production name="forStmt" order="71" gen="no">
+      <sequence>
+         <terminal>for</terminal>
+         <nonTerminal name="forInit">
+         </nonTerminal>
+         <nonTerminal name="stmtNoScope">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- forInit             //-&gt; &apos;(&apos; type identifier &apos;in&apos; expr &apos;)&apos; -->
+   <production name="forInit" order="72" gen="no">
+      <sequence>
+         <terminal>(</terminal>
+         <nonTerminal name="type">
+         </nonTerminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <terminal>in</terminal>
+         <nonTerminal name="expr">
+         </nonTerminal>
+         <terminal>)</terminal>
+      </sequence>
+   </production>
+
+<!-- whileStmt           //-&gt; &apos;while&apos; &apos;(&apos; expr &apos;)&apos; stmt -->
+   <production name="whileStmt" order="73" gen="no">
+      <sequence>
+         <terminal>while</terminal>
+         <terminal>(</terminal>
+         <nonTerminal name="expr">
+         </nonTerminal>
+         <terminal>)</terminal>
+         <nonTerminal name="stmt">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- breakStmt           //-&gt; &apos;break&apos; &apos;;&apos; -->
+   <production name="breakStmt" order="74" gen="no">
+      <sequence>
+         <terminal>break</terminal>
+         <terminal>;</terminal>
+      </sequence>
+   </production>
+
+<!-- continueStmt        //-&gt; &apos;continue&apos; &apos;;&apos; -->
+   <production name="continueStmt" order="75" gen="no">
+      <sequence>
+         <terminal>continue</terminal>
+         <terminal>;</terminal>
+      </sequence>
+   </production>
+
+<!-- returnStmt          //-&gt; &apos;return&apos; ( &apos;;&apos; | expr &apos;;&apos;) -->
+   <production name="returnStmt" order="76" gen="no">
+      <sequence>
+         <terminal>return</terminal>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>;</terminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="expr">
+                  </nonTerminal>
+                  <terminal>;</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- exprOrMapping       //-&gt; expr (&apos;:&apos; expr)? -->
+   <production name="exprOrMapping" order="77" gen="no">
+      <sequence>
+         <nonTerminal name="expr">
+         </nonTerminal>
+         <group repetition="?">
+            <sequence>
+               <terminal>:</terminal>
+               <nonTerminal name="expr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- expr                //-&gt; assignExpr -->
+   <production name="expr" order="78" gen="no">
+      <sequence>
+         <nonTerminal name="assignExpr">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- assignExpr          //-&gt; condExpr (assignOp  condExpr)* -->
+   <production name="assignExpr" order="79" gen="no">
+      <sequence>
+         <nonTerminal name="condExpr">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <nonTerminal name="assignOp">
+               </nonTerminal>
+               <nonTerminal name="condExpr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- condExpr            //-&gt; logicOrExpr (&apos;?&apos; condExpr &apos;:&apos; condExpr)? -->
+   <production name="condExpr" order="80" gen="no">
+      <sequence>
+         <nonTerminal name="logicOrExpr">
+         </nonTerminal>
+         <group repetition="?">
+            <sequence>
+               <terminal>?</terminal>
+               <nonTerminal name="condExpr">
+               </nonTerminal>
+               <terminal>:</terminal>
+               <nonTerminal name="condExpr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- logicOrExpr         //-&gt; logicAndExpr (&apos;||&apos;  logicAndExpr)* -->
+   <production name="logicOrExpr" order="81" gen="no">
+      <sequence>
+         <nonTerminal name="logicAndExpr">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>||</terminal>
+               <nonTerminal name="logicAndExpr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- logicAndExpr        //-&gt; memberExpr (&apos;&amp;&amp;&apos;  memberExpr)* -->
+   <production name="logicAndExpr" order="82" gen="no">
+      <sequence>
+         <nonTerminal name="memberExpr">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>&amp;&amp;</terminal>
+               <nonTerminal name="memberExpr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- memberExpr          //-&gt; bitOrExpr (&apos;in&apos; bitOrExpr)* -->
+   <production name="memberExpr" order="83" gen="no">
+      <sequence>
+         <nonTerminal name="bitOrExpr">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>in</terminal>
+               <nonTerminal name="bitOrExpr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- bitOrExpr           //-&gt; bitXorExpr (bitOrOp bitXorExpr)* -->
+   <production name="bitOrExpr" order="84" gen="no">
+      <sequence>
+         <nonTerminal name="bitXorExpr">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <nonTerminal name="bitOrOp">
+               </nonTerminal>
+               <nonTerminal name="bitXorExpr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- bitXorExpr          //-&gt; bitAndExpr (bitXorOp bitAndExpr)* -->
+   <production name="bitXorExpr" order="85" gen="no">
+      <sequence>
+         <nonTerminal name="bitAndExpr">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <nonTerminal name="bitXorOp">
+               </nonTerminal>
+               <nonTerminal name="bitAndExpr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- bitAndExpr          //-&gt; compareExpr (bitAndOp compareExpr)* -->
+   <production name="bitAndExpr" order="86" gen="no">
+      <sequence>
+         <nonTerminal name="compareExpr">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <nonTerminal name="bitAndOp">
+               </nonTerminal>
+               <nonTerminal name="compareExpr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- compareExpr         //-&gt; shiftExpr (compareOp shiftExpr)* -->
+   <production name="compareExpr" order="87" gen="no">
+      <sequence>
+         <nonTerminal name="shiftExpr">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <nonTerminal name="compareOp">
+               </nonTerminal>
+               <nonTerminal name="shiftExpr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- shiftExpr           //-&gt; addExpr (shiftOp addExpr)* -->
+   <production name="shiftExpr" order="88" gen="no">
+      <sequence>
+         <nonTerminal name="addExpr">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <nonTerminal name="shiftOp">
+               </nonTerminal>
+               <nonTerminal name="addExpr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- addExpr             //-&gt; multExpr (addOp multExpr)* -->
+   <production name="addExpr" order="89" gen="no">
+      <sequence>
+         <nonTerminal name="multExpr">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <nonTerminal name="addOp">
+               </nonTerminal>
+               <nonTerminal name="multExpr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- multExpr            //-&gt; prefixExpr (multOp prefixExpr)* -->
+   <production name="multExpr" order="90" gen="no">
+      <sequence>
+         <nonTerminal name="prefixExpr">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <nonTerminal name="multOp">
+               </nonTerminal>
+               <nonTerminal name="prefixExpr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- prefixExpr          //-&gt; ( prefixOp prefixExpr | (castExpr)=&gt; castExpr | postfixExpr) -->
+   <production name="prefixExpr" order="91" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="prefixOp">
+                  </nonTerminal>
+                  <nonTerminal name="prefixExpr">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="castExpr">
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="castExpr">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="postfixExpr">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- castExpr            //-&gt; ( &apos;(&apos; typeLiteral &apos;)&apos; prefixExpr | &apos;(&apos; typeNameContents &apos;)&apos; prefixExpr) -->
+   <production name="castExpr" order="92" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>(</terminal>
+                  <nonTerminal name="typeLiteral">
+                  </nonTerminal>
+                  <terminal>)</terminal>
+                  <nonTerminal name="prefixExpr">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>(</terminal>
+                  <nonTerminal name="typeNameContents">
+                  </nonTerminal>
+                  <terminal>)</terminal>
+                  <nonTerminal name="prefixExpr">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- postfixExpr         //-&gt; primaryExpr ( &apos;(&apos; expr_pc? &apos;)&apos; | &apos;::&apos; identifier | &apos;.&apos; identifier | &apos;[&apos; subscript &apos;]&apos; | postfixOp )* -->
+   <production name="postfixExpr" order="93" gen="no">
+      <sequence>
+         <nonTerminal name="primaryExpr">
+         </nonTerminal>
+         <group repetition="*">
+            <choice>
+               <sequence>
+                  <terminal>(</terminal>
+                  <nonTerminal name="expr_pc" repetition="?">
+                  </nonTerminal>
+                  <terminal>)</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>::</terminal>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>.</terminal>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>[</terminal>
+                  <nonTerminal name="subscript">
+                  </nonTerminal>
+                  <terminal>]</terminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="postfixOp">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- subscript           //-&gt; ( &apos;:&apos; expr_q | expr ( | &apos;:&apos; expr_q )) -->
+   <production name="subscript" order="94" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>:</terminal>
+                  <nonTerminal name="expr_q">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="expr">
+                  </nonTerminal>
+                  <group>
+                     <choice>
+                        <sequence>
+                        </sequence>
+                        <sequence>
+                           <terminal>:</terminal>
+                           <nonTerminal name="expr_q">
+                           </nonTerminal>
+                        </sequence>
+                     </choice>
+                  </group>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- expr_q              //-&gt; ( | expr ) -->
+   <production name="expr_q" order="95" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="expr">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- primaryExpr         //-&gt; (parenExpr | literal | identifier ) -->
+   <production name="primaryExpr" order="96" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="parenExpr">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="literal">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- parenExpr           //-&gt; &apos;(&apos; expr &apos;)&apos; -->
+   <production name="parenExpr" order="97" gen="no">
+      <sequence>
+         <terminal>(</terminal>
+         <nonTerminal name="expr">
+         </nonTerminal>
+         <terminal>)</terminal>
+      </sequence>
+   </production>
+
+<!-- typeLiteral         //-&gt; (primitiveType | compositeType ) -->
+   <production name="typeLiteral" order="98" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="primitiveType">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="compositeType">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- assignOp            //-&gt; ( &apos;=&apos; | &apos;+=&apos; | &apos;-=&apos; | &apos;*=&apos; | &apos;/=&apos; | &apos;%=&apos; | &apos;&lt;&lt;=&apos; | rShiftEq | &apos;&amp;=&apos; | &apos;^=&apos; | &apos;|=&apos; ) -->
+   <production name="assignOp" order="99" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>+=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>-=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>*=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>/=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>%=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>&lt;&lt;=</terminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="rShiftEq">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>&amp;=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>^=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>|=</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- bitOrOp             //-&gt; ( &apos;|&apos; | &apos;.|&apos; ) -->
+   <production name="bitOrOp" order="100" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>|</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.|</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- bitXorOp            //-&gt; ( &apos;^&apos; | &apos;.^&apos; ) -->
+   <production name="bitXorOp" order="101" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>^</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.^</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- bitAndOp            //-&gt; ( &apos;&amp;&apos; | &apos;.&amp;&apos; ) -->
+   <production name="bitAndOp" order="102" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>&amp;</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.&amp;</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- compareOp           //-&gt; ( &apos;&lt;&apos; | &apos;&lt;=&apos; | &apos;&gt;&apos; | gEq | &apos;!=&apos; | &apos;==&apos; | &apos;.&lt;&apos; | &apos;.&lt;=&apos; | &apos;.&gt;&apos; | &apos;.&gt;=&apos; | &apos;.!=&apos; | &apos;.==&apos; ) -->
+   <production name="compareOp" order="103" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>&lt;</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>&lt;=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>&gt;</terminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="gEq">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>!=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>==</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.&lt;</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.&lt;=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.&gt;</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.&gt;=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.!=</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.==</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- shiftOp             //-&gt; ( &apos;&lt;&lt;&apos; | rShift | &apos;.&lt;&lt;&apos; | &apos;.&gt;&gt;&apos; ) -->
+   <production name="shiftOp" order="104" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>&lt;&lt;</terminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="rShift">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>.&lt;&lt;</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.&gt;&gt;</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- addOp               //-&gt; ( &apos;+&apos; | &apos;-&apos; | &apos;.+&apos; | &apos;.-&apos; ) -->
+   <production name="addOp" order="105" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>+</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>-</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.+</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.-</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- multOp              //-&gt; ( &apos;*&apos; | &apos;/&apos; | &apos;%&apos; | &apos;.*&apos; | &apos;./&apos; | &apos;.%&apos; ) -->
+   <production name="multOp" order="106" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>*</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>/</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>%</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.*</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>./</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>.%</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- prefixOp            //-&gt; ( &apos;!&apos; | &apos;-&apos; | &apos;~&apos; | &apos;++&apos; | &apos;&#45;&#45;&apos; ) -->
+   <production name="prefixOp" order="107" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>!</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>-</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>~</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>++</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>--</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- postfixOp           //-&gt; ( &apos;++&apos; | &apos;&#45;&#45;&apos; ) -->
+   <production name="postfixOp" order="108" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>++</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>--</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- gEq                 //-&gt; (&apos;&gt;&apos; &apos;=&apos;)=&gt; &apos;&gt;&apos; &apos;=&apos; -->
+   <production name="gEq" order="109" gen="no">
+      <sequence>
+         <syntacticPredicate>
+            <sequence>
+               <terminal>&gt;</terminal>
+               <terminal>=</terminal>
+            </sequence>
+         </syntacticPredicate>
+         <terminal>&gt;</terminal>
+         <terminal>=</terminal>
+      </sequence>
+   </production>
+
+<!-- rShift              //-&gt; (&apos;&gt;&apos; &apos;&gt;&apos;)=&gt; &apos;&gt;&apos; &apos;&gt;&apos; -->
+   <production name="rShift" order="110" gen="no">
+      <sequence>
+         <syntacticPredicate>
+            <sequence>
+               <terminal>&gt;</terminal>
+               <terminal>&gt;</terminal>
+            </sequence>
+         </syntacticPredicate>
+         <terminal>&gt;</terminal>
+         <terminal>&gt;</terminal>
+      </sequence>
+   </production>
+
+<!-- rShiftEq            //-&gt; (&apos;&gt;&apos; &apos;&gt;&apos; &apos;=&apos;)=&gt;  &apos;&gt;&apos; &apos;&gt;&apos; &apos;=&apos; -->
+   <production name="rShiftEq" order="111" gen="no">
+      <sequence>
+         <syntacticPredicate>
+            <sequence>
+               <terminal>&gt;</terminal>
+               <terminal>&gt;</terminal>
+               <terminal>=</terminal>
+            </sequence>
+         </syntacticPredicate>
+         <terminal>&gt;</terminal>
+         <terminal>&gt;</terminal>
+         <terminal>=</terminal>
+      </sequence>
+   </production>
+
+<!-- literal             //-&gt; ( listLiteral | curlyLiteral | primitiveLiteral ) -->
+   <production name="literal" order="112" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="listLiteral">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="curlyLiteral">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="primitiveLiteral">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- listLiteral         //-&gt; &apos;[&apos; expr_pc? &apos;]&apos; -->
+   <production name="listLiteral" order="113" gen="no">
+      <sequence>
+         <terminal>[</terminal>
+         <nonTerminal name="expr_pc" repetition="?">
+         </nonTerminal>
+         <terminal>]</terminal>
+      </sequence>
+   </production>
+
+<!-- curlyLiteral        //-&gt; &apos;{&apos; exprOrMapping_pc? &apos;}&apos; -->
+   <production name="curlyLiteral" order="114" gen="no">
+      <sequence>
+         <terminal>{</terminal>
+         <nonTerminal name="exprOrMapping_pc" repetition="?">
+         </nonTerminal>
+         <terminal>}</terminal>
+      </sequence>
+   </production>
+
+<!-- primitiveLiteral    //-&gt; ( &apos;true&apos; | &apos;false&apos; | STRING_LITERAL | FLOAT_LITERAL | INT_LITERAL | HEX_LITERAL ) -->
+   <production name="primitiveLiteral" order="115" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>true</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>false</terminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="STRING_LITERAL">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="FLOAT_LITERAL">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="INT_LITERAL">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="HEX_LITERAL">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- standAloneTypeDef   //-&gt; &apos;type&apos; identifier &apos;=&apos; typeDefTail -->
+   <production name="standAloneTypeDef" order="116" gen="no">
+      <sequence>
+         <terminal>type</terminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <terminal>=</terminal>
+         <nonTerminal name="typeDefTail">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- typeDef             //-&gt; typeModifiers identifier &apos;=&apos; typeDefTail -->
+   <production name="typeDef" order="117" gen="no">
+      <sequence>
+         <nonTerminal name="typeModifiers">
+         </nonTerminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <terminal>=</terminal>
+         <nonTerminal name="typeDefTail">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- typeDefTail         //-&gt; ( (type &apos;;&apos;)=&gt; type &apos;;&apos; | tupleBody &apos;;&apos; ) -->
+   <production name="typeDefTail" order="118" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="type">
+                        </nonTerminal>
+                        <terminal>;</terminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="type">
+                  </nonTerminal>
+                  <terminal>;</terminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="tupleBody">
+                  </nonTerminal>
+                  <terminal>;</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- typeModifiers       //-&gt; typeModifier* -->
+   <production name="typeModifiers" order="119" gen="no">
+      <sequence>
+         <nonTerminal name="typeModifier" repetition="*">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- typeModifier        //-&gt; &apos;static&apos; -->
+   <production name="typeModifier" order="120" gen="no">
+      <sequence>
+         <terminal>static</terminal>
+      </sequence>
+   </production>
+
+<!-- expressionMode      //-&gt; (&apos;attribute&apos; &apos;expression&apos; ( | typeArgs1 ) | &apos;function&apos; | OPERATOR | &apos;type&apos; ) -->
+   <production name="expressionMode" order="121" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>attribute</terminal>
+                  <terminal>expression</terminal>
+                  <group>
+                     <choice>
+                        <sequence>
+                        </sequence>
+                        <sequence>
+                           <nonTerminal name="typeArgs1">
+                           </nonTerminal>
+                        </sequence>
+                     </choice>
+                  </group>
+               </sequence>
+               <sequence>
+                  <terminal>function</terminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="OPERATOR">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>type</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- returnType          //-&gt; (type | &apos;void&apos; ) -->
+   <production name="returnType" order="122" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="type">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>void</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- type                //-&gt; ( typeName | primitiveType | compositeType ) -->
+   <production name="type" order="123" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="typeName">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="primitiveType">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="compositeType">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- typeName            //-&gt; typeNameContents -->
+   <production name="typeName" order="124" gen="no">
+      <sequence>
+         <nonTerminal name="typeNameContents">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- typeNameContents    //-&gt; typeNameStart ( | &apos;.&apos; identifier ) -->
+   <production name="typeNameContents" order="125" gen="no">
+      <sequence>
+         <nonTerminal name="typeNameStart">
+         </nonTerminal>
+         <group>
+            <choice>
+               <sequence>
+               </sequence>
+               <sequence>
+                  <terminal>.</terminal>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- typeNameStart       //-&gt; ( ( namespaceName &apos;::&apos;)=&gt; namespaceName &apos;::&apos; identifier | identifier ) -->
+   <production name="typeNameStart" order="126" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="namespaceName">
+                        </nonTerminal>
+                        <terminal>::</terminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="namespaceName">
+                  </nonTerminal>
+                  <terminal>::</terminal>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- typeArgs            //-&gt; &apos;&lt;&apos; type_pc &apos;&gt;&apos; -->
+   <production name="typeArgs" order="127" gen="no">
+      <sequence>
+         <terminal>&lt;</terminal>
+         <nonTerminal name="type_pc">
+         </nonTerminal>
+         <terminal>&gt;</terminal>
+      </sequence>
+   </production>
+
+<!-- typeArgs1           //-&gt; &apos;&lt;&apos; type &apos;&gt;&apos; -->
+   <production name="typeArgs1" order="128" gen="no">
+      <sequence>
+         <terminal>&lt;</terminal>
+         <nonTerminal name="type">
+         </nonTerminal>
+         <terminal>&gt;</terminal>
+      </sequence>
+   </production>
+
+<!-- typeArgs2           //-&gt; &apos;&lt;&apos; type &apos;,&apos; type &apos;&gt;&apos; -->
+   <production name="typeArgs2" order="129" gen="no">
+      <sequence>
+         <terminal>&lt;</terminal>
+         <nonTerminal name="type">
+         </nonTerminal>
+         <terminal>,</terminal>
+         <nonTerminal name="type">
+         </nonTerminal>
+         <terminal>&gt;</terminal>
+      </sequence>
+   </production>
+
+<!-- typeDims            //-&gt; &apos;[&apos; expr &apos;]&apos; -->
+   <production name="typeDims" order="130" gen="no">
+      <sequence>
+         <terminal>[</terminal>
+         <nonTerminal name="expr">
+         </nonTerminal>
+         <terminal>]</terminal>
+      </sequence>
+   </production>
+
+<!-- splType             //-&gt;  typeLiteral EOF -->
+   <production name="splType" order="131" gen="no">
+      <sequence>
+         <nonTerminal name="typeLiteral">
+         </nonTerminal>
+         <specialTerminal>EOF</specialTerminal>
+      </sequence>
+   </production>
+
+<!-- splExpr             //-&gt; expr EOF -->
+   <production name="splExpr" order="132" gen="no">
+      <sequence>
+         <nonTerminal name="expr">
+         </nonTerminal>
+         <specialTerminal>EOF</specialTerminal>
+      </sequence>
+   </production>
+
+<!-- primitiveType       //-&gt; ( enumType | stringType | simplePrimitiveType ) -->
+   <production name="primitiveType" order="133" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="enumType">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="stringType">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="simplePrimitiveType">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- enumType            //-&gt; &apos;enum&apos; &apos;{&apos; id_pc &apos;}&apos; -->
+   <production name="enumType" order="134" gen="no">
+      <sequence>
+         <terminal>enum</terminal>
+         <terminal>{</terminal>
+         <nonTerminal name="id_pc">
+         </nonTerminal>
+         <terminal>}</terminal>
+      </sequence>
+   </production>
+
+<!-- stringType          //-&gt; ( &apos;rstring&apos; ( | typeDims ) | &apos;ustring&apos; ) -->
+   <production name="stringType" order="135" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>rstring</terminal>
+                  <group>
+                     <choice>
+                        <sequence>
+                        </sequence>
+                        <sequence>
+                           <nonTerminal name="typeDims">
+                           </nonTerminal>
+                        </sequence>
+                     </choice>
+                  </group>
+               </sequence>
+               <sequence>
+                  <terminal>ustring</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- simplePrimitiveType //-&gt; simplePrimitiveTypeName -->
+   <production name="simplePrimitiveType" order="136" gen="no">
+      <sequence>
+         <nonTerminal name="simplePrimitiveTypeName">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- simplePrimitiveTypeName //-&gt; ( &apos;boolean&apos; | &apos;int8&apos; | &apos;uint8&apos; | &apos;float32&apos; | &apos;decimal32&apos; | &apos;complex32&apos; | &apos;timestamp&apos; | BLOB ) -->
+   <production name="simplePrimitiveTypeName" order="137" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>boolean</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>int8</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>uint8</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>float32</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>decimal32</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>complex32</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>timestamp</terminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="BLOB">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- compositeType       //-&gt; ( tupleType | &apos;list&apos;  typeArgs1 ( | typeDims ) | &apos;set&apos; typeArgs1 ( | typeDims ) | &apos;map&apos; typeArgs2 ( | typeDims )) -->
+   <production name="compositeType" order="138" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="tupleType">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>list</terminal>
+                  <nonTerminal name="typeArgs1">
+                  </nonTerminal>
+                  <group>
+                     <choice>
+                        <sequence>
+                        </sequence>
+                        <sequence>
+                           <nonTerminal name="typeDims">
+                           </nonTerminal>
+                        </sequence>
+                     </choice>
+                  </group>
+               </sequence>
+               <sequence>
+                  <terminal>set</terminal>
+                  <nonTerminal name="typeArgs1">
+                  </nonTerminal>
+                  <group>
+                     <choice>
+                        <sequence>
+                        </sequence>
+                        <sequence>
+                           <nonTerminal name="typeDims">
+                           </nonTerminal>
+                        </sequence>
+                     </choice>
+                  </group>
+               </sequence>
+               <sequence>
+                  <terminal>map</terminal>
+                  <nonTerminal name="typeArgs2">
+                  </nonTerminal>
+                  <group>
+                     <choice>
+                        <sequence>
+                        </sequence>
+                        <sequence>
+                           <nonTerminal name="typeDims">
+                           </nonTerminal>
+                        </sequence>
+                     </choice>
+                  </group>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- tupleType           //-&gt; &apos;tuple&apos; tupleArgs -->
+   <production name="tupleType" order="139" gen="no">
+      <sequence>
+         <terminal>tuple</terminal>
+         <nonTerminal name="tupleArgs">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- tupleArgs           //-&gt; &apos;&lt;&apos; tupleBody &apos;&gt;&apos; -->
+   <production name="tupleArgs" order="140" gen="no">
+      <sequence>
+         <terminal>&lt;</terminal>
+         <nonTerminal name="tupleBody">
+         </nonTerminal>
+         <terminal>&gt;</terminal>
+      </sequence>
+   </production>
+
+<!-- tupleBody           //-&gt; ( (attributeDecl)=&gt; attributeDecl_pc | tupleExtendee_pc ) -->
+   <production name="tupleBody" order="141" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="attributeDecl">
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="attributeDecl_pc">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="tupleExtendee_pc">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- attributeDecl       //-&gt; type identifier -->
+   <production name="attributeDecl" order="142" gen="no">
+      <sequence>
+         <nonTerminal name="type">
+         </nonTerminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- tupleExtendee       //-&gt; (typeName | tupleType ) -->
+   <production name="tupleExtendee" order="143" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <nonTerminal name="typeName">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="tupleType">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- functionPrototype   //-&gt; typeFormals boundsFormals functionModifiers returnType identifier protoFormals EOF -->
+   <production name="functionPrototype" order="144" gen="no">
+      <sequence>
+         <nonTerminal name="typeFormals">
+         </nonTerminal>
+         <nonTerminal name="boundsFormals">
+         </nonTerminal>
+         <nonTerminal name="functionModifiers">
+         </nonTerminal>
+         <nonTerminal name="returnType">
+         </nonTerminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <nonTerminal name="protoFormals">
+         </nonTerminal>
+         <specialTerminal>EOF</specialTerminal>
+      </sequence>
+   </production>
+
+<!-- typeFormals         //-&gt; ( | &apos;&lt;&apos; typeFormal_pc &apos;&gt;&apos;) -->
+   <production name="typeFormals" order="145" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+               </sequence>
+               <sequence>
+                  <terminal>&lt;</terminal>
+                  <nonTerminal name="typeFormal_pc">
+                  </nonTerminal>
+                  <terminal>&gt;</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- typeFormal          //-&gt; typeFormalConstraint identifier -->
+   <production name="typeFormal" order="146" gen="no">
+      <sequence>
+         <nonTerminal name="typeFormalConstraint">
+         </nonTerminal>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- typeFormalConstraint  //-&gt; ( &apos;composite&apos; | &apos;enum&apos; | &apos;list&apos; | &apos;map&apos; | &apos;set&apos; | &apos;tuple&apos; | (semiKeyword["any"])=&gt; identifier | (semiKeyword["collection"])=&gt; identifier | (semiKeyword["complex"])=&gt; identifier | (semiKeyword["complex"])=&gt; identifier | (semiKeyword["decimal"])=&gt; identifier | (semiKeyword["float"])=&gt; identifier | (semiKeyword["floatingpoint"])=&gt; identifier | (semiKeyword["integral"])=&gt; identifier | (semiKeyword["integral"])=&gt; identifier | (semiKeyword["numeric"])=&gt; identifier | (semiKeyword["ordered"])=&gt; | identifier | (semiKeyword["primitive"])=&gt; identifier |(semiKeyword["string"])=&gt; identifier ) -->
+   <production name="typeFormalConstraint" order="147" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>composite</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>enum</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>list</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>map</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>set</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>tuple</terminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"any"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"collection"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"complex"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"complex"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"decimal"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"float"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"floatingpoint"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"integral"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"integral"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"numeric"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"ordered"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"primitive"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <syntacticPredicate>
+                     <sequence>
+                        <nonTerminal name="semiKeyword">
+                           <args>"string"</args>
+                        </nonTerminal>
+                     </sequence>
+                  </syntacticPredicate>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- boundsFormals       //-&gt; ( | &apos;[&apos; id_pc &apos;]&apos;) -->
+   <production name="boundsFormals" order="148" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+               </sequence>
+               <sequence>
+                  <terminal>[</terminal>
+                  <nonTerminal name="id_pc">
+                  </nonTerminal>
+                  <terminal>]</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- protoFormals        //-&gt;  &apos;(&apos; protoFormal_pc? &apos;)&apos; -->
+   <production name="protoFormals" order="149" gen="no">
+      <sequence>
+         <terminal>(</terminal>
+         <nonTerminal name="protoFormal_pc" repetition="?">
+         </nonTerminal>
+         <terminal>)</terminal>
+      </sequence>
+   </production>
+
+<!-- protoFormal         //-&gt; formalModifiers type ( | identifier ) -->
+   <production name="protoFormal" order="150" gen="no">
+      <sequence>
+         <nonTerminal name="formalModifiers">
+         </nonTerminal>
+         <nonTerminal name="type">
+         </nonTerminal>
+         <group>
+            <choice>
+               <sequence>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="identifier">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- attributeDecl_pc    //-&gt; attributeDecl (&apos;,&apos; attributeDecl )* -->
+   <production name="attributeDecl_pc" order="151" gen="no">
+      <sequence>
+         <nonTerminal name="attributeDecl">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>,</terminal>
+               <nonTerminal name="attributeDecl">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- compositePort_pc    //-&gt; compositePort (&apos;,&apos; compositePort )* -->
+   <production name="compositePort_pc" order="152" gen="no">
+      <sequence>
+         <nonTerminal name="compositePort">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>,</terminal>
+               <nonTerminal name="compositePort">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- exprOrMapping_pc    //-&gt; exprOrMapping (&apos;,&apos; exprOrMapping )* -->
+   <production name="exprOrMapping_pc" order="153" gen="no">
+      <sequence>
+         <nonTerminal name="exprOrMapping">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>,</terminal>
+               <nonTerminal name="exprOrMapping">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- expr_pc             //-&gt; expr (&apos;,&apos; expr )* -->
+   <production name="expr_pc" order="154" gen="no">
+      <sequence>
+         <nonTerminal name="expr">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>,</terminal>
+               <nonTerminal name="expr">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- functionFormal_pc   //-&gt; functionFormal (&apos;,&apos; functionFormal )* -->
+   <production name="functionFormal_pc" order="155" gen="no">
+      <sequence>
+         <nonTerminal name="functionFormal">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>,</terminal>
+               <nonTerminal name="functionFormal">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- id_pc               //-&gt; identifier (&apos;,&apos; identifier )* -->
+   <production name="id_pc" order="156" gen="no">
+      <sequence>
+         <nonTerminal name="identifier">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>,</terminal>
+               <nonTerminal name="identifier">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- localDeclItem_pc    //-&gt; localDeclItem (&apos;,&apos; localDeclItem )* -->
+   <production name="localDeclItem_pc" order="157" gen="no">
+      <sequence>
+         <nonTerminal name="localDeclItem">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>,</terminal>
+               <nonTerminal name="localDeclItem">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- protoFormal_pc      //-&gt; protoFormal (&apos;,&apos; protoFormal )* -->
+   <production name="protoFormal_pc" order="158" gen="no">
+      <sequence>
+         <nonTerminal name="protoFormal">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>,</terminal>
+               <nonTerminal name="protoFormal">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- opOutput_ps         //-&gt; opOutput (&apos;;&apos;  opOutput ) -->
+   <production name="opOutput_ps" order="159" gen="no">
+      <sequence>
+         <nonTerminal name="opOutput">
+         </nonTerminal>
+         <group>
+            <sequence>
+               <terminal>;</terminal>
+               <nonTerminal name="opOutput">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- outputAssign_pc     //-&gt; outputAssign (&apos;,&apos; outputAssign )* -->
+   <production name="outputAssign_pc" order="160" gen="no">
+      <sequence>
+         <nonTerminal name="outputAssign">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>,</terminal>
+               <nonTerminal name="outputAssign">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- portInputs_ps       //-&gt; portInputs (&apos;;&apos;  portInputs )* -->
+   <production name="portInputs_ps" order="161" gen="no">
+      <sequence>
+         <nonTerminal name="portInputs">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>;</terminal>
+               <nonTerminal name="portInputs">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- tupleExtendee_pc    //-&gt; tupleExtendee (&apos;,&apos; tupleExtendee )* -->
+   <production name="tupleExtendee_pc" order="162" gen="no">
+      <sequence>
+         <nonTerminal name="tupleExtendee">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>,</terminal>
+               <nonTerminal name="tupleExtendee">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- typeFormal_pc       //-&gt; typeFormal (&apos;,&apos; typeFormal )* -->
+   <production name="typeFormal_pc" order="163" gen="no">
+      <sequence>
+         <nonTerminal name="typeFormal">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>,</terminal>
+               <nonTerminal name="typeFormal">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- type_pc             //-&gt; type (&apos;,&apos; type)* -->
+   <production name="type_pc" order="164" gen="no">
+      <sequence>
+         <nonTerminal name="type">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <terminal>,</terminal>
+               <nonTerminal name="type">
+               </nonTerminal>
+            </sequence>
+         </group>
+      </sequence>
+   </production>
+
+<!-- identifier          //-&gt; ID -->
+   <production name="identifier" order="165" gen="no">
+      <sequence>
+         <specialTerminal>ID</specialTerminal>
+      </sequence>
+   </production>
+
+<!-- ID                  //-&gt; DOLLAR? LETTER (DIGIT | LETTER)* -->
+   <production name="ID" order="166" gen="no">
+      <sequence>
+         <nonTerminal name="DOLLAR" repetition="?">
+         </nonTerminal>
+         <nonTerminal name="LETTER">
+         </nonTerminal>
+         <group repetition="*">
+            <choice>
+               <sequence>
+                  <nonTerminal name="DIGIT">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="LETTER">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- INT_LITERAL         //-&gt; (&apos;0&apos; | POSDIGIT DIGIT*) NUM_SUFFIX? -->
+   <production name="INT_LITERAL" order="167" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>0</terminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="POSDIGIT">
+                  </nonTerminal>
+                  <nonTerminal name="DIGIT" repetition="*">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+         <nonTerminal name="NUM_SUFFIX" repetition="?">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- HEX_LITERAL         //-&gt; HEX_PRE HEXDIGIT* HEX_SUF_T? -->
+   <production name="HEX_LITERAL" order="168" gen="no">
+      <sequence>
+         <nonTerminal name="HEX_PRE">
+         </nonTerminal>
+         <nonTerminal name="HEXDIGIT" repetition="*">
+         </nonTerminal>
+         <nonTerminal name="HEX_SUF_T" repetition="?">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- FLOAT_LITERAL       //-&gt; (&apos;0&apos; | POSDIGIT DIGIT*) &apos;.&apos; DIGIT* EXPONENT? NUM_SUFFIX? | &apos;.&apos; DIGIT+ EXPONENT? NUM_SUFFIX? | (&apos;0&apos; | POSDIGIT DIGIT*) EXPONENT NUM_SUFFIX? -->
+   <production name="FLOAT_LITERAL" order="169" gen="no">
+      <choice>
+         <sequence>
+            <group>
+               <choice>
+                  <sequence>
+                     <terminal>0</terminal>
+                  </sequence>
+                  <sequence>
+                     <nonTerminal name="POSDIGIT">
+                     </nonTerminal>
+                     <nonTerminal name="DIGIT" repetition="*">
+                     </nonTerminal>
+                  </sequence>
+               </choice>
+            </group>
+            <terminal>.</terminal>
+            <nonTerminal name="DIGIT" repetition="*">
+            </nonTerminal>
+            <nonTerminal name="EXPONENT" repetition="?">
+            </nonTerminal>
+            <nonTerminal name="NUM_SUFFIX" repetition="?">
+            </nonTerminal>
+         </sequence>
+         <sequence>
+            <terminal>.</terminal>
+            <nonTerminal name="DIGIT" repetition="+">
+            </nonTerminal>
+            <nonTerminal name="EXPONENT" repetition="?">
+            </nonTerminal>
+            <nonTerminal name="NUM_SUFFIX" repetition="?">
+            </nonTerminal>
+         </sequence>
+         <sequence>
+            <group>
+               <choice>
+                  <sequence>
+                     <terminal>0</terminal>
+                  </sequence>
+                  <sequence>
+                     <nonTerminal name="POSDIGIT">
+                     </nonTerminal>
+                     <nonTerminal name="DIGIT" repetition="*">
+                     </nonTerminal>
+                  </sequence>
+               </choice>
+            </group>
+            <nonTerminal name="EXPONENT">
+            </nonTerminal>
+            <nonTerminal name="NUM_SUFFIX" repetition="?">
+            </nonTerminal>
+         </sequence>
+      </choice>
+   </production>
+
+<!-- fragment NUM_SUFFIX //-&gt; NUM_SUF_T | NUM_SUF_B | NUM_SUF_T NUM_SUF_B | NUM_SUF_B NUM_SUF_T -->
+   <fragment name="NUM_SUFFIX" gen="no">
+      <choice>
+         <sequence>
+            <nonTerminal name="NUM_SUF_T">
+            </nonTerminal>
+         </sequence>
+         <sequence>
+            <nonTerminal name="NUM_SUF_B">
+            </nonTerminal>
+         </sequence>
+         <sequence>
+            <nonTerminal name="NUM_SUF_T">
+            </nonTerminal>
+            <nonTerminal name="NUM_SUF_B">
+            </nonTerminal>
+         </sequence>
+         <sequence>
+            <nonTerminal name="NUM_SUF_B">
+            </nonTerminal>
+            <nonTerminal name="NUM_SUF_T">
+            </nonTerminal>
+         </sequence>
+      </choice>
+   </fragment>
+
+<!-- fragment NUM_SUF_T  //-&gt; &apos;s&apos; | &apos;u&apos; | &apos;f&apos; | &apos;d&apos; -->
+   <fragment name="NUM_SUF_T" gen="no">
+      <choice>
+         <sequence>
+            <terminal>s</terminal>
+         </sequence>
+         <sequence>
+            <terminal>u</terminal>
+         </sequence>
+         <sequence>
+            <terminal>f</terminal>
+         </sequence>
+         <sequence>
+            <terminal>d</terminal>
+         </sequence>
+      </choice>
+   </fragment>
+
+<!-- fragment NUM_SUF_B  //-&gt; &apos;b&apos; | &apos;h&apos; | &apos;w&apos; | &apos;l&apos; | &apos;q&apos; -->
+   <fragment name="NUM_SUF_B" gen="no">
+      <choice>
+         <sequence>
+            <terminal>b</terminal>
+         </sequence>
+         <sequence>
+            <terminal>h</terminal>
+         </sequence>
+         <sequence>
+            <terminal>w</terminal>
+         </sequence>
+         <sequence>
+            <terminal>l</terminal>
+         </sequence>
+         <sequence>
+            <terminal>q</terminal>
+         </sequence>
+      </choice>
+   </fragment>
+
+<!-- fragment HEX_SUF_T  //-&gt; &apos;s&apos; | &apos;u&apos; -->
+   <fragment name="HEX_SUF_T" gen="no">
+      <choice>
+         <sequence>
+            <terminal>s</terminal>
+         </sequence>
+         <sequence>
+            <terminal>u</terminal>
+         </sequence>
+      </choice>
+   </fragment>
+
+<!-- fragment EXPONENT   //-&gt; (&apos;e&apos;|&apos;E&apos;) (&apos;+&apos;|&apos;-&apos;)? DIGIT+ -->
+   <fragment name="EXPONENT" gen="no">
+      <sequence>
+         <group>
+            <choice>
+               <sequence>
+                  <terminal>e</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>E</terminal>
+               </sequence>
+            </choice>
+         </group>
+         <group repetition="?">
+            <choice>
+               <sequence>
+                  <terminal>+</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>-</terminal>
+               </sequence>
+            </choice>
+         </group>
+         <nonTerminal name="DIGIT" repetition="+">
+         </nonTerminal>
+      </sequence>
+   </fragment>
+
+<!-- STRING_LITERAL      //-&gt; DQUOTE (STRINGESC | STRINGCHAR)* DQUOTE STR_SUF_T? -->
+   <production name="STRING_LITERAL" order="170" gen="no">
+      <sequence>
+         <specialTerminal>DQUOTE</specialTerminal>
+         <group repetition="*">
+            <choice>
+               <sequence>
+                  <nonTerminal name="STRINGESC">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <nonTerminal name="STRINGCHAR">
+                  </nonTerminal>
+               </sequence>
+            </choice>
+         </group>
+         <specialTerminal>DQUOTE</specialTerminal>
+         <nonTerminal name="STR_SUF_T" repetition="?">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- fragment STR_SUF_T  //-&gt; &apos;r&apos; | &apos;u&apos; -->
+   <fragment name="STR_SUF_T" gen="no">
+      <choice>
+         <sequence>
+            <terminal>r</terminal>
+         </sequence>
+         <sequence>
+            <terminal>u</terminal>
+         </sequence>
+      </choice>
+   </fragment>
+
+<!-- WHITE_SPACE         //-&gt; (&apos; &apos;|&apos;\t&apos;|&apos;\n&apos;|&apos;\r&apos;)+ -->
+   <production name="WHITE_SPACE" order="171" gen="no">
+      <sequence>
+         <group repetition="+">
+            <choice>
+               <sequence>
+                  <terminal> </terminal>
+               </sequence>
+               <sequence>
+                  <terminal>\t</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>\n</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>\r</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- ML_COMMENT          //-&gt; SLASH_STAR .* STAR_SLASH -->
+   <production name="ML_COMMENT" order="172" gen="no">
+      <sequence>
+         <nonTerminal name="SLASH_STAR">
+         </nonTerminal>
+         <dot repetition="*"/>
+         <nonTerminal name="STAR_SLASH">
+         </nonTerminal>
+      </sequence>
+   </production>
+
+<!-- SL_COMMENT          //-&gt; SLASH_SLASH (~(&apos;\n&apos;|&apos;\r&apos;))* (&apos;\n&apos;|&apos;\r&apos;)? -->
+   <production name="SL_COMMENT" order="173" gen="no">
+      <sequence>
+         <nonTerminal name="SLASH_SLASH">
+         </nonTerminal>
+         <group repetition="*">
+            <sequence>
+               <not>
+                  <group>
+                     <choice>
+                        <sequence>
+                           <terminal>\n</terminal>
+                        </sequence>
+                        <sequence>
+                           <terminal>\r</terminal>
+                        </sequence>
+                     </choice>
+                  </group>
+               </not>
+            </sequence>
+         </group>
+         <group repetition="?">
+            <choice>
+               <sequence>
+                  <terminal>\n</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>\r</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </production>
+
+<!-- fragment STRINGESC  //-&gt; &apos;\\&apos; ( DQUOTE | &apos;\\&apos; | &apos;?&apos; | SQUOTE | &apos;a&apos; | &apos;b&apos; | &apos;f&apos; | &apos;n&apos; | &apos;r&apos; | &apos;t&apos; | &apos;v&apos; | &apos;u&apos; HEXDIGIT HEXDIGIT HEXDIGIT HEXDIGIT | &apos;0&apos;) -->
+   <fragment name="STRINGESC" gen="no">
+      <sequence>
+         <terminal>\\</terminal>
+         <group>
+            <choice>
+               <sequence>
+                  <specialTerminal>DQUOTE</specialTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>\\</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>?</terminal>
+               </sequence>
+               <sequence>
+                  <specialTerminal>SQUOTE</specialTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>a</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>b</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>f</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>n</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>r</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>t</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>v</terminal>
+               </sequence>
+               <sequence>
+                  <terminal>u</terminal>
+                  <nonTerminal name="HEXDIGIT">
+                  </nonTerminal>
+                  <nonTerminal name="HEXDIGIT">
+                  </nonTerminal>
+                  <nonTerminal name="HEXDIGIT">
+                  </nonTerminal>
+                  <nonTerminal name="HEXDIGIT">
+                  </nonTerminal>
+               </sequence>
+               <sequence>
+                  <terminal>0</terminal>
+               </sequence>
+            </choice>
+         </group>
+      </sequence>
+   </fragment>
+
+<!-- fragment STRINGCHAR //-&gt; ~( &apos;\n&apos; | &apos;\r&apos; | &apos;\\&apos; | DQUOTE ) -->
+   <fragment name="STRINGCHAR" gen="no">
+      <sequence>
+         <not>
+            <group>
+               <choice>
+                  <sequence>
+                     <terminal>\n</terminal>
+                  </sequence>
+                  <sequence>
+                     <terminal>\r</terminal>
+                  </sequence>
+                  <sequence>
+                     <terminal>\\</terminal>
+                  </sequence>
+                  <sequence>
+                     <specialTerminal>DQUOTE</specialTerminal>
+                  </sequence>
+               </choice>
+            </group>
+         </not>
+      </sequence>
+   </fragment>
+
+<!-- fragment LETTER     //-&gt; &apos;a&apos;..&apos;z&apos; | &apos;A&apos;..&apos;Z&apos; | &apos;_&apos; -->
+   <fragment name="LETTER" gen="no">
+      <choice>
+         <sequence>
+            <terminalRange>
+               <terminal>a</terminal>
+               <terminal>z</terminal>
+            </terminalRange>
+         </sequence>
+         <sequence>
+            <terminalRange>
+               <terminal>A</terminal>
+               <terminal>Z</terminal>
+            </terminalRange>
+         </sequence>
+         <sequence>
+            <terminal>_</terminal>
+         </sequence>
+      </choice>
+   </fragment>
+
+<!-- fragment DIGIT      //-&gt; &apos;0&apos;..&apos;9&apos; -->
+   <fragment name="DIGIT" gen="no">
+      <sequence>
+         <terminalRange>
+            <terminal>0</terminal>
+            <terminal>9</terminal>
+         </terminalRange>
+      </sequence>
+   </fragment>
+
+<!-- fragment POSDIGIT   //-&gt; &apos;1&apos;..&apos;9&apos; -->
+   <fragment name="POSDIGIT" gen="no">
+      <sequence>
+         <terminalRange>
+            <terminal>1</terminal>
+            <terminal>9</terminal>
+         </terminalRange>
+      </sequence>
+   </fragment>
+
+<!-- fragment HEX_PRE    //-&gt; &apos;0x&apos; -->
+   <fragment name="HEX_PRE" gen="no">
+      <sequence>
+         <terminal>0x</terminal>
+      </sequence>
+   </fragment>
+
+<!-- fragment HEXDIGIT   //-&gt; DIGIT | &apos;a&apos;..&apos;f&apos; | &apos;A&apos;..&apos;F&apos; -->
+   <fragment name="HEXDIGIT" gen="no">
+      <choice>
+         <sequence>
+            <nonTerminal name="DIGIT">
+            </nonTerminal>
+         </sequence>
+         <sequence>
+            <terminalRange>
+               <terminal>a</terminal>
+               <terminal>f</terminal>
+            </terminalRange>
+         </sequence>
+         <sequence>
+            <terminalRange>
+               <terminal>A</terminal>
+               <terminal>F</terminal>
+            </terminalRange>
+         </sequence>
+      </choice>
+   </fragment>
+
+<!-- semiKeyword         //-&gt; ID assertEquals[(char*)$ID.text-&gt;chars, w] -->
+   <production name="semiKeyword" order="174" gen="no">
+      <sequence>
+         <specialTerminal>ID</specialTerminal>
+         <nonTerminal name="assertEquals">
+            <args>(char*)$ID.text->chars, w</args>
+         </nonTerminal>
+      </sequence>
+   </production>
+
+</grammar>

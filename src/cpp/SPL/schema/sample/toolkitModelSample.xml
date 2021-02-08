@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<toolkitModel productVersion="1.0"
+    xmlns="http://www.ibm.com/xmlns/prod/streams/spl/toolkit"
+    xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <toolkit name="standard-toolkit" version="2.0" requiredProductVersion="1.0" uri="file://here" hasNLResources="true">
+    <description docHref="Link_to_Documentation" sampleUri="2">Standard SPL Toolkit</description>
+    <uriTable>
+      <uri index="0" value="file://foo.spl"/>
+      <uri index="1" value="file://foobar.spl"/>
+      <uri index="2" value="file://InfoSphereSteams/lib/spl/std"/>
+      <uri index="3" value="file://images/join.jpg" />
+      <uri index="4" value="file://com.ibm.streams.splstd/join/model.xml"/>
+      <uri index="5" value="file://URI_to_samples_for_join_operator"/>
+      <uri index="6" value="file://image"/>
+      <uri index="7" value="file://ToolkitCompositeOperator.spl"/>
+      <uri index="8" value="file://samples"/>
+    </uriTable>
+    <dependency>
+        <cmn:name>com.ibm.streams.spl.basetoolkit</cmn:name>
+        <cmn:version>0.9</cmn:version>
+    </dependency>
+    <namespace
+        name="com.ibm.streams.spl.std"
+        relPathToNamespace="file://pathToNameSpaceRoot">
+        <description>General description of this namespace</description>
+            <primitiveOp sampleUriIndex="5"
+                invalid="false"
+                public="true"
+                name="Join"
+                modelUriIndex="4"
+                language="Cpp">
+                <description docHref="Link_to_documentation">The Join operator is used to correlate tuples from two streams</description>
+                <images>
+                  <image size="16" uriIndex="2"/>
+                  <image size="32" uriIndex="3"/>
+                </images>
+                <parametersDescription>A general description of the parameters of this operator</parametersDescription>
+                <parameter name="match" optional="true" defaultValue="true"
+                    expressionMode="Expression" type="boolean">
+                    <description>This optional parameter specifies an expression of type boolean to be used for matching tuples</description>
+                </parameter>
+                <parameter name="algorithm" optional="true" expressionMode="CustomLiteral"
+                    type="JoinAlgorithmLiterals">
+                    <description>Specify join algorithm to use</description>
+                </parameter>
+                <inputPort maxNumPorts="2" minNumPorts="2" windowPunctInputMode="Expecting"
+                    optional="false">
+                    <description>Two ports for some use</description>
+                    <windowPolicy>Windowed</windowPolicy>
+                </inputPort>
+                <outputPort expressionMode="Expression" maxNumPorts="1" minNumPorts="1"
+                    windowPunctOutputMode="Generating" optional="false">
+                    <description>one output port</description>
+                    <outputFunctionsType name="AggregationFunctions" defaultValue="Min"/>
+                </outputPort>
+                <customLiterals
+                    name="JoinAlgorithmLiterals">
+                    <description>Enumerations to be used in the Join algorithm parameter</description>
+                    <value
+                        name="leftOuter">
+                        <description>left outer join</description>
+                    </value>
+                    <value
+                        name="rightOuter">
+                        <description>right outer join</description>
+                   </value>
+                </customLiterals>
+                <outputFunctions
+                    name="AggreagationFunctions">
+                    <description>Aggreagations to be used in the output port assignments</description>
+                    <function name="Min" returnType="T">
+                      <description>Find minimum</description>
+                      <prototype>&lt;numeric T&gt; T min (list&lt;T&gt;)</prototype>
+                      <parameter name="parameter0" type="T"/>
+                    </function>
+                </outputFunctions>
+            </primitiveOp>
+            <compositeOp sampleUriIndex="8"
+                name="ToolkitCompositeOperator"
+                line="55"
+                public="true"
+                column="5"
+                uriIndex="7">
+                <description docHref="Link to documentation for this toolkit operator" >Composite Operator residing in a toolkit.  This operator takes two streams and produces one stream</description>
+                <images>
+                  <image size="16" uriIndex="6"/>
+                  <image size="32" uriIndex="7"/>
+                </images>
+                <inputPort
+                    portIndex="0"
+                    name="employeeName"
+                    type="String16">
+                    <description>one output port</description>
+                </inputPort>
+                <inputPort
+                    portIndex="1"
+                    name="employeeSalary"/>
+                <outputPort portIndex="0" name="employeeSalary" type="Decimal16">
+                    <description>one output port</description>
+                </outputPort>
+                <outputPort
+                    portIndex="1"
+                    name="employeeName"/>
+                <parameter
+                    name="funcName"
+                    metaType="Function"
+                    optional="false">
+                    <description>Function to invoke when this composite operator is used</description>
+                </parameter>
+                <enumLiterals uriIndex="6" line="1234" column="12">
+                  <enum>AA</enum>
+                  <enum>CA</enum>
+                  <enum>BA</enum>
+                </enumLiterals>
+                <type
+                    name="EmployeeTupleType"
+                    static="true"
+                    type="tuple&lt;int32 foo, boolean a&gt;"
+                    line="1234"
+                    column="12"
+                    uriIndex="6">
+                    <description docHref="documentation_of_this_type_if_available">"Custom SPL types defined in toolkit"</description>
+                </type>
+                <parameter
+                    name="myAttribute"
+                    metaType="Attribute"
+                    type="String16"
+                    optional="true">
+                    <description>Attribute to substitue in an graph expansion</description>
+                </parameter>
+            </compositeOp>
+            <function
+                name="foo"
+                returnType="float32"
+                native="false"
+                public="true"
+                line="1234"
+                column="12"
+                uriIndex="2"
+                modelUriIndex="4">
+                <description docHref="documentation_of_this_type_if_available">An SPL function foo</description>
+                <prototype>float32 foo (int32 a)</prototype>
+                <parameter
+                    name="a"
+                    type="int32">
+                    <description>foo's a parameter</description>
+                </parameter>
+            </function>
+            <function
+                name="bar"
+                returnType="float32"
+                native="true"
+                public="true"
+                line="0"
+                column="9"
+                uriIndex="4"
+                modelUriIndex="4">
+                <description docHref="documentation_of_this_type_if_available">A native function bar</description>
+                <prototype>float32 bar (int32 b)</prototype>
+                <parameter
+                    name="b"
+                    type="int32">
+                    <description>bar's b parameter</description>
+                </parameter>
+            </function>
+            <enumLiterals uriIndex="6" line="1234" typeName="fred" column="12">
+              <enum>AA</enum>
+              <enum>CA</enum>
+              <enum>BA</enum>
+            </enumLiterals>
+            <type
+                name="EmployeeTupleType"
+                static="true"
+                type="tuple&lt;int32 foo, boolean a&gt;"
+                line="1234"
+                column="12"
+                uriIndex="6">
+                <description docHref="documentation_of_this_type_if_available">"Custom SPL types defined in toolkit"</description>
+            </type>
+        </namespace>
+    </toolkit>
+</toolkitModel>

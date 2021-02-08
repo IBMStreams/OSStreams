@@ -1,0 +1,320 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    unshift @INC, dirname($model->getContext()->getOperatorDirectory()) . "/Common";
+    require AdapterHelper;
+    use UDPSourceCommon;
+    UDPSourceCommon::verify($model);
+    my $format = $model->getParameterByName("format");
+    my $hasDelayField = $model->getParameterByName("hasDelayField");
+    my $parsing = $model->getParameterByName("parsing");
+    my $compression = $model->getParameterByName("compression");
+    my $encoding = $model->getParameterByName("encoding");
+    my $separator = $model->getParameterByName("separator");
+    my $outputPort = $model->getOutputPortAt(0);
+    my $tupleType = $outputPort->getCppTupleType();
+    my $address = $model->getParameterByName("address");
+    my $interface = $model->getParameterByName("interface");
+    my $receiveBufferSize = $model->getParameterByName("receiveBufferSize");
+    my $port = $model->getParameterByName("port");
+    my $name = $model->getParameterByName("name");
+    my $initDelay = $model->getParameterByName("initDelay");
+    my $defaultTuple = $model->getParameterByName("defaultTuple");
+    my $readPunctuations = $model->getParameterByName("readPunctuations");
+    my $ignoreExtraCSVValues = $model->getParameterByName("ignoreExtraCSVValues");
+
+    # Apply defaults
+    $format = $format ? $format->getValueAt(0)->getSPLExpression() : "csv";
+    $hasDelayField = $hasDelayField ? $hasDelayField->getValueAt(0)->getCppExpression() eq "true" : 0;
+    $readPunctuations = $readPunctuations ? $readPunctuations->getValueAt(0)->getSPLExpression() eq "true" : 0;
+
+    $parsing = $parsing ? $parsing->getValueAt(0)->getSPLExpression() : "strict";
+    $ignoreExtraCSVValues = $ignoreExtraCSVValues ? $ignoreExtraCSVValues->getValueAt(0)->getSPLExpression() eq "true" : 0;
+
+    my $sepExpr = "','";
+    if ($separator) {
+        my $sepValue = $separator->getValueAt(0);
+        my $sepType = $sepValue->getSPLType();
+        if ($sepType eq 'rstring') {
+            $sepExpr = $sepValue->getCppExpression();
+            $sepExpr =~ /SPL::rstring\(\"(.*)\".*\)/;
+            $sepExpr = "'$1'";
+        } else {
+           $sepExpr = "(unsigned char)" . $sepValue->getSPLExpression();
+        }
+    }
+
+    # other corrections
+    my $origInterface = $interface;
+    $interface = $interface ? $interface->getValueAt(0)->getCppExpression() : "\"\"";
+    $compression = $compression->getValueAt(0)->getSPLExpression() if defined $compression;
+    $encoding = $encoding->getValueAt(0)->getCppExpression() if $encoding;
+    $receiveBufferSize = $receiveBufferSize->getValueAt(0)->getCppExpression()
+        if defined $receiveBufferSize;
+    $name = $name->getValueAt(0)->getCppExpression() if defined $name;
+    $address = $address->getValueAt(0)->getCppExpression() if defined $address;
+    $initDelay = $initDelay->getValueAt(0)->getCppExpression() if defined $initDelay;
+    $port = $port ? $port->getValueAt(0)->getCppExpression() : 0;
+    my $binary = $format eq "bin" || $format eq "block";
+    my $readFrom = "fs";
+    $readFrom = "sbfs" if $binary;
+    my $type = $outputPort->getSPLTupleType();
+    $defaultTuple = $defaultTuple->getValueAt(0)->getCppExpression() if ($defaultTuple);
+
+    # compute which attributes we will generate
+    my $numAttrs = $outputPort->getNumberOfAttributes();
+    my $hasAssignments = 0;
+    my @genAttrs;
+    my $needsExtendedConnector = 0;
+    my $needsSockaddr = 0;
+    for (my $i = 0; $i < $numAttrs; $i++) {
+        my $attr = $outputPort->getAttributeAt($i);
+        if ($attr->hasAssignment()) {
+            $hasAssignments = 1;
+            if ($attr->hasAssignmentWithOutputFunction()) {
+                my $cofName = $attr->getAssignmentOutputFunctionName();
+
+                if ($cofName eq "RemoteIP" || $cofName eq "RemotePort") {
+                    $needsExtendedConnector = 1;
+                    $needsSockaddr = 1;
+                } elsif ($cofName eq "ServerPort") {
+                    $needsExtendedConnector = 1;
+                }
+            }
+            next;
+        }
+        push @genAttrs, $attr;
+    }
+
+    # this is how many are left
+    $numAttrs = scalar(@genAttrs);
+    my $firstAttrName = $genAttrs[0]->getName();
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fstream>
+<%if ($encoding) {%>
+    #include <SPL/Toolkit/ToUTF8.h>
+<%}%>
+<%if (defined $compression) {%>
+    #include <boost/iostreams/filter/<%=$compression%>.hpp>
+<%}%>
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
+<%print "#include <SPL/Runtime/Serialization/StreamByteBuffer.h>" if ($binary);%>
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Toolkit/IOHelper.h>
+#include <SPL/Toolkit/BufferStream.h>
+#include <SPL/Toolkit/RuntimeException.h>
+#include <SPL/Runtime/Operator/OperatorMetrics.h>
+
+@include "../Common/GenerateSourceReadLoopErrorChecks.cgt"
+
+using namespace std;
+using namespace boost::iostreams;
+
+MY_OPERATOR::MY_OPERATOR()
+    : MY_BASE_OPERATOR(), _fd(0), _connector(0), _tupleNumber(0),
+        <%if (defined $defaultTuple) {%>
+           _defaultTuple (<%=$defaultTuple%>),
+        <%}
+        if (defined $encoding) {%>
+           _encoding (<%=$encoding%>),
+        <%}%>
+        <%if ($readPunctuations) {%>
+           _sawFinal(false),
+        <%}%>
+      _numInvalidTuples(getContext().getMetrics().getCustomMetricByName("nInvalidTuples"))
+{
+    _numInvalidTuples.setValueNoLock(0);
+}
+
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads (1);
+}
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    if (_fd) {
+        close (_fd); // try to clean things up nicely
+        _fd = 0;
+    }
+    if (_connector)
+        _connector->terminate();
+}
+
+void MY_OPERATOR::process(uint32_t)
+{
+    SPLAPPTRC(L_DEBUG, "UDPSource startup...", SPL_OPER_DBG);
+    <%=$tupleType%> tuple$;
+    <%print "double delay;" if $hasDelayField;%>
+    SPL::UDPSource<%=$needsExtendedConnector ? "Extended" : ""%> conn (getPE());
+    <%if ($initDelay) {%>
+        getPE().blockUntilShutdownRequest(<%=$initDelay%>);
+    <%}%>
+    <%if ($origInterface) {%>
+        conn.setInterface(<%=$interface%>);
+    <%}%>
+    <%if ($name) {%>
+        conn.setupLabel (<%=$name%><%print ", $port" if $port;%>);
+    <%} elsif ($address) {%>
+        conn.setup (<%="$address, $interface"%><%print ", $port" if $port;%>);
+    <%} else {%>
+        conn.setup (<%=$port%>);
+    <%}%>
+
+    _fd = conn.fileDescriptor();
+    SPLAPPTRC(L_DEBUG, "UDPSource connected, file descriptor = " << _fd, SPL_OPER_DBG);
+    _connector = &conn;
+
+    // IP limited to 64K bytes (minus header)
+    char msgBuffer[64*1024];
+
+    while (!getPE().getShutdownRequested()<%=$readPunctuations ? " && !_sawFinal" : ""%>) {
+        <%if ($needsSockaddr) {%>
+            sockaddr_storage sa; socklen_t sa_len = sizeof(sa);
+            size_t sizeRead = recvfrom (_fd, msgBuffer, sizeof (msgBuffer), 0, (sockaddr*) &sa, &sa_len);
+        <%} else {%>
+            size_t sizeRead = recvfrom (_fd, msgBuffer, sizeof (msgBuffer), 0, NULL, NULL);
+        <%}%>
+
+        if (sizeRead == (size_t) -1) {
+            // Error condition
+            if (getPE().getShutdownRequested())
+                break;
+            if (errno==EAGAIN || errno==EWOULDBLOCK || errno==EINTR) {
+                getPE().blockUntilShutdownRequest(0.2);
+                continue;
+            }
+            SPLAPPTRC(L_DEBUG, "UDPSource: failed to read UDP packet (ignoring): "
+                               << RuntimeUtility::getErrorNoStr(), SPL_OPER_DBG);
+            continue;
+
+        } else if (sizeRead == 0) {
+            SPLAPPTRC(L_DEBUG, "UDPSource: empty UDP packet (ignoring): ", SPL_OPER_DBG);
+            continue;
+        }
+
+        boost::iostreams::stream<SPL::BufferStream> fd_src (msgBuffer, sizeRead);
+        filtering_streambuf<input> filt_str;
+        <%if ($encoding) {%>
+            ToUTF8Filter toUTF8(_encoding);
+            filt_str.push (toUTF8);
+        <%}
+        if (defined $compression) {%>
+            filt_str.push (<%=$compression%>_decompressor());
+        <%}%>
+        filt_str.push (fd_src);
+        <%if ($binary) {%>
+            iostream fs (&filt_str);
+            SPL::StreamByteBuffer sbfs(fs);
+        <%} else {%>
+            istream fs (&filt_str);
+        <%}%>
+        fs.imbue(locale::classic());
+        // process the buffer
+        bool doSubmit = true;
+        bool failedRead = false;
+        try {
+            <%if ($parsing eq "permissive" && $format ne 'bin') {%>
+                string errString;
+            <%}%>
+            _tupleNumber++;
+            <%if ($format eq "line") {%>
+                SPL::rstring& s = tuple$.get_<%=$firstAttrName%>();
+                s.clear();
+                for (;;) {
+                    char rBuf[64*1024];
+                    fs.read (rBuf, sizeof (rBuf));
+                    unsigned n = fs.gcount();
+                    if (n == 0)
+                        break;
+                    s.append (rBuf, n);
+                    if (n < sizeof rBuf)
+                        break;
+                }
+                // clean up trailing CRs, NLs
+                size_t pos = s.find_last_not_of("\n\r");
+                if (pos != SPL::rstring::npos)
+                    s.erase (pos+1);
+                else
+                    s.clear();
+                <%} elsif ($format eq "block") {%>
+                    SPL::blob& b = tuple$.get_<%=$firstAttrName%>();
+                b = SPL::blob();
+                for (;;) {
+                    unsigned n;
+                    char rBuf[64*1024];
+                    <%=$readFrom%>.getFixedCharSequence (rBuf, sizeof (rBuf), n);
+                    b.append ((unsigned char *)rBuf, n);
+                    if (n < sizeof rBuf)
+                        break;
+                }
+            <%} elsif ($format eq "txt" || $format eq "csv") {%>
+                // ignore comments and empty lines
+                fs >> SPL::skipSpaceTabReturnNewLines;
+                while (fs.peek() == '#') {
+                    string dummy;
+                    getline (fs, dummy);
+                    fs >> SPL::skipSpaceTabReturnNewLines;
+                }
+                if (SPL::safePeek(fs)==EOF) continue;
+                <%if ($hasDelayField) {%>
+                    <%=$readFrom%> >> delay;
+                    CHECK_ERROR(SPL_APPLICATION_RUNTIME_FAILED_READ_DELAY(_tupleNumber));
+                    char sep;
+                    fs >> SPL::skipSpaceTabs >> sep;
+                    <%if ($parsing ne "fast") {%>
+                        if (!fs || sep != ','){
+                            DO_ERROR(SPL_APPLICATION_RUNTIME_FAILED_READ_CHAR(",", SPL::printableCharacter(sep), _tupleNumber, "after reading the delay time"));
+                        }
+                    <%}%>
+                    getPE().blockUntilShutdownRequest(delay);
+                <%}
+                if ($format eq "txt") { # expecting a tuple%>
+                    @include "../Common/GenerateTxtRead.cgt"
+                <%} else { # csv format one field at a time%>
+                    @include "../Common/GenerateCsvRead.cgt"
+                <%}%>
+            <%} elsif ($format eq "bin") {%>
+                @include "../Common/GenerateBinRead.cgt"
+            <%}%>
+            @include "../Common/GenerateSourceAssignments.cgt"
+        } catch (const std::exception& e) {
+            DO_ERROR(SPL_APPLICATION_RUNTIME_EXCEPTION(e.what()));
+            _numInvalidTuples.incrementValueNoLock();
+            doSubmit = false;
+        } catch (...) {
+            DO_ERROR(SPL_APPLICATION_RUNTIME_UNKNOWN_EXCEPTION);
+            _numInvalidTuples.incrementValueNoLock();
+            doSubmit = false;
+        }
+        if (doSubmit)
+            submit (tuple$, 0);
+    }
+    conn.terminate();
+    _fd = 0; // no longer using this
+    _connector = 0;
+    SPLAPPTRC(L_DEBUG, "UDPSource exiting...", SPL_OPER_DBG);
+}
+<%SPL::CodeGen::implementationEpilogue($model);%>

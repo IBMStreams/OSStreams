@@ -1,0 +1,59 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Establish the scripts location so we can use relative paths
+use strict;
+use FindBin;
+use lib "$FindBin::Bin";
+use Cwd qw(realpath abs_path getcwd);
+use File::Basename;
+use Getopt::Long qw(:config no_ignore_case bundling);
+use SPL::Msg;
+use SPL::Helper;
+
+# Parse the options
+my %opts=();
+my @options = ('help|h', 'outfile|o=s');
+SPLGetOptionsLong(\&SPL::Msg::SFC_USAGE, \%opts, @options);
+($opts{outfile} ne "") or SPLUsage(\&SPL::Msg::SFC_USAGE, 1);
+
+my $dist = realpath(dirname($0));
+my $config = "${dist}/../../../etc/uncrustify/uncrustify.verbose.cfg";
+
+my $formatter = "uncrustify";
+
+# Make sure that the formatter is installed
+if (not SPLCheckInstalled($formatter)) {
+   SPLWarnLn(SPL::Msg::FORMATTER_NOT_INSTALLED("${formatter}")) if not SPLCheckInstalled($formatter);
+   exit(0);
+}
+$opts{outfile} =~ s/\$/\\\$/g;
+
+# uncrustify seems to have a 244 character filename limit
+my ($filename, $dir, $suf) = fileparse($opts{outfile});
+my $tempFile = $dir.'B';
+0 == system("mv $opts{outfile} ${tempFile}")
+   or SPLDie(1, SPL::Msg::CANT_RENAME_FILE("$opts{outfile}", "$tempFile"));
+my $cmd = "${formatter} -c ${config} --no-backup --replace ${tempFile} > /dev/null 2>&1";
+# dependency-scan: ignore the following line
+my $rc = system($cmd);
+$rc = $rc >> 8;
+0 == system("mv ${tempFile} $opts{outfile}")
+   or SPLDie(1, SPL::Msg::CANT_RENAME_FILE("$tempFile", "$opts{outfile}"));
+SPLDie(1, SPL::Msg::BEAUTIFY_FAILED("${formatter}", $rc)) if ($rc);
+exit($rc);

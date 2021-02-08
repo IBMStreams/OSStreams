@@ -1,0 +1,51 @@
+/* ------------------------------------------------------------------ */
+/* cdecfloat header - dfp additions to C++ standard header <cfloat>   */
+/* ------------------------------------------------------------------ */
+/* Copyright (c) IBM Corporation, 2006.  All rights reserved.         */
+/*                                                                    */
+/* This software is made available under the terms of the IBM         */
+/* alphaWorks License Agreement (distributed with this software as    */
+/* alphaWorks-License.txt).  Your use of this software indicates      */
+/* your acceptance of the terms and conditions of that Agreement.     */
+/*                                                                    */
+/* Please send comments, suggestions, and corrections to the author:  */
+/*   klarer@ca.ibm.com                                                */
+/*   Robert Klarer                                                    */
+/* ------------------------------------------------------------------ */
+
+#ifndef _CDECFLOAT_
+#define _CDECFLOAT_
+
+#include "decimal"
+
+/* from <decfloat.h> */
+
+#define DEC32_MANT_DIG  7
+#define DEC64_MANT_DIG  16
+#define DEC128_MANT_DIG 34
+
+#define DEC32_MIN_EXP  -95
+#define DEC64_MIN_EXP  -383
+#define DEC128_MIN_EXP -6143
+
+#define DEC32_MAX_EXP  96
+#define DEC64_MAX_EXP  384
+#define DEC128_MAX_EXP 6144
+
+#define DEC32_MAX  std::decimal::decimal32::_GetMax()
+#define DEC64_MAX  std::decimal::decimal64::_GetMax()
+#define DEC128_MAX std::decimal::decimal128::_GetMax()
+
+#define DEC32_MIN  std::decimal::decimal32::_GetMin()
+#define DEC64_MIN  std::decimal::decimal64::_GetMin()
+#define DEC128_MIN std::decimal::decimal128::_GetMin()
+
+#define DEC32_EPSILON  std::decimal::decimal32::_GetEpsilon()
+#define DEC64_EPSILON  std::decimal::decimal64::_GetEpsilon()
+#define DEC128_EPSILON std::decimal::decimal128::_GetEpsilon()
+
+#define DEC32_DEN  std::decimal::decimal32::_GetDenormalizedMin()
+#define DEC64_DEN  std::decimal::decimal64::_GetDenormalizedMin()
+#define DEC128_DEN std::decimal::decimal128::_GetDenormalizedMin()
+
+#endif /* ndef _CDECFLOAT_ */

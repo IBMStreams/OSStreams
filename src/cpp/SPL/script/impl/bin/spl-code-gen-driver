@@ -1,0 +1,128 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Establish the scripts location so we can use relative paths
+use strict;
+use FindBin;
+use lib "${FindBin::Bin}";
+use lib "${FindBin::Bin}/../..";
+use lib "${FindBin::Bin}/../../../bin";
+use Getopt::Long qw(:config no_ignore_case bundling);
+use SPL::Msg;
+use File::Basename;
+use SPL::Helper;
+use SPL::CodeGen;
+use SPL::CodeGenHelper;
+use sigtrap qw{handler cleanup normal-signals error-signals};
+
+use XML::Simple;
+$XML::Simple::PREFERRED_PARSER = "XML::Parser";
+
+sub removeTemp();
+
+my $rc = 0;
+
+# Parse the options
+my %opts=();
+my @options = ('help|h', 'incremental|i', 'generator|g=s',
+               'model|x=s', 'signature|s=s', 'signature-file=s',
+               'outfile|o=s', 'beautify|z=s');
+SPLGetOptionsLong(\&SPL::Msg::SCG_USAGE, \%opts, @options);
+($opts{generator} ne "" && $opts{model} ne "" &&
+ ($opts{signature} ne "" || $opts{'signature-file'} ne "") && $opts{outfile} ne "") or
+    SPLUsage(\&SPL::Msg::SCG_USAGE, 1);
+
+# The g option is the fully qualified name (without the .pm) of the code generator
+require "$opts{generator}" . ".pm";
+my $unpatchedOutfile = $opts{outfile};
+
+# Any dollar signs in the path name need to be escaped
+$opts{outfile} =~ s/\$/\\\$/g;
+
+my $tempFile = "$opts{outfile}B";
+
+$SIG{__DIE__}  = \&cleanup;
+
+# Disable interrupts while we generate code
+SPL::CodeGenHelper::disableInterruptRequests(\$rc);
+
+if ($opts{incremental}) {
+    removeTemp();
+    if (-e $opts{outfile}) {
+        0 == system("mv $opts{outfile} $tempFile") or
+            SPLDie(1, SPL::Msg::CANT_RENAME_FILE("$opts{outfile}", "$tempFile"));
+    }
+}
+
+open $SPL::CodeGen::OLDSTDOUT, ">&", "STDOUT"
+    or SPLDie(1, SPL::Msg::CANT_DUP_STDOUT());
+open STDOUT, ">$unpatchedOutfile"
+    or SPLDie(1, SPL::Msg::CANNOT_OPEN_FILE_FOR_WRITING("STDOUT"));
+
+# The generate method is declared in the main namespace so we don't need to qualify it.
+if ($opts{'signature-file'}) {
+    open SIG, "<" . $opts{'signature-file'}
+        or SPLDie(1, SPL::Msg::CANNOT_OPEN_FILE_FOR_READING($opts{'signature-file'}));
+    my $sig = <SIG>;
+    chop $sig;
+    generate(\$opts{model}, \$sig);
+} else {
+    generate(\$opts{model}, \$opts{signature});
+}
+
+open STDOUT, ">&", $SPL::CodeGen::OLDSTDOUT
+    or SPLDie(1, SPL::Msg::CANT_RESTORE_STDOUT());
+close $SPL::CodeGen::OLDSTDOUT;
+
+if ($opts{incremental} && -e $tempFile) {
+    if (0 == system("diff $tempFile $opts{outfile} > /dev/null 2>&1")) {
+        0 == system("rm $opts{outfile}")
+            or SPLDie(1, SPL::Msg::CANT_REMOVE_FILE("$opts{outfile}"));
+        0 == system("mv $tempFile $opts{outfile}")
+            or SPLDie(1, SPL::Msg::CANT_RENAME_FILE("$tempFile", "$opts{outfile}"));
+    }
+    removeTemp();
+}
+
+if ($opts{beautify}) {
+    SPLDie(1, SPL::Msg::SCRIPT_NOT_FOUND("$opts{beautify}")) if (not -e $opts{beautify});
+
+    # dependency-scan: ignore the following line
+    $rc = system("$opts{beautify} -o $opts{outfile}");
+    $rc = $rc >> 8;
+}
+
+# Restore interrupts
+SPL::CodeGenHelper::enableInterruptRequests();
+
+# A return code of 2 indicates an interrupt was caught
+exit $rc;
+
+sub cleanup
+{
+    print STDERR @_;
+    removeTemp;
+    exit 1;
+}
+
+sub removeTemp()
+{
+    if (-e $tempFile) {
+        system("rm $tempFile > /dev/null 2>&1");
+    }
+}

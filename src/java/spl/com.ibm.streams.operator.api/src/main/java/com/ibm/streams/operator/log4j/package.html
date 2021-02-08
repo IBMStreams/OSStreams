@@ -1,0 +1,120 @@
+<body>
+SPL trace and logging for the Java Operator API using the Apache log4j logging facilities.
+The SPL Runtime provides Apache log4j version 1.2.16.
+<H2>SPL Log Facility - com.ibm.streams.operator.log Logger</H2>
+<P>
+The SPL log facility is for application <em>logging</em>, where logging is defined as
+the recording of serviceability information pertaining to application or operator events.
+The purpose of logging is to provide an administrator with enough information
+to do problem determination for items they can potentially control.
+In general, very few events are logged in the normal running scenario of an application or operator.
+Events pertinent to the failure or partial failure of application runtime scenarios should be logged.
+</P>
+<P>
+The {@code org.apache.log4j.Logger} named {@code com.ibm.streams.operator.log} delivers
+log messages to the SPL log facility. {@link com.ibm.streams.operator.log4j.LogLevel} provides Java values for SPL log levels
+and also describes the mapping between Apache log4j {@code org.apache.log4j.Level} values
+and SPL log levels.
+<BR>
+This {@code Logger} accepts any {@code Level} but any log messages at a level
+below {@link com.ibm.streams.operator.log4j.LogLevel#INFO} (equals to {@code Level.INFO}) are sent to the SPL trace facility.
+It is recommended however that for code clarity, tracing within an operator does not use this
+{@code Logger} but instead uses one that maps to the SPL trace facility.
+</P>
+<P>
+Operators may create their own loggers that are children of the {@code com.ibm.streams.operator.log}
+{@code Logger} by creating one in a child name space, such as
+{@code com.ibm.streams.operator.log.com.example.operators.myoperator}.
+</P>
+<H2>SPL Trace Facility - Root Logger</H2>
+<P>
+The SPL trace facility is for application <em>tracing</em>, where tracing is defined as
+the recording of application or operator internal events and data.
+The purpose of tracing is to allow SPL application or operator developers to debug their applications
+or operators.
+<P>
+The root {@code org.apache.log4j.Logger} for the core logging facility
+delivers messages to the SPL trace facility, and thus any child {@code Logger}
+will also deliver messages to the SPL trace facility. This means that any named {@code Logger}
+<b>not</b> in the {@code com.ibm.streams.operator.log} name space
+will deliver messages to the SPL trace facility.
+</P>
+<P>
+When running in as a Streams&reg; distributed or standalone
+application the root {@code org.apache.log4j.Logger} has a
+{@code org.apache.log4j.Appender}
+that sends messages to the SPL trace facility.
+The level of the appender and root logger are set the the SPL tracing level of the
+processing element and are dynamically updated when the trace level is updated.
+The trace level for a processing element may be updated from the command line using:
+<BR>
+<code>streamtool updatepe -i <I>instanceId</I> --pes <I>peId</I> --config tracing=<I>level</I></code>
+</P>
+<P>
+Dynamic configuration of Apache Log4j loggers is supported so that fine grained
+trace can be enabled on a per-logger basis during runtime. The configuration
+file {@code log4j.properties} in the application's
+{@link com.ibm.streams.operator.ProcessingElement#getDataDirectory() data directory}
+is used to update the  Apache Logj configuration. If this file exists and is readable
+by the <I>instance owner</I> then the configuration is updated:
+<UL>
+<LI> When the processing element starts</LI>.
+<LI> When the SPL tracing level is updated using {@code streamtool updatepe}.
+The file can be created any time after startup.
+</LI>
+</UL>
+The format of {@code log4j.properties} is described in the Apache Log4j javadoc
+by the method {@code org.apache.log4j.PropertyConfigurator.doConfigure()}.
+<BR>
+For example with a set of Java operators using loggers in the name space
+{@code com.example.javaop} then tracing could be limited to a single
+operator using a logger named {@code com.example.javaop.text.TextExtractOp}
+using this {@code log4j.properties}:
+<pre>
+<code>
+# Disable tracing using the parent of loggers for my operators
+log4j.logger.com.example.javaop=OFF
+# Override the parent to have specific tracing for
+# com.example.javaop.text.TextExtractOp
+log4j.logger.com.example.javaop.text.TextExtractOp=TRACE
+</code>
+</pre>
+<BR>
+It is not recommended to dynamically change the level of the root or
+{@code com.ibm.streams.operator.log} loggers.
+</P>
+<P>
+{@link com.ibm.streams.operator.log4j.TraceLevel} provides Java values for SPL trace levels
+and also describes the mapping between standard Java {@code org.apache.log4j.Level} values
+and SPL trace levels.
+</P>
+<H2>Logger Levels</H2>
+<P>
+Setting the level of any {@code Logger} using {@code Logger.setLevel()} does not
+change the SPL log or trace level. Such a change only affects that specific logger,
+typically this would be used to provide a subset of the current SPL trace level for
+specific components, while providing detailed trace for others at the current SPL trace level.
+<BR>
+Operator implementations must not change the level of either the root or
+{@code com.ibm.streams.operator.log} loggers.
+</P>
+<P>
+Operator implementations can be notified of a change in the SPL trace level
+using the {@link com.ibm.streams.operator.management.ProcessingElementMXBean#TRACE_LEVEL}
+notification. This notification can be used to change the level of an loggers or
+appenders to match the SPL trace level if required.
+<H2>Message Formatting</H2>
+<P>
+The root and {@code com.ibm.streams.operator.log} {@code Logger}s have appenders
+that passed the rendered string directly to the SPL log or trace facility (using UTF-8 encoding) where
+additional formatting (e.g. adding a time stamp) is added before it is written out.
+</P>
+<H2>Message Localization</H2>
+<P>
+An operator or library called by an operator may associate a {@code Logger} with a {@code ResourceBundle}
+to be used for localizing messages, by using the {@code setResourceBundle} method.
+Typically the resource bundles (message files) will be in the jar files containing the operator or library classes.
+The {@code Logger.l7dlog} methods utilize the {@code ResourceBundle} associated with the {@code Logger}.
+</P>
+@since InfoSphere&reg; Streams Version 3.0
+</body>

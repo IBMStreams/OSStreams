@@ -1,0 +1,111 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use MetricsSinkCommon;
+    MetricsSinkCommon::verify($model);
+    my $metrics = $model->getParameterByName("metrics");
+    my $names = $model->getParameterByName("names");
+    my $descriptions = $model->getParameterByName("descriptions");
+    my $initialValues = $model->getParameterByName("initialValues");
+
+    my $numValues = $metrics->getNumberOfValues();
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+#include<SPL/Runtime/Operator/OperatorMetrics.h>
+
+
+MY_OPERATOR::MY_OPERATOR() : MY_BASE_OPERATOR()
+{
+    SPLAPPTRC(L_DEBUG, "MetricsSink startup...", SPL_OPER_DBG);
+
+    // Initialize all the metrics
+    OperatorMetrics& om = getContext().getMetrics();
+    <% for (my $i = 0; $i < $numValues; $i++) {
+        my $n;
+        if ($names) {
+            $n = $names->getValueAt($i)->getCppExpression();
+        } else {
+            $n = $metrics->getValueAt($i)->getSPLExpression();
+            # need to convert to a legal C++ string
+            $n =~ s/\\/\\\\/g; # handle escapes
+            $n =~ s/"/\\"/g;   # handle quotes
+            $n = '"' . $n . '"'; # and finally make it a legal C++ string
+        }
+        my $d = $descriptions ? $descriptions->getValueAt($i)->getCppExpression() : '""';%>
+        _metrics[<%=$i%>] = &om.createCustomMetric(<%=$n%>, <%=$d%>, Metric::Gauge);
+        <% if ($initialValues) {
+            my $iv = $initialValues->getValueAt($i)->getCppExpression();%>
+            _metrics[<%=$i%>]->setValueNoLock(<%=$iv%>);
+        <%}
+    }%>
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+<%if ($isInConsistentRegion or $ckptKind ne "none") {%>
+    AutoMutex am(_mutex);
+<% } else {%>
+    AutoPortMutex am(_mutex, *this);
+<% } %>
+
+    // Update the metrics
+    <% for (my $i = 0; $i < $numValues; $i++) {
+        my $e = $metrics->getValueAt($i)->getCppExpression();
+        my $v = SPL::CodeGen::adaptCppExpression ($e, "tuple");%>
+        _metrics[<%=$i%>]->setValue(<%=$v%>);
+    <%}%>
+}
+
+<% if ($isInConsistentRegion or $ckptKind ne "none") { %>
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    <%for (my $i = 0; $i < $numValues; $i++) {%>
+        ckpt << _metrics[<%=$i%>]->getValue();
+    <%}%>
+}
+
+void MY_OPERATOR::reset(Checkpoint & ckpt)
+{
+    AutoMutex am(_mutex);
+
+    int64_t metricVal;
+    <%for (my $i = 0; $i < $numValues; $i++) {%>
+        ckpt >> metricVal;
+        _metrics[<%=$i%>]->setValue(metricVal);
+    <%}%>
+}
+
+void MY_OPERATOR::resetToInitialState()
+{
+    AutoMutex am(_mutex);
+
+    // Reset to initial values
+    <%for (my $i = 0; $i < $numValues; $i++) {
+         if ($initialValues) {
+            my $iv = $initialValues->getValueAt($i)->getCppExpression();%>
+            _metrics[<%=$i%>]->setValueNoLock(<%=$iv%>);
+        <%}
+    }%>
+}
+<% } %>
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

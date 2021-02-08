@@ -1,0 +1,58 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use FormatCommon;
+    FormatCommon::verify($model);
+    my $hasDelayField = $model->getParameterByName("hasDelayField");
+    my $writePunctuations = $model->getParameterByName("writePunctuations");
+
+    # Apply defaults
+    $hasDelayField = $hasDelayField ? ($hasDelayField->getValueAt(0)->getCppExpression() eq "true") : 0;
+    $writePunctuations = $writePunctuations ?
+         $writePunctuations->getValueAt(0)->getCppExpression() eq "true" : 0;
+
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+
+    my @includes;
+    push @includes, "#include <fstream>";
+    push @includes, "#include <boost/iostreams/stream.hpp>";
+    push @includes, "#include <boost/iostreams/filtering_streambuf.hpp>";
+    push @includes, "#include <SPL/Runtime/Serialization/StreamByteBuffer.h>";
+    push @includes, "#include <SPL/Toolkit/BufferStream.h>";
+    push @includes, "#include <SPL/Toolkit/OutputBufferStream.h>";
+%>
+
+
+<%SPL::CodeGen::headerPrologue($model,\@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR<%if ($ckptKind ne "none") {%>, public StateHandler<%}%>
+{
+  public:
+    MY_OPERATOR();
+
+    void process(const Tuple & tuple, uint32_t port);
+
+    void process(Punctuation const & punct, uint32_t port);
+
+    <%print "double _lastTimeStamp;" if $hasDelayField;%>
+    <%if ($writePunctuations) {%>
+        void doWrite (const SPL::BufferStream& bs);
+    <%}%>
+    void doWrite (const SPL::OutputBufferStream& bs, const IPort0Type&);
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

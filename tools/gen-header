@@ -1,0 +1,148 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use warnings;
+use XML::Simple;
+$XML::Simple::PREFERRED_PARSER = "XML::Parser";
+use Getopt::Std;
+use File::Temp qw(tempfile);
+
+sub badUsage($)
+{
+   my ($rc) = @_;
+   print "Usage: gen-header [-h] -i infile.xlf -t outfile.h\n";
+   print "-h: Print this help information\n";
+   print "-i filename: filename is the xml file containing the message definitions\n";
+   print "-o filename: the specific header we want to generate.  One of CompilerError.h, CompilerMessage.h, FrontEndErrors.h RuntimeMessage.h OptimizerError.h or ApplicationRuntimeError.h (can be preceeded by a path)\n";
+   exit($rc);
+}
+
+my %opts;
+getopts('hi:o:', \%opts);
+
+badUsage(0) if ($opts{'h'});
+badUsage(1) unless ($opts{'i'});
+badUsage(1) unless ($opts{'o'});
+my $outfile = $opts{'o'};
+$outfile =~ /(.*\/)*(.*)\.h/;
+my $type = $2;
+badUsage(1) unless ($type eq "CompilerError" || $type eq "CompilerMessage" || $type eq "FrontEndErrors" || $type eq "RuntimeMessage" || $type eq "OptimizerError" || $type eq "ApplicationRuntimeMessage");
+
+my $xml = new XML::Simple;
+my $data = $xml->XMLin($opts{'i'}, KeepRoot => 1, KeyAttr => [], ForceArray => ['group', 'trans-unit']);
+
+my $guard = "";
+my $prefix = "";
+my $severity = "";
+my $messageFormatter = "";
+if ($type eq "CompilerMessage") {
+   $guard = "SPL_COMPILER_MESSAGE_H";
+   $severity = "[I|T|D]";
+   $prefix = "SPL_CORE";
+   $messageFormatter = "CoreMessageFormatter";
+} elsif ($type eq "CompilerError") {
+   $guard = "SPL_COMPILER_ERROR_H";
+   $severity = "[E|W|D]";
+   $prefix = "SPL_CORE|SPL_UTILITY";
+   $messageFormatter = "CoreMessageFormatter";
+} elsif ($type eq "FrontEndErrors") {
+   $guard = "FRONT_END_ERRORS_H";
+   $severity = "[E|W|I|D|T]";
+   $prefix = "SPL_FRONT_END";
+   $messageFormatter = "CoreMessageFormatter";
+} elsif ($type eq "RuntimeMessage") {
+   $guard = "SPL_RUNTIME_COMMON_RUNTIME_MESSAGE_H";
+   $severity = "[E|W|I|T|D]";
+   $prefix = "SPL_RUNTIME";
+   $messageFormatter = " ::SPL::RuntimeMessageFormatter";
+} elsif ($type eq "ApplicationRuntimeMessage") {
+   $guard = "SPL_RUNTIME_COMMON_APPLICATION_RUNTIME_MESSAGE_H";
+   $severity = "[E|W|I|T|D]";
+   $prefix = "SPL_APPLICATION_RUNTIME";
+   $messageFormatter = " ::SPL::RuntimeMessageFormatter";
+} elsif ($type eq "OptimizerError") {
+   $guard = "SPL_OPTIMIZER_ERROR_H";
+   $severity = "[E|W|I|T|D]";
+   $prefix = "SPL_OPTIMIZER";
+   $messageFormatter = "CoreMessageFormatter";
+} else {
+   exit(1);
+}
+
+my ($fhTemp, $filename) = tempfile(UNLINK => 1, SUFFIX => ".h");
+
+print $fhTemp "// This is a generated header.  Any modifications will be lost.\n";
+print $fhTemp "// Add your messages to SPL/message/StreamsSPLMessages.xlf\n\n";
+print $fhTemp "#ifndef $guard\n";
+print $fhTemp "#define $guard\n\n";
+print $fhTemp "#include <SPL/Runtime/Utility/FormattableMessage.h>\n\n\n";
+print $fhTemp "#include <string>\n";
+
+foreach my $group (@{$data->{'xliff'}->{'file'}->{'body'}->{'group'}}) {
+   if ($group->{'id'} ne "StreamsSPLCompilerMessages" && $group->{'id'} ne "StreamsSPLRuntimeMessages" ) { next; }
+   my $bundleName = $group->{'id'};
+   foreach my $message (@{$group->{'trans-unit'}}) {
+      my $resName = $message->{'resname'};
+      if (!(substr($resName, 9, 1) =~ /$severity/)) { next; }
+      my $define = $message->{'extraData'};
+      if (!($define =~ /^($prefix)/)) { next; }
+      my $messageText = $message->{'source'}->{'content'};
+      # build a list of the types we need for the template
+      my @varList = ();
+      my $start = index($messageText, "{", 0);
+      while ($start != -1) {
+         my $end = index($messageText, "}", $start);
+         my $formatString = substr($messageText, $start, $end - $start + 1);
+         if ($formatString =~ /\{\s*(\d+).*\}/) {
+             $varList[$1] = 1 if (defined($1));
+         }
+         $start = index($messageText, "{", $end);
+      }
+      $messageText =~ s/'"'/'\\"'/g;
+      $messageText =~ s/([^\\])"/$1\\"/g;
+      $messageText =~ s/\("\)/(\\")/g;
+      my $templateArgs = "";
+      my $macroParams = "";
+      my $macroArgs = "";
+      my $count = scalar @varList;
+      if ($count > 0) {
+         $templateArgs = "<";
+         $macroParams = "(";
+         for (my $i = 0; $i < $count; ++$i) {
+            if ($i != 0) {
+               $templateArgs .= ", ";
+               $macroParams .= ", ";
+            }
+            $templateArgs .= "typeof(p${i})";
+            $macroParams .= "p${i}";
+            $macroArgs .= ", p${i}";
+         }
+         $templateArgs .= ">";
+         $macroParams .= ")";
+      }
+      print $fhTemp "#define $message->{'extraData'}${macroParams} \\\n";
+      print $fhTemp "   (::SPL::FormattableMessage${count}${templateArgs}(\"spl\", \"${bundleName}\", \"en\", \"${resName}\", \"${messageText}\"${macroArgs}))\n\n";
+   }
+}
+print $fhTemp "\n#endif\n";
+close ($fhTemp);
+
+my $cmd = "cp $filename $outfile";
+system("chmod +r $filename");
+if (system($cmd) != 0) { die "Could not copy file\n"; }

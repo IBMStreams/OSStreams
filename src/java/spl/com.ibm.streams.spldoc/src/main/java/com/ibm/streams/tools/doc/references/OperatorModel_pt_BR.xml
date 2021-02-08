@@ -1,0 +1,631 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<reference id="spldoc_reference_operator_model">
+<title>Modelo do operador SPL</title>
+<refbody>
+<section id="overview">
+<p>
+Um modelo do operador pode ser usado para descrever um operador primitivo C++ ou um operador primitivo Java. O
+conjunto de elementos que podem estar presentes em um modelo do operador Java Ç um subconjunto rigoroso
+daqueles que podem estar presentes em um modelo do operador C++, com a exceá∆o de um elemento especial usado
+para configuraá‰es relacionadas Ö JVM.
+</p>
+</section>
+<section id="context">
+<title outputclass="splhead-1">Contexto</title>
+<p>
+O elemento de contexto descreve as propriedades que se aplicam ao operador como um todo e que n∆o estiverem
+associadas a parÉmetros ou portas espec°ficas do operador. Ele tambÇm inclui definiá‰es comuns que forem
+referenciadas em outros lugares no modelo do operador.
+</p>
+<dl>
+  <dlentry id="context__description">
+    <dt>Descriá∆o</dt>
+    <dd>O elemento de descriá∆o, que Ç opcional, fornece uma vis∆o geral do operador.</dd>
+  </dlentry>
+  <dlentry id="context__metrics">
+    <dt>MÇtrica</dt>
+    <dd>O elemento de mÇtricas, que Ç opcional, contÇm a lista das mÇtricas expostas pelo operador.
+Ele Ç estruturado como uma lista de elementos de mÇtricas, em que cada elemento de mÇtrica contÇm um nome, uma
+descriá∆o e um tipo.
+      <dl>
+        <dlentry id="context__metrics_kind_counter">
+          <dt>Tipo: contador</dt>
+          <dd>Representa mÇtricas cujos valores s∆o n∆o decrescentes ou n∆o crescentes.
+          </dd>
+        </dlentry>
+        <dlentry id="context__metrics_kind_gauge">
+          <dt>Tipo: medidor</dt>
+          <dd>Representa mÇtricas que podem mudar seus valores livremente, ou seja, que podem aumentar ou
+diminuir.
+          </dd>
+        </dlentry>
+        <dlentry id="context__metrics_kind_time">
+          <dt>Tipo: hor†rio</dt>
+          <dd>Representa mÇtricas que indicam um momento.
+          </dd>
+        </dlentry>
+      </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="context__customliterals">
+    <dt>Literais customizados</dt>
+    <dd>O elemento customLiterals, que Ç opcional, captura os identificadores que podem aparecer nas
+configuraá‰es de parÉmetro de um operador. Ele Ç estruturado como uma lista de elementos de enumeraá∆o. Por
+exemplo, um operador Origem pode suportar diferentes formatos de origem, caso em que podemos ter uma
+enumeraá∆o chamada FileFormat que conter† valores <tt>{csv, xml, bin}</tt>.
+    </dd>
+  </dlentry>
+  <dlentry id="context__customoutputfunctions">
+    <dt>Funá‰es customizadas de sa°da (somente C++)</dt>
+    <dd>O elemento customOutputFunctions, que Ç opcional, captura os prot¢tipos de funá∆o de sa°da utilizados
+por um operador em suas designaá‰es de atributo de sa°da. Ele Ç estruturado como uma lista de elementos
+customOutputFunction, em que cada enumeraá∆o contÇm um nome e uma lista de prot¢tipos de funá∆o de sa°da. Por
+exemplo, um operador Agregado pode suportar agregaá‰es relacionais, caso em que podemos ter uma enumeraá∆o
+chamada RelationalAggs que conter† funá‰es de sa°da
+<tt>{Min, Max, Avg, Sum, e assim por diante}</tt>.
+    </dd>
+  </dlentry>
+  <dlentry id="context__dependencies">
+    <dt>Dependàncias (opcional)</dt>
+    <dd>Uma sequància de um ou mais elementos de biblioteca, cada um representando uma dependància da
+biblioteca.
+O formato de elemento da biblioteca Ç exatamente o mesmo que aquele usado para modelos do operador.
+     <dl>
+        <dlentry id="context__dependencies__description">
+          <dt>Descriá∆o (opcional)</dt>
+          <dd>Uma descriá∆o da biblioteca
+          </dd>
+        </dlentry>
+        <dlentry id="context__dependencies__managedlibrary">
+          <dt>Biblioteca gerenciada</dt>
+          <dd>Especifica os detalhes dos artefatos individuais da biblioteca. Os caminhos podem conter
+vari†veis de ambiente integradas entre sinais de @ (por exemplo: <tt>@FOO_FFT_HOME@/lib</tt>), que ser∆o
+totalmente resolvidas pelo compilador SPL no tempo de compilaá∆o.
+            <dl>
+              <dlentry id="context__dependencies__managedlibrary__lib">
+                <dt>lib (opcional)</dt>
+                <dd>Especifica um nome a ser transmitido para o argumento <tt>-l</tt> do compilador C++ (como <tt>fft</tt> , que ser† convertido em <tt>-lfft</tt> quando transmitido para o vinculador)
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__libpath">
+                <dt>libPath (opcional)</dt>
+                <dd>Especifica um caminho a ser transmitido para o argumento <tt>-L</tt> do compilador C++.
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__includepath">
+                <dt>includePath (opcional)</dt>
+                <dd>Especifica um caminho a ser transmitido para o argumento <tt>-I</tt> do compilador C++.
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__command">
+                <dt>command (opcional)</dt>
+                <dd>Um caminho para um programa que ser† executado para recuperar informaá‰es de <tt>includePath, libPath</tt>e <tt>lib</tt>
+. Se o caminho para o programa for relativo, ele ser† considerado enraizado no diret¢rio do modelo do operador. O programa Ç executado tràs vezes, cada vez com um argumento diferente denominado <tt>lib,
+libPath</tt>e <tt>includePath</tt>. 1 A sa°da padr∆o dessas execuá‰es ser† lida e cada linha (com espaáos em
+branco removidos) ser† inclu°da em um dos elementos <tt>lib, libPath</tt>e <tt>includePath</tt> ,
+dependendo do tipo da execuá∆o. Uma linha que comeáa com # ser† ignorada. Os caminhos relativos s∆o
+considerados enraizados no diret¢rio em que o documento XML do modelo do operador reside.
+                </dd>
+              </dlentry>
+            </dl>
+          </dd>
+        </dlentry>
+    </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="context__providessinglethreadedexecutioncontext">
+    <dt>Fornece um contexto de execuá∆o encadeado £nico (somente C++)</dt>
+    <dd><p>O elemento <tt>providesSingleThreadedContext</tt> descreve as semÉnticas de encadeamento
+do operador com relaá∆o ao fluxo de execuá∆o. Um operador fornece um contexto de execuá∆o encadeado
+£nico, se e somente se:
+      <ul>
+        <li>Ele n∆o executar chamadas de envio simultÉneas, a menos seus mÇtodos de processo sejam chamados
+simultaneamente.</li>
+        <li>Suas chamadas de envio forem conclu°das antes que a chamada do processo que acionou o envio
+seja conclu°da.</li>
+      </ul>
+    </p>
+    <p>Os operadores de origem e n∆o origem possuem mÇtodos do processo e a definiá∆o acima se aplica
+globalmente. Com base nessa definiá∆o, se um operador possuir chamadas de envio que n∆o forem acionadas por uma
+chamada de processo, como aquelas acionadas por um evento baseado em tempo, ent∆o, esse operador n∆o fornecer† um
+contexto de execuá∆o encadeado £nico. Observe que essa definiá∆o n∆o requer que uma chamada de envio seja
+executada no mesmo encadeamento que executa a chamada de processo que acionou o envio (embora normalmente ela
+seja executada no mesmo encadeamento).
+    </p>
+    <p>H† v†rios valores v†lidos para esta propriedade:
+<ul>
+  <li><tt>Never:</tt> as instÉncias deste operador nunca fornecem um contexto de execuá∆o encadeado
+£nico.</li>
+  <li><tt>Always:</tt> as instÉncias deste operador sempre fornecem um contexto de execuá∆o encadeado
+£nico.</li>
+  <li><tt>WindowBound:</tt> as instÉncias deste operador que n∆o especificarem pol°ticas de desocupaá∆o de
+janela baseada em tempo ou pol°ticas do acionador de janela baseado em tempo fornecem um contexto de
+execuá∆o encadeado £nico.</li>
+  <li><tt>WindowEvictionBound:</tt> as instÉncias deste operador que n∆o especificarem pol°ticas de
+desocupaá∆o de janela baseada em tempo fornecem um contexto de execuá∆o encadeado £nico.</li>
+  <li><tt>WindowTriggerBound:</tt> as instÉncias deste operador que n∆o especificarem pol°ticas do
+acionador de janela baseado em tempo fornecem um contexto de execuá∆o encadeado £nico.</li>
+  <li><tt>WindowPartitionEvictionBound:</tt> as instÉncias deste operador usam um encadeamento para implementar
+desocupaá∆o de partiá∆o. Use essa configuraá∆o se tuplas forem enviadas a partir do evento
+onWindowPartitionEvictionSelection.</li>
+</ul>
+    </p>
+<p>
+Como um exemplo, considere um operador <tt>Filtro</tt> . A menos que se seu mÇtodo de processo esteja sendo
+chamado simultaneamente, o operador <tt>Filtro</tt> n∆o faz chamadas de envio simultÉneas. Suas chamadas
+de envio s∆o acionadas por tuplas de entrada. Quando ele recebe uma tupla por meio de uma chamada de processo,
+ele far† uma chamada de envio se a tupla recebida passar na condiá∆o do filtro, que ser† conclu°da
+antes de a chamada de processo que a acionou ser conclu°da. Como resultado, todas as instÉncias de um operador <tt>Filtro</tt> fornecem um contexto encadeado £nico e a configuraá∆o
+<tt>Sempre</tt> Ç apropriada.
+</p>
+<p>
+Nota da implementaá∆o: o elemento <tt>providesSingleThreadedContext</tt> Ç usado para ativar o tempo
+de execuá∆o SPL para evitar sincronizaá∆o de encadeamento desnecess†ria. Configur†-lo para o valor N Ç
+seguro para todos os operadores, pois evita otimizaá‰es que reduzem a sobrecarga da sincronizaá∆o quando o
+operador fornece um contexto encadeado £nico. Especificar um valor diferente de Never que esteja inconsistente
+com a semÉntica de encadeamento implementada pelo operador resultar† em um comportamento indefinido.
+</p>
+    </dd>
+  </dlentry>
+  <dlentry id="context__incrementalcompilationstrategy">
+    <dt>EstratÇgia de compilaá∆o incremental (somente C++)</dt>
+    <dd><p>Especifica como o compilador deve gerenciar compilaá∆o incremental de operadores. As opá‰es s∆o:
+       <ul>
+         <li><tt>SourceDependent</tt>: neste modo, o compilador gerar† a origem do operador novamente apenas se
+ele estiver desatualizado com a origem SPL ou com o gerador de c¢digo para esse operador. Este Ç o modo padr∆o.</li>
+         <li><tt>ResultDependent:</tt> neste modo, o compilador sempre gera a origem do operador, mas
+atualizar† os arquivos de origem apenas se eles diferem dos existentes antes da compilaá∆o. Use este modo
+se o gerador de c¢digo do operador depender de configuraá‰es externas que n∆o forem capturadas pela
+parametrizaá∆o fornecida na origem SPL.
+         </li>
+       </ul>
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__allowCustomLogic">
+    <dt>Permitir l¢gica customizada (somente C++)</dt>
+    <dd><p>Esse elemento opcional especifica se o uso de um operador pode ou n∆o ter uma cl†usula l¢gica
+especificando um processamento de estado, <tt>onTuple</tt> or <tt>onPunct</tt> . Quando configurado para false,
+nenhuma cl†usula de l¢gica poder† ser especificada para o operador especificado. O padr∆o, na ausància desse
+elemento, Ç true.
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__codetemplate">
+    <dt>Modelo do C¢digo</dt>
+    <dd><p>Este elemento opcional especifica um ou mais modelos de c¢digo para o operador.
+Eles ser∆o mostrados nos menus do assistente de conte£do sens°veis do contexto e nos documentos SPLDOC do IDE.
+Cada modelo de c¢digo tem um atributo de nome que o nomeia, um elemento de descriá∆o que o descreve e um
+elemento de valor, que Ç uma sequància que contÇm o texto padr∆o para o modelo.
+Quando o modelo Ç usado no IDE, o texto padr∆o Ç integrado no c¢digo-fonte.
+As partes do c¢digo que estiverem no formato ${name} s∆o usadas para indicar as partes que devem ser
+customizadas pelo usu†rio. O IDE usar† o identificador especificado dentro do ${} para indicar as partes
+customiz†veis. Um exemplo para o operador Barrier Ç o seguinte:
+</p>
+<p>
+<!-- START NON-TRANSLATABLE -->
+<codeblock>
+&lt;codeTemplates>
+  &lt;codeTemplate name="Barrier">
+    &lt;description>Basic Barrier template&lt;/description>
+    &lt;template>
+      &lt;![CDATA[
+        stream&lt;${schema}> ${outputStream} = Barrier(${inputStream1};${inputStream2})
+        {
+          param
+            ${parameter}: ${parameterExpression};
+          output
+            ${outputStream}: ${outputExpression};
+          ${cursor}
+        }
+      ]]&gt;
+    &lt;template>
+  &lt;/codeTemplate>
+&lt;/codeTemplates>
+</codeblock>
+<!-- END NON-TRANSLATABLE -->
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__splexpressiontree">
+    <dt>µrvore de express∆o SPL (somente C++)</dt>
+    <dd><p>Um elemento opcional que controla a geraá∆o de †rvores de express∆o SPL para uso em operadores
+primitivos C++ genÇricos.</p>
+      <ul>
+      <li><tt>param</tt> - se configurado para <tt>true</tt>, as µrvores de express∆o SPL ser∆o geradas para
+parÉmetros.</li>
+      <li><tt>output</tt> - se configurado para <tt>true</tt>, as µrvores de express∆o SPL ser∆o geradas para
+sa°da.</li>
+      <li><tt>cppCode</tt> - se configurado para <tt>true</tt>, cada n¢ no XML da instÉncia do operador gerado
+ser† aprimorado com o c¢digo C++ usando modelos.
+Este c¢digo C++ pode ser usado para gerar o c¢digo C++ para uma express∆o SPL. Por exemplo, para o c¢digo SPL:
+<p>
+<codeblock>
+param predicates : {a = "a" == In.letter, b = "b" == In.letter};
+</codeblock>
+</p>
+<p>
+A †rvore de express∆o SPL gerada incluir†:
+</p>
+<p>
+<!-- START NON-TRANSLATABLE -->
+<codeblock>
+&lt;expressionTree cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})">
+  &lt;literal cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})" type="1">
+    &lt;tuple count="2" cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})" type="1">
+      &lt;attr id="a">
+        &lt;value cppCode="({Lhs} == {Rhs})" type="2">
+          &lt;expn cppCode="({Lhs} == {Rhs})">
+            &lt;binary cppCode="({Lhs} == {Rhs})" op="==" type="2">
+              &lt;lhs cppCode="SPL::rstring("a")">
+                &lt;literal cppCode="SPL::rstring("a")" type="0">"a"&lt;/literal>
+              &lt;/lhs>
+              &lt;rhs cppCode="iport$0.get_letter()">
+                &lt;attribute attribute="letter" cppCode="iport$0.get_letter()" type="0">
+                  &lt;lhs cppCode="iport$0">
+                    &lt;stream cppCode="iport$0" name="In" port="0" type="3"/>
+                  &lt;/lhs>
+                &lt;/attribute>
+              &lt;/rhs>
+            &lt;/binary>
+          &lt;/expn>
+        &lt;/value>
+      &lt;/attr>
+</codeblock>
+<!-- END NON-TRANSLATABLE -->
+</p>
+<p>
+Os modelos (por exemplo, <tt>{Lhs}, {attr:0}</tt>) s∆o usados para assegurar que a substituiá∆o de c¢digo
+esteja bem definida.
+</p>
+<p>
+Estas express‰es representam as express‰es SPL, mas est∆o dispon°veis em uma forma que elas possam ser
+facilmente acompanhadas.
+Os objetos Perl s∆o derivados de <tt>SPL::Operator::Instance::ExpressionTree</tt>e tàm uma espÇcie, um tipo e
+mÇtodos para acessar os campos da express∆o. <tt>ExpressionTreeVisitor</tt> Ç um padr∆o do visitante fornecido
+para permitir f†cil acompanhamento da †rvore de express∆o. Para obter informaá‰es adicionais, consulte o
+<i>Documentaá∆o da API de geraá∆o de c¢digo do IBM Streams Processing Language</i>.
+</p>
+      </li>
+      </ul>
+    </dd>
+   </dlentry>
+   <dlentry id="context__capability">
+    <dt>Recursos do sistema operacional (somente C++)</dt>
+    <dd><p>Esta lista opcional de elementos especifica privilÇgios especiais para o operador. O IBM Streams
+suporta o modelo de capacidades do Linux por meio do elemento de capacidade. ê poss°vel incluir qualquer n£mero
+de elementos para especificar os privilÇgios exatos que o operador requer. Por exemplo,
+<tt>&lt;capability&gt;CAP_NET_RAW+eip&lt;/capability&gt;</tt>
+indica que o operador precisa de permiss∆o para acessar soquetes brutos. Observe que a instÉncia do IBM
+Streams deve ser configurada para permitir que os processos de PE sejam executados com capacidades
+especiais do sistema operacional.
+    </p></dd>
+   </dlentry>
+</dl>
+</section>
+
+<section id="input_port_set">
+<title outputclass="splhead-1">Conjunto de portas de entrada</title>
+<p>
+As portas de entrada s∆o definidas em termos de conjuntos de portas. Um conjunto de portas Ç um n£mero fixo de
+portas que compartilham a mesma configuraá∆o.
+Isso evita repetiá∆o da mesma configuraá∆o para portas diferentes. Um conjunto de portas pode ser aberto,
+caso em que ele pode conter zero ou mais portas com a mesma configuraá∆o. Um elemento inputPorts contÇm zero
+ou mais elementos inputPortSet, seguidos por um elemento inputPortOpenSet opcional.
+</p>
+<dl>
+  <dlentry id="input_port_set__cardinality">
+    <dt>Cardinalidade</dt>
+    <dd>Define o n£mero de portas que o conjunto de portas representa. Esta propriedade se aplica a conjuntos
+de portas n∆o abertas.
+    </dd>
+  </dlentry>
+  <dlentry  id="input_port_set__optional">
+    <dt>Optional</dt>
+    <dd>Um booleano que especifica se o conjunto de portas de entrada Ç opcional.
+    </dd>
+  </dlentry>
+    <dlentry  id="input_port_set__controlport">
+    <dt>Porta de Controle</dt>
+    <dd>O elemento controlPort opcional informa ao compilador que as tuplas recebidas nesta porta ser∆o usadas
+somente para controlar o operador e nenhuma tupla ser† enviada quando tuplas forem processadas nesta porta.
+Se n∆o especificado, o valor ser† false. O compilador de SPL emitir† avisos quando loops forem localizados no
+gr†fico do operador, j† que isso poder† levar a conflito ou recurs∆o infinita. Configurar controlPort para
+true informar† ao compilador que esta porta n∆o enviar† mais tuplas e que isso Ç um loop de feedback esperado
+(e inofensivo), de modo que nenhum aviso ser† emitido para esta porta.
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowingmode">
+    <dt>Modo de janelas</dt>
+    <dd>O elemento windowingMode especifica as configuraá‰es v†lidas de janelas para a porta. As opá‰es
+incluem NonWindowed, Windowed e OptionallyWindowed.
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowpunctuationinputmode">
+    <dt>Modo de entrada de pontuaá∆o de janela</dt>
+    <dd>
+O elemento windowPunctuationInputMode especifica a semÉntica de pontuaá∆o da porta de entrada. As opá‰es v†lidas s∆o:
+<ul>
+<li><tt>Expecting</tt> - esta porta espera pontuaá‰es de janelas para que o operador funcione corretamente
+e, portanto, dever† ser alimentada com um fluxo pontuado.</li>
+<li><tt>Oblivious</tt> - esta porta n∆o requer pontuaá‰es para que o operador funcione corretamente e,
+portanto, n∆o tem restriá‰es sobre as conex‰es que podem ser estabelecidas com ele.</li>
+<li><tt>WindowBound</tt> - esta porta ser† uma porta Expecting se ela possuir uma janela baseada em pontuaá∆o,
+caso contr†rio, ser† uma porta Oblivious.</li>
+</ul>
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowexpressionmode">
+    <dt>Modo de express∆o da janela</dt>
+    <dd>Este elemento informa ao compilador quais tipos de express‰es de janelas s∆o v†lidas. Se n∆o
+especificado, o padr∆o ser† <tt>Constant</tt>.
+    <ul>
+      <li><tt>Constant</tt> - as express‰es em <tt>count</tt>, <tt>time</tt>e <tt>delta</tt> devem ser
+constantes que possam ser avaliadas no tempo de compilaá∆o ou caso as express‰es de tempo de execuá∆o que n∆o
+referenciarem atributos de tupla de entrada forem v†lidas.</li>
+      <li><tt>AttributeFree</tt> - as express‰es n∆o podem referenciar atributos de tupla de entrada. Uma express∆o como tempo
+<tt>((int32) getSubmissionTimeValue("timeParam"))</tt> pode ser usada. Para delta,
+somente o segundo argumento pode ser uma express∆o livre de atributo de tempo de execuá∆o. O primeiro argumento Ç ainda um atributo do fluxo de entrada.</li>
+    </ul>
+   </dd><!-- windowexpressionmode -->
+  </dlentry>
+  <dlentry id="input_port_set_rewriteallowedforwindowexpression">
+    <dt>Regravaá∆o permitida para express∆o de janela (somente C++)</dt>
+    <dd>Se configurar como true, esse elemento booleano informar† ao compilador que ele pode regravar a
+express∆o de janela da mesma forma que o elemento <tt>rewriteAllowed</tt> regrava as express‰es que
+aparecem nos valores de parÉmetros. Para obter mais informaá‰es sobre o elemento rewriteAllowed, consulte <tt>ParÉmetros</tt>. Se o elemento <tt>rewriteAllowedForWindowExpression</tt> n∆o for especificado, o valor ser† configurado para
+false por padr∆o. <tt>rewriteAllowedForWindowExpression</tt> dever† ser false (ou omitido) se o operador
+primitivo C++ quiser examinar o valor como um literal.
+    </dd>
+  </dlentry>
+  <dlentry id="input_port_set_tuplemutationallowed">
+    <dt>Mutaá∆o de tupla permitida</dt>
+    <dd>O elemento tupleMutationAllowed define se a l¢gica de processamento conectada Ö porta de entrada (isso
+inclui a l¢gica associada Ös funá‰es de processo do operador e o processamento feito como parte das
+cl†usulas onTuple especificadas no c¢digo SPL) pode mudar uma tupla recebida. Ele pode ser configurado para
+true para operadores que desejarem modificar as tuplas que eles recebem.
+   </dd>
+  </dlentry>
+</dl>
+
+</section>
+<section  id="output_port_set">
+  <title outputclass="splhead-1">Conjunto de portas de sa°da</title>
+  <p>
+As portas de sa°da s∆o definidas em termos de conjuntos de portas, assim como as portas de entrada. Um conjunto
+de portas Ç um n£mero fixo de portas que compartilham a mesma configuraá∆o. Isso evita repetiá∆o da mesma configuraá∆o para portas diferentes. Um conjunto de portas pode ser aberto, caso em que ele pode conter zero
+ou mais portas com a mesma configuraá∆o. Um elemento outputPorts contÇm zero ou mais elementos outputPortSet,
+seguidos por um elemento outputPortOpenSet opcional.
+  </p>
+  <dl>
+  <dlentry  id="output_port_set__cardinality">
+    <dt>Cardinalidade</dt>
+    <dd>Define o n£mero de portas que o conjunto de portas representa. Esta propriedade se aplica a conjuntos
+de portas n∆o abertas.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__optional">
+    <dt>Optional</dt>
+    <dd>Um booleano que especifica se o conjunto de portas de sa°da Ç opcional.
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set_expressionmode">
+    <dt>Modo de express∆o (somente C++)</dt>
+    <dd>
+O elemento expressionMode descreve a sintaxe v†lida das designaá‰es de atributo feitas nesta porta.
+Observe que um valor expressionMode de CustomLiteral n∆o Ç v†lido para portas de sa°da e resultar† em um erro
+de compilaá∆o. Os valores v†lidos para o modo de express∆o s∆o:
+<ul>
+<li><tt>Attribute:</tt> isso significa que as designaá‰es feitas nos atributos de sa°da desta porta precisam
+ser atributos de fluxo. Por exemplo: a sa°da <tt>Out : x = In.y;</tt>, mas n∆o <tt>x = In.y.z</tt>.</li>
+<li><tt>AttributeFree:</tt> isso significa que as designaá‰es feitas nos atributos de sa°da desta porta n∆o
+podem referenciar nenhum atributo de fluxo de entrada. Por exemplo: a sa°da <tt>Out : x = 3 + random(3);</tt>, mas n∆o <tt>x = In.x + 3</tt>.</li>
+<li><tt>Constant:</tt> isso significa que as designaá‰es feitas nos atributos de sa°da desta porta precisam
+ser avali†veis no tempo de compilaá∆o para uma constante. Por exemplo: a sa°da <tt>Out : x = 3 + pow(2, 3);</tt>, mas n∆o <tt>x = random(3)</tt>.</li>
+<li><tt>Expression:</tt> este Ç o modo de express∆o mais flex°vel e qualquer express∆o SPL do tipo correto
+podem aparecer como uma designaá∆o para os atributos de sa°da desta porta. Por exemplo: a sa°da<tt> Out : x = A.y + B.z;</tt>.</li>
+<li><tt>Nonexistent:</tt> isso significa que designaá‰es de atributo de sa°da n∆o podem ser especificadas na
+origem de SPL para esta porta.</li>
+</ul>
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set__autoassignment">
+    <dt>Designado Automaticamente</dt>
+    <dd>
+O elemento <tt>autoAssignment</tt> define se os atributos n∆o designados ser∆o designados automaticamente
+a partir dos atributos das portas de entrada.
+Se configurado como true, o compilador SPL regravar† (no tempo de compilaá∆o) a chamada do operador como se
+os atributos de sa°da n∆o designados tivessem designaá‰es expl°citas na seá∆o de sa°da. Para cada atributo de sa°da que n∆o possui uma designaá∆o, um atributo de entrada com o mesmo nome e tipo ou que tenha o mesmo nome e tipo <tt>e</tt>, em que o tipo de atributo de sa°da Ç <tt>opcional&lt;T&gt;</tt>, ser† designado a ele. Se n∆o houver nenhum atributo de entrada desse tipo ou se houver mais de um, um erro ser†
+relatado no tempo de compilaá∆o. Observe que um valor expressionMode de Constant Ç incompat°vel com um valor
+de autoAssignment de true.
+Esta combinaá∆o resultar† em um erro de compilaá∆o.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__completeassignment">
+    <dt>Concluir Designaá∆o</dt>
+    <dd>
+O elemento <tt>completeAssignment</tt> define se todos os atributos da porta de sa°da precisam ser
+designados para ter uma chamada v†lida do operador. Isso Ç verificado no tempo de compilaá∆o. Um erro ser†
+relatado se um operador
+tiver esse elemento configurado para true em seu modelo do operador e se nem todos os atributos de sa°da
+tiverem designaá‰es ap¢s a etapa de designaá∆o autom†tica (se solicitado) para uma determinada instÉncia desse operador.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__rewriteallowed">
+    <dt>Regravaá∆o permitida (somente C++)</dt>
+    <dd>
+O elemento <tt>rewriteAllowed</tt> especifica se o compilador tem permiss∆o para regravar as express‰es que
+aparecem nas designaá‰es do atributo de sa°da para esta porta.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__outputfunctions">
+    <dt>Funá‰es de sa°da</dt>
+    <dd>
+O elemento outputFunctions define as funá‰es v†lidas de sa°da customizada que podem aparecer nas
+designaá‰es de atributo de sa°da.
+Ele Ç opcional. Quando presente, ele contÇm dois subelementos: o elemento tipo, que define o nome do tipo de
+funá∆o de sa°da customizado, como em RelationalAggs, e o elemento padr∆o, que define a funá∆o de sa°da padr∆o
+a ser usada ao executar designaá∆o autom†tica de atributos de sa°da. Esse valor deve ser um nome de funá∆o
+v†lido para o tipo de funá∆o de sa°da customizado que est† sendo utilizado (como em Last para
+RelationalAggs). Observe que se o c¢digo do usu†rio especificar uma designaá∆o de atributo de sa°da sem uma
+funá∆o de sa°da para uma porta que espera uma funá∆o de sa°da, a funá∆o de sa°da padr∆o ser† inserida
+automaticamente.
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set__finalpunctuationoutputscope">
+    <dt>Escopo da porta de pontuaá∆o final</dt>
+    <dd>
+O elemento <tt>finalPunctuationPortScope</tt> , que Ç opcional, especifica o conjunto de portas de
+entrada a serem usadas pelo tempo de execuá∆o de linguagem SPL para encaminhamento da pontuaá∆o final. Por
+padr∆o, os operadores que tiverem portas de entrada e de sa°da encaminhar∆o automaticamente
+as pontuaá‰es finais de suas portas de entrada para suas portas de sa°da. Isso Ç feito gerando uma pontuaá∆o
+final em uma porta de sa°da quando uma pontuaá∆o final for recebida em todas as portas de entrada. O finalPunctuationPortScope pode ser usado para limitar o conjunto de portas de entrada a serem usadas
+para encaminhar a pontuaá∆o final. Esse elemento tambÇm pode ser usado para desligar o encaminhamento
+autom†tico de pontuaá‰es finais configurando o conjunto de portas de entrada a serem usadas para
+encaminhamento ao conjunto vazio. Nesse caso, o desenvolvedor do operador Ç respons†vel por assegurar que a
+porta de sa°da receba pontuaá∆o final.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__windowpunctuationoutputmode">
+    <dt>Modo de sa°da de pontuaá∆o de janela</dt>
+    <dd>
+O windowPunctuationOutputMode especifica a semÉntica de pontuaá∆o de janela da porta de sa°da. As opá‰es s∆o:
+<ul>
+<li><tt>Gerando</tt> - esta porta gera pontuaá‰es de janela.</li>
+<li><tt>Gratuito</tt> - esta porta est† livre de pontuaá‰es de janela.</li>
+<li><tt>Preservando</tt> - esta porta preserva as pontuaá‰es de janela recebidas. Se um operador tiver mais de
+uma porta de entrada, ent∆o, o elemento windowPunctuationInputPort dever† ser especificado para identificar
+qual pontuaá∆o de porta de entrada est† sendo preservada.</li>
+</ul>
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__tuplemutationallowed">
+    <dt>Mutaá∆o de tupla permitida</dt>
+    <dd>
+O elemento <tt>tupleMutationAllowed</tt> define se este operador permite que os operadores de
+recebimento de dados modifiquem as tuplas de sa°da enviadas para esta porta por meio da chamada de envio. Se
+configurado como true, ent∆o, a l¢gica de processamento do operador dever† esperar que as tuplas que ele envia
+para esta porta sejam modificadas como resultado da chamada de envio.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__windowpunctuationinputport">
+    <dt>Porta de entrada de pontuaá∆o de janela</dt>
+    <dd>
+Conforme mencionado acima, o elemento <tt>windowPunctuationInputPort</tt> associa uma porta de
+entrada a uma porta de sa°da que preserva a pontuaá∆o. Este elemento poder† ser especificado somente se
+o modo de pontuaá∆o de janela da porta de sa°da for Preservando
+O windowPunctuationInputPort pode ser configurado para -1, que tem a mesma semÉntica que um elemento
+windowPunctuationInputPort ausente.
+ê importante observar que o encaminhamento de pontuaá∆o para pontuaá‰es de janelas n∆o Ç executado
+automaticamente pelo tempo de execuá∆o de linguagem SPL (diferente de pontuaá‰es finais) e o modelo do operador Ç usado para informar ao compilador SPL sobre o comportamento que est† sendo implementado pelo
+operador. Para obter informaá‰es adicionais, consulte o
+<i>Referància de desenvolvimento do kit de ferramentas do IBM Streams Processing Language</i>.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__outputassignmentportscope">
+    <dt>Escopo da porta de designaá∆o de sa°da</dt>
+    <dd>
+ O elemento <tt>outputAssignmentPortScope</tt> limita opcionalmente quais atributos de porta de entrada
+podem aparecer em designaá‰es de sa°da nesta porta.
+ Se um escopo for especificado, somente os atributos das portas especificadas pelo escopo poder∆o aparecer nas
+designaá‰es de sa°da para essa porta.
+    </dd>
+  </dlentry>
+</dl>
+</section>
+
+<section id="parameters">
+<title outputclass="splhead-1">ParÉmetros</title>
+<p>
+O elemento de parÉmetro descreve os parÉmetros v†lidos com os quais um operador pode ser configurado.
+Ele tambÇm descreve a sintaxe v†lida para configuraá‰es de parÉmetro deste tipo.
+</p>
+<dl>
+  <dlentry id="parameters__allowany">
+    <dt>Permitir qualquer</dt>
+    <dd>Este elemento Ç uma sinalizaá∆o booleana que determina se um operador pode usar parÉmetros
+arbitr†rios, sem restriá‰es.
+Um operador pode usar parÉmetros arbitr†rios e ainda especificar parÉmetros adicionais e restriá‰es
+associadas.
+    </dd><!-- Allow Any -->
+  </dlentry>
+  <dlentry id="parameters__parameter">
+    <dt>ParÉmetro</dt>
+    <dd><p>Cada elemento de parÉmetro contÇm v†rios subelementos.
+    </p>
+      <dl>
+       <dlentry id="parameters__parameter__name">
+         <dt>Nome</dt>
+         <dd>O elemento <tt>name</tt> Ç o nome do parÉmetro conforme ele aparecer† no c¢digo-fonte SPL.
+Por exemplo, um operador <tt>Functor</tt> pode ter um parÉmetro <tt>filter</tt> .</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__description">
+         <dt>Descriá∆o</dt>
+         <dd>Uma descriá∆o opcional deste parÉmetro.</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__optional">
+         <dt>Optional</dt>
+         <dd>Um booleano que especifica se este parÉmetro Ç opcional. Um valor false significa que o parÉmetro
+deve ser especificado no c¢digo-fonte SPL. </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__rewriteallowed">
+         <dt>Regravaá∆o permitida (somente C++)</dt>
+         <dd>Este parÉmetro booleano permite que o compilador regrave as express‰es que aparecem nos valores
+desse parÉmetro substituindo os literais (incluindo os resultados da etapa de avaliaá∆o de tempo de
+compilaá∆o) por vari†veis cujos valores s∆o carregados no tempo de execuá∆o. Isso permite que o compilador
+gere menos c¢digo para operadores que diferirem ligeiramente em suas configuraá‰es de parÉmetro. Em certos
+casos, os geradores de c¢digo do operador podem querer examinar o valor do parÉmetro para gerar c¢digo
+diferente com base no valor espec°fico localizado ou executar a validaá∆o de tempo de compilaá∆o.
+Por exemplo, <tt>format: csv</tt> pode resultar na geraá∆o de c¢digo especializado para um operador Source. Nesses casos, a regravaá∆o de express∆o dever† ser desligada.</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__expressionmode">
+         <dt>Modo de express∆o</dt>
+         <dd>
+           <ul>
+             <li><tt>Attribute</tt> - restringe os valores de parÉmetro para atributos de fluxo.</li>
+             <li><tt>AttributeFree</tt> - o valor de parÉmetro Ç uma express∆o que n∆o contÇm uma referància a
+um atributo de fluxo.</li>
+             <li><tt>Constant (somente C++)</tt> - os valores de parÉmetro precisam ser avali†veis no tempo
+de compilaá∆o para uma constante.</li>
+             <li><tt>CustomLiteral</tt> - restringe os valores de parÉmetro para os valores v†lidos de uma das
+enumeraá‰es literais customizadas definidas na seá∆o de contexto do modelo</li>
+             <li><tt>Expression (somente C++)</tt> - o modo de express∆o mais flex°vel, em que qualquer
+express∆o SPL do tipo correto pode aparecer como um valor de parÉmetro. </li>
+           </ul>
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__type">
+         <dt>Tipo</dt>
+         <dd>O elemento <tt>type</tt> de um parÉmetro Ç o tipo de SPL de seus valores (como <tt>list&lt;ustring></tt>)
+ou um nome literal customizado (como <tt>SourceFormat</tt>). O tipo tambÇm poder† ser omitido, caso em que
+qualquer tipo SPL corresponder†. O subelemento de tipo de um parÉmetro pode ter um valor vazio, que tem a mesma
+semÉntica que um elemento de tipo ausente.
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__cardinality">
+         <dt>Cardinalidade</dt>
+         <dd>O n£mero m†ximo de valores que o parÉmetro aceita. Se omitido ou se o valor for -1, o n£mero de
+valores ser† considerado como ilimitado. O n£mero de valores de parÉmetro deve corresponder Ö cardinalidade. O
+subelemento de cardinalidade pode assumir um valor de -1, que tem a mesma semÉntica que um elemento de
+cardinalidade ausente.
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__portScope">
+         <dt>Escopo da porta (somente C++)</dt>
+         <dd>Este elemento Ç usado para limitar os atributos de fluxo que aparecem em um valor de
+parÉmetro para uma porta de entrada espec°fica ou para uma lista de portas de entrada. Os °ndices de porta
+iniciam em 0. Quando omitido, n∆o h† restriá‰es sobre atributos de fluxo.
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__customOutputFunction">
+         <dt>Funá∆o de sa°da customizada (somente C++)</dt>
+         <dd>Este elemento opcional de um parÉmetro especifica o nome de um conjunto de funá‰es de sa°da
+customizadas definido no elemento do contexto e torna as funá‰es definidas neste conjunto vis°veis durante a
+compilaá∆o de um parÉmetro. ê responsabilidade do operador gerar o c¢digo C++ correto que envolva funá‰es
+de sa°da customizadas com o parÉmetro, na mesma maneira que seria para uso em uma cl†usula de sa°da.
+         </dd>
+       </dlentry>
+      </dl>
+    </dd><!-- Parameter -->
+  </dlentry>
+</dl> <!-- Parameters -->
+</section>
+</refbody>
+</reference>

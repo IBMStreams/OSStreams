@@ -1,0 +1,63 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+my $isParse = $model->getContext()->getKind() eq 'spl.utility::Parse';
+%>
+                <%if (!$hasDelayField && $numAttrs != 1) {%>
+                    unsigned char sep;
+                <%}
+                for (my $i = 0; $i < $numAttrs; ++$i) {
+                    my $attr = $genAttrs[$i];
+                    my $attrName = $attr->getName();
+                    my $attrCppType = $attr->getCppType();
+                    my $defValue = $defaultTuple ? ", _defaultTuple.get_$attrName()" : "";%>
+                    SPL::readCSV<<%=$attrCppType%>,<%=$sepExpr%>>(fs, tuple$.get_<%=$attrName%>()<%=$defValue%>);
+                    <%if ($i != $numAttrs-1) {%>
+                        fs >> SPL::skipSpaceTabs;
+                        <%if ($parsing eq "fast") {%>
+                            fs >> sep;
+                        <%} else {%>
+                            sep = fs.peek();
+                            if (sep != <%=$sepExpr%>) {
+                                DO_ERROR (SPL_APPLICATION_RUNTIME_FAILED_READ_CHAR (SPL::printableCharacter(<%=$sepExpr%>), SPL::printableCharacter(sep), _tupleNumber, "after reading the attribute <%=$attrName%>"));
+                            }
+                            fs >> sep;
+                        <%}
+                    }
+                }%>
+                CHECK_ERROR (SPL_APPLICATION_RUNTIME_FAILED_READ_TUPLE("<%=$type%>", _tupleNumber));
+                CHECK_FAIL;
+                <%if ($ignoreExtraCSVValues) {%>
+                    fs >> SPL::skipToEndOfLine;
+                <%}%>
+                <%if ($parsing ne "fast") {%>
+                    // Check that we read a complete line
+
+                    int eolSep = fs.get();
+		    if (eolSep == EOF) {
+		      <%if ($isParse) {%>
+		      if (_draining) {
+		        doSubmit = false;
+		      }
+		      <%}%>
+                    }
+                    else if (eolSep != '\n' && eolSep != '\r') {
+                        <% my $lastAttr = $genAttrs[$numAttrs-1];
+                           my $lastAttrName = $lastAttr->getName(); %>
+                        DO_ERROR (SPL_APPLICATION_RUNTIME_FAILED_READ_CHAR ("\\n", SPL::printableCharacter(eolSep), _tupleNumber, "after reading the attribute <%=$lastAttrName%>"));
+		    }
+                <%}%>

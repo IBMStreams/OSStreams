@@ -1,0 +1,130 @@
+#!/usr/bin/env perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use FindBin;
+use lib "${FindBin::Bin}";
+
+use strict;
+use Getopt::Long qw(:config no_ignore_case bundling);
+
+my $indent = 0;
+
+my %opts;
+my @options = ('file=s', 'debug|d');
+GetOptions(\%opts, @options);
+die ("file not specified") if (!defined($opts{file}));
+
+my $header = <<'EOL';
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- WARNING...This is a generated file.  Changes made to this file will be lost -->
+
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/sourceCode"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:common="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/sourceCode"
+  elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+  <xs:import namespace="http://www.ibm.com/xmlns/prod/streams/spl/common" schemaLocation="commonModel.xsd"/>
+
+  <!-- Root element containing the model -->
+  <xs:element name="sourceModel" type="sourceModelType"/>
+
+  <xs:complexType name="sourceModelType">
+    <xs:sequence>
+      <xs:element name="sourceFile" type="sourceFileType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="sourceFileType">
+    <xs:sequence>
+      <xs:element name="compilationUnit" type="compilationUnitType"/>
+    </xs:sequence>
+    <xs:attribute name="uri" use="required" type="xs:string"/>
+  </xs:complexType>
+  
+  <xs:complexType name="sourceLocationType">
+    <xs:attribute name="line" use="required" type="xs:integer"/>
+    <xs:attribute name="column" use="required" type="xs:integer"/>
+  </xs:complexType>
+
+  <xs:complexType name="extendedSourceLocationType">
+    <xs:attribute name="startLine" use="required" type="xs:integer"/>
+    <xs:attribute name="startColumn" use="required" type="xs:integer"/>
+    <xs:attribute name="endLine" use="required" type="xs:integer"/>
+    <xs:attribute name="endColumn" use="required" type="xs:integer"/>
+  </xs:complexType>
+  
+  <xs:complexType name="splDocDescriptionType">
+    <xs:sequence>
+      <xs:element name="description" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="splDocAnnotationType">
+    <xs:complexContent>
+      <xs:extension base="splDocDescriptionType">
+        <xs:attribute name="name" type="xs:string"/>
+        <xs:attribute name="target" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  
+  <xs:complexType name="splDocType">
+    <xs:sequence>
+      <xs:element name="description" type="splDocDescriptionType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="annotation" type="splDocAnnotationType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+  
+  
+EOL
+print $header;
+
+open(FILE, "$opts{file}") or die("Can't open $opts{file}");
+my $inCommentBlock = 0;
+my $inSplModel = 0;
+while(<FILE>) {
+   chomp;
+   if (/^\/\*\*/) {
+        $inCommentBlock = 1;
+        next;
+   } elsif (/^\*\//) {
+        $inCommentBlock = 0;
+        next;
+   }
+
+   if (/^\@splModel.*/) {
+      if ($inSplModel) {
+         $inSplModel = 0;
+         print "\n";
+      } else {
+         $inSplModel = 1;
+      }
+      next;
+   }
+   
+   if ($inSplModel) {
+       print $_, "\n";
+   }
+}
+
+
+
+print "</xs:schema>\n";

@@ -1,0 +1,233 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    SPL::CodeGen::implementationPrologue($model);
+
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+%>
+
+MY_OPERATOR::MY_OPERATOR()
+    : _outQueueMutex()
+    , _outQueueCV()
+    , _tupleMap()
+    , _outQueue()
+    , _state(WAITING)
+    , _currentSequenceId(-1)
+<%if ($isInConsistentRegion) {%>
+    , _crContext(0)
+<%}%>
+{
+<%if ($isInConsistentRegion) {%>
+    _crContext = static_cast<ConsistentRegionContext *>
+      (getContext().getOptionalContext(CONSISTENT_REGION));
+<%}%>
+    SPLAPPTRC(L_DEBUG, "State WAITING", SPL_OPER_DBG);
+}
+
+// Notify port readiness
+void MY_OPERATOR::allPortsReady()
+{
+    // Notifies that all ports are ready. No tuples should be submitted before
+    // this. Source operators can use this method to spawn threads.
+
+    createThreads(1);
+
+<%if ($isInConsistentRegion) {%>
+
+    const ProcessingElement& pe = getPE();
+    if (pe.getRelaunchCount () == 0) {
+        _currentSequenceId = 0;
+        SPLAPPTRC(L_DEBUG, "State COLLECTING", SPL_OPER_DBG);
+        _state = COLLECTING;
+    }
+<%} else {%>
+    SPLAPPTRC(L_DEBUG, "State COLLECTING", SPL_OPER_DBG);
+    _state=COLLECTING;
+    _currentSequenceId=0;
+<%}%>
+}
+
+// Notify pending shutdown
+void MY_OPERATOR::prepareToShutdown()
+{
+    // Remove work from outQueue and signal
+    AutoMutex am(_outQueueMutex);
+    _outQueue.clear();
+    _outQueueCV.signal();
+}
+
+// This is the code for the background thread pushing out tuples after a reset.
+void MY_OPERATOR::process(uint32_t idx)
+{
+    const ProcessingElement& pe = getPE();
+    boolean shutdownRequested = false;
+    while (!shutdownRequested) {
+        {
+            AutoMutex am(_outQueueMutex);
+
+            while (!pe.getShutdownRequested() && _outQueue.empty()) {
+               _outQueueCV.wait(_outQueueMutex);
+            }
+            if (pe.getShutdownRequested()) {
+                shutdownRequested = true;
+            }
+        } // Release _outQueueMutex
+
+        if (!shutdownRequested) {
+<%if ($isInConsistentRegion) {%>
+            ConsistentRegionPermit permit(_crContext);
+<%}%>
+            {
+                 AutoMutex am(_outQueueMutex);
+                 if (!_outQueue.empty()) {
+                    OutputQueueItem& item = _outQueue.front();
+                    item.submit(this, 0);
+                    _outQueue.pop_front();
+                }
+            } // release _outQueueMutex
+        }
+    }
+}
+
+// Tuple processing for non-mutating ports
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+    if (_state == COLLECTING) {
+        TupleList& currentList = _tupleMap[_currentSequenceId];
+
+        OutputQueueItem oTuple(tuple);
+
+        currentList.push_back (oTuple);
+
+        {
+            AutoMutex am(_outQueueMutex);
+
+            if (_outQueue.empty()) {
+                oTuple.submit (this, 0);
+            }
+            else {
+                _outQueue.push_back(oTuple);
+                _outQueueCV.signal();
+            }
+        }
+    }
+}
+
+// Punctuation processing
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+    if (_state == COLLECTING && (punct == Punctuation::WindowMarker || punct == Punctuation::FinalMarker || punct == Punctuation::WatermarkMarker)) {
+        TupleList& currentList = _tupleMap[_currentSequenceId];
+        OutputQueueItem oPunct(punct);
+        currentList.push_back (oPunct);
+
+        {
+            AutoMutex am(_outQueueMutex);
+            if (_outQueue.empty()) {
+                oPunct.submit(this, 0);
+            }
+            else {
+                _outQueue.push_back (oPunct);
+                _outQueueCV.signal();
+            }
+        }
+    }
+}
+
+// Watermark processing
+void MY_OPERATOR::processWatermark(Punctuation const & wm, uint32_t port)
+{
+    process(wm, port);
+}
+
+
+<%if ($isInConsistentRegion) {%>
+
+void MY_OPERATOR::drain() {
+    SPLAPPTRC(L_DEBUG, "drain", SPL_OPER_DBG);
+    // Wait for outQueue to be empty.
+    bool queueIsEmpty = false;
+    while (!queueIsEmpty) {
+        AutoMutex am(_outQueueMutex);
+        queueIsEmpty = _outQueue.empty();
+    }
+}
+
+void MY_OPERATOR::checkpoint(Checkpoint & ckpt) {
+    SPLAPPTRC(L_DEBUG, "checkpoint " << ckpt.getSequenceId(), SPL_OPER_DBG);
+
+    _currentSequenceId = _crContext->getSequenceId();
+    SPLAPPTRC(L_DEBUG, "State COLLECTING", SPL_OPER_DBG);
+    _state = COLLECTING;
+}
+
+void MY_OPERATOR::reset(Checkpoint & ckpt) {
+    SPLAPPTRC(L_DEBUG, "reset " << ckpt.getSequenceId(), SPL_OPER_DBG);
+    clearQueue();
+    enqueueStartingFrom(_crContext->getSequenceId());
+}
+
+void MY_OPERATOR::enqueueSequence(int64_t replaySequence) {
+    SPLAPPTRC(L_DEBUG, "enqueueSequence " << replaySequence, SPL_OPER_DBG);
+
+    if (_tupleMap.count(replaySequence) != 0) {
+        AutoMutex am(_outQueueMutex);
+        TupleList& tuples = _tupleMap[replaySequence];
+        TupleListIterator tuplesEnd = tuples.end();
+        for (TupleList::iterator oTuple = tuples.begin(); oTuple != tuplesEnd; ++oTuple) {
+            _outQueue.push_back(*oTuple);
+        }
+        _outQueueCV.signal();
+    }
+}
+
+void MY_OPERATOR::enqueueStartingFrom(int64_t startingSequence) {
+    SPLAPPTRC(L_DEBUG, "enqueueStartingFrom " << startingSequence, SPL_OPER_DBG);
+    int64_t nextSequence = startingSequence;
+    TupleMap::size_type count = _tupleMap.count(nextSequence);
+    while (count != 0) {
+        enqueueSequence(nextSequence);
+        count = _tupleMap.count(++nextSequence);
+    }
+    SPLAPPTRC(L_DEBUG, "sequence " << nextSequence << "  not found", SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::clearQueue() {
+    AutoMutex am(_outQueueMutex);
+    _outQueue.clear();
+}
+
+void MY_OPERATOR::retireCheckpoint(int64_t id) {
+    SPLAPPTRC(L_DEBUG, "retireCheckpoint " << id, SPL_OPER_DBG);
+    // Delete from the map any list at the specified id, and before it.
+    int64_t retireId = id;
+
+    while (_tupleMap.count (retireId) != 0) {
+        _tupleMap.erase (retireId);
+        --retireId;
+    }
+}
+
+void MY_OPERATOR::resetToInitialState() {
+    SPLAPPTRC(L_DEBUG, "resetToInitialState", SPL_OPER_DBG);
+    clearQueue();
+    enqueueStartingFrom (0);
+}
+
+<%} # end of consistent region support methods%>
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

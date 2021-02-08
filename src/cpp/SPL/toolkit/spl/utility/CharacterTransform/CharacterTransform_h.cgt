@@ -1,0 +1,53 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    my $outputPort = $model->getOutputPortAt(0);
+    my $numAttrs = $outputPort->getNumberOfAttributes();
+
+    my $isInConsistentRegion = $model->getContext()->getOptionalContext("ConsistentRegion");
+    if ($isInConsistentRegion && $isInConsistentRegion->isStartOfRegion()) {
+        SPL::CodeGen::exitln(SPL::Msg::OP_CANNOT_START_CR($model->getContext()->getKind()),
+            $model->getContext()->getSourceLocation());
+    }
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+
+    my @includes;
+    push @includes, "#include <SPL/Toolkit/Encoder.h>";
+
+    SPL::CodeGen::headerPrologue($model, \@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR<%if ($ckptKind ne "none") {%>, public StateHandler<%}%>
+{
+  public:
+    MY_OPERATOR();
+
+    void process(Tuple const & tuple, uint32_t port);
+    void process(Punctuation const & punct, uint32_t port);
+
+  private:
+    <%for (my $i = 0; $i < $numAttrs; $i++) {
+        my $attr = $outputPort->getAttributeAt($i);
+        if ($attr->hasAssignmentWithOutputFunction()) {
+            my $of = $attr->getAssignmentOutputFunctionName();
+            next if $of eq "AsIs";
+            my $n = $attr->getName();%>
+            SPL::Encoder _enc_<%=$n%>;
+        <%}
+    }%>
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

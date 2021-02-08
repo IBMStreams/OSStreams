@@ -1,0 +1,42 @@
+#!/bin/sh
+
+#
+# Grab the total amount of available memory.
+#
+case $(uname -s) in
+Darwin)
+    TOTAL_KB=$(expr $(sysctl -n hw.memsize) / 1024)
+    ;;
+*)
+    TOTAL_KB=$(grep MemTotal /proc/meminfo | sed 's/^.*\s\+\([0-9]\+\).*$/\1/g')
+    ;;
+esac
+
+#
+# Compute how many chunks of 2GB are available.
+#
+UNITS_KB=$(expr 1024 \* 1024)
+CORES_KB=$(expr 2 \* ${UNITS_KB})
+CHUNKS_N=$(expr ${TOTAL_KB} / ${CORES_KB})
+
+#
+# Grab the core count.
+#
+case $(uname -s) in
+Darwin)
+    CORE_CNT=$(sysctl -n machdep.cpu.core_count)
+    ;;
+*)
+    CORE_CNT=$(lscpu --parse=CPU | grep -v \# | wc -l)
+    ;;
+esac
+
+#
+# Return the minimum of both.
+#
+if [ ${CHUNKS_N} -le ${CORE_CNT} ]
+then
+    echo ${CHUNKS_N}
+else
+    echo ${CORE_CNT}
+fi

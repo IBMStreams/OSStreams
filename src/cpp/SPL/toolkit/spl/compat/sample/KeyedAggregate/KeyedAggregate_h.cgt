@@ -1,0 +1,70 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use KeyedAggregateCommon;
+    KeyedAggregateCommon::verify($model);
+    my $replacementKey = $model->getParameterByName("ReplacementKey");
+    my @rkeys = SPL::CodeGen::getParameterCppTypes($replacementKey);
+    my $aggregationKey = $model->getParameterByName("AggregationKey");
+    my @akeys = SPL::CodeGen::getParameterCppTypes($aggregationKey);
+    my $rkeyCppType = SPL::CodeGen::emitClass($model, 'RType', @rkeys);
+    my $akeyCppType = SPL::CodeGen::emitClass($model, 'AType', @akeys);
+    my $outputPort = $model->getOutputPortAt(0);
+    my @rvals;
+    my %replacements;
+    my %aggregates;
+
+    for (my $i = 0; $i < $replacementKey->getNumberOfValues(); $i++) {
+        my $name = $replacementKey->getValueAt($i)->getSPLExpression();
+        $name =~ s/.*\.//;
+        $replacements{$name} = 1;
+    }
+    for (my $i = 0; $i < $aggregationKey->getNumberOfValues(); $i++) {
+        my $name = $aggregationKey->getValueAt($i)->getSPLExpression();
+        $name =~ s/.*\.//;
+        $aggregates{$name} = 1;
+    }
+    foreach my $attr (@{$outputPort->getAttributes()}) {
+        my $name = $attr->getName();
+        next if $replacements{$name} || $aggregates{$name};
+        my $oattr = $outputPort->getAttributeByName($name);
+        next if !$oattr->hasAssignmentWithOutputFunction();
+        push @rvals, $oattr->getCppType() if $oattr->getAssignmentOutputFunctionName() eq "Sum";
+    }
+    my $rvalCppType = SPL::CodeGen::emitClass($model, 'RVal', @rvals);
+
+SPL::CodeGen::headerPrologue($model);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR
+{
+public:
+    MY_OPERATOR();
+    ~MY_OPERATOR();
+
+    void process(Tuple const & tuple, uint32_t port);
+private:
+    Mutex                     _mutex;
+    typedef <%=$rkeyCppType%> RKeyType;
+    typedef <%=$akeyCppType%> AKeyType;
+    typedef <%=$rvalCppType%> RValueType;
+
+    typedef std::tr1::unordered_map<RKeyType, RValueType> ReplacementTable;
+    typedef std::tr1::unordered_map<AKeyType, std::pair<RValueType, ReplacementTable*> > AggregationTable;
+    AggregationTable _aggregationMap;
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

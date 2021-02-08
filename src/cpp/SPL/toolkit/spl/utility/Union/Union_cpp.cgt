@@ -1,0 +1,50 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+   use UnionCommon;
+   UnionCommon::verify($model);
+   my $outputPort = $model->getOutputPortAt(0);
+   my $outTupleType = $outputPort->getCppTupleType();
+
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+    switch (port) {
+    <%for (my $i = 0; $i < $model->getNumberOfInputPorts(); $i++) {
+        my $args = "";
+        my $numArgs = $outputPort->getNumberOfAttributes();
+        for (my $j = 0; $j < $numArgs; $j++) {
+            $args .= ", " if $j > 0;
+            my $attr = $outputPort->getAttributeAt($j);
+            $args .= "t.get_" . $attr->getName() . "()";
+        }
+        %>
+        case <%=$i%>: {
+           IPort<%=$i%>Type const & t = static_cast<IPort<%=$i%>Type const&>(tuple);
+           <%=$outTupleType%> outTuple (<%=$args%>);
+           submit(outTuple, 0);
+           break;
+        }
+    <%}%>
+        default:;
+    }
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

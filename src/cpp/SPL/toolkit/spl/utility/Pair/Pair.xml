@@ -1,0 +1,149 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Pair.html">
+The `Pair` operator is used to pair tuples from two or more streams.
+Corresponding tuples from each input port are used to create a series of output tuples.
+The `Pair` operator creates and sends these output tuples only when all the tuples from the input ports are received.
+It operates exactly like the `Barrier` operator, with one major difference:
+rather than combining the input tuples into one output tuple, it outputs them individually,
+using the order of the input ports, followed by a window marker.
+As a result, all the input ports and the output port must have the same schema.
+
+# Checkpointed data
+
+When the `Pair` operator is checkpointed, the unpaired tuples are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Pair` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+When in a consistent region, the `Pair` operator checkpoints the unpaired tuples.
+During reset processing, unpaired tuples are discarded and tuples that are written to a checkpoint are restored.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Pair` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Pair` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `Pair` operator.
+
+    composite Main {
+      graph
+        // with no buffer size, used for parallel tasks
+        stream&lt;rstring name, uint32 value&gt; OpA = Beacon() {}
+        stream&lt;rstring name, uint32 value&gt; OpB = Beacon() {}
+        stream&lt;rstring name, uint32 value&gt; Res1 = Pair(OpA; OpB) {}
+        // with buffer size, used for synchronizing independent sources
+        stream&lt;rstring name, uint32 value&gt; OpC = Beacon() {}
+        stream&lt;rstring name, uint32 value&gt; Res2 = Pair(OpA; OpC)
+        {
+          param bufferSize : 1000u;
+        }
+        // with partitioning
+        stream&lt;rstring name, uint32 value&gt; Res3 = Pair(OpA; OpB)
+        {
+          param partitionByLHS : OpA.name;
+                partitionByRHS : OpB.name;
+        }
+    }
+
+</description>
+      <iconUri size="16">pair_16.gif</iconUri>
+      <iconUri size="32">pair_32.gif</iconUri>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <allowCustomLogic>false</allowCustomLogic>
+      <codeTemplates>
+        <codeTemplate name="Pair">
+          <description>Basic Pair template</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = Pair(${inputStream1};${inputStream2})  {
+            param
+                ${parameter}:${parameterExpression};
+            output
+                ${outputStream}: ${outputExpression};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>true</allowAny>
+      <parameter>
+        <name>bufferSize</name>
+        <description>
+Specifies the size of the internal buffer that is used to queue up tuples from an input port that do not yet have matching tuples from other ports.
+This parameter is not supported in a consistent region.
+For more information, see the **bufferSize** parameter in the [Barrier] operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>partitionByRHS</name>
+        <description>
+Specifies the expressions that are used for partitioning the input tuples from the right port,
+where the synchronization applies to matching partitions from different ports.
+For more information, see the **partitionByRHS** parameter in the [Barrier] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+      </parameter>
+      <parameter>
+        <name>partitionByLHS</name>
+        <description>
+Specifies the expressions that are used for partitioning the input tuples from the left port,
+where the synchronization applies to matching partitions from different ports.
+For more information, see the **partitionByLHS** parameter in the [Barrier] operator.</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Pair` operator is configurable with two or more input ports, which ingest tuples to be paired.
+The `Pair` operator does not support custom port logic to be specified in its invocations.
+</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>2</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+      <inputPortOpenSet>
+        <description>Additional ports that ingest tuples to be paired.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+      </inputPortOpenSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Pair` operator is configurable with a single output port, which produces paired tuples, matching input port declaration order.</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

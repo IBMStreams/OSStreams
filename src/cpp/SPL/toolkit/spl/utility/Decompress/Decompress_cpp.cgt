@@ -1,0 +1,392 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use DecompressCommon;
+    DecompressCommon::verify($model);
+    my $inputPort = $model->getInputPortAt(0);
+    my $inTupleName = $inputPort->getCppTupleName();
+
+    my $compression = $model->getParameterByName("compression");
+    my $decompressionInput = $model->getParameterByName("decompressionInput");
+    my $flushOnPunct = $model->getParameterByName("flushOnPunct");
+    my $flushPerTuple = $model->getParameterByName("flushPerTuple");
+
+    if ($decompressionInput) {
+        $decompressionInput = $decompressionInput->getValueAt(0)->getCppExpression();
+    } else {
+        # input must be just one blob attribute
+        $decompressionInput = "$inTupleName.get_" . $inputPort->getAttributeAt(0)->getName() . "()";
+    }
+    $compression = $compression->getValueAt(0)->getSPLExpression();
+    $flushOnPunct = $flushOnPunct ? $flushOnPunct->getValueAt(0)->getSPLExpression() eq 'true' : 0;
+    $flushPerTuple = $flushPerTuple ? $flushPerTuple->getValueAt(0)->getSPLExpression() eq 'true' : 0;
+
+    #consistent region support
+    my $crContext = $model->getContext()->getOptionalContext("ConsistentRegion");
+    my $isInConsistentRegion = $crContext ? 1 : 0;
+    my $isStart = $crContext ? $crContext->isStartOfRegion() : 0;
+    my $isTrigger = $crContext ? $crContext->isTriggerOperator() : 0;
+
+SPL::CodeGen::implementationPrologue($model);%>
+
+#include <SPL/Runtime/Common/ApplicationRuntimeMessage.h>
+#include <SPL/Runtime/Utility/LogTraceMessage.h>
+#include <SPL/Toolkit/RuntimeException.h>
+#include <SPL/Toolkit/WriteBufferStream.h>
+<%if ($flushPerTuple) {%>
+#include <SPL/Runtime/Type/Blob.h>
+<%}%>
+#include <fstream>
+<%if ($flushPerTuple) {%>
+#include <cstring>
+#include <list>
+<%}%>
+#include <boost/iostreams/filter/<%=$compression%>.hpp>
+
+using namespace std;
+using namespace boost::iostreams;
+
+MY_OPERATOR::MY_OPERATOR() :
+    _filt_str(NULL), _fs(NULL), _blobSource(NULL), _final(false),
+    _flushInProgress(false), _flushDone(false)
+    <%if ($isInConsistentRegion) {%>
+        ,_crContext()
+        ,_reset(false)
+    <%}%>
+{
+    SPLAPPTRC(L_DEBUG, "Decompress startup...", SPL_OPER_DBG);
+    <%if ($isInConsistentRegion) {%>
+      _crContext = static_cast<ConsistentRegionContext *>
+            (getContext().getOptionalContext(CONSISTENT_REGION));
+    <%}%>
+}
+
+// Use a background thread to decompress the input and output the result
+// so that the thread can block until sufficient input has been received
+// to perform a decompression.
+#define BUFSIZE 64*1024
+void MY_OPERATOR::process(uint32_t)
+{
+    ProcessingElement &pe = getPE();
+    bool finalSeen = false;
+    while (true) {
+        // Wait for new input or shutdown.
+        waitForOpenOrShutdown();
+        if (pe.getShutdownRequested())
+            break;
+
+        // Decompress any input data and output the result until a flush, reset, final marker or shutdown.
+        <%if ($flushPerTuple) {%>
+            std::list<blob> blobList;
+            uint64_t blobSize = 0;
+            char * buffer;
+            bool needDelete = false;
+        <%}%>
+        while (_blobSource && !_fs->eof()) {
+            <%if ($flushPerTuple) {%>
+              // Accumulate the result so it can be output as one tuple.
+              buffer = new char[BUFSIZE];
+              needDelete = true;
+            <%} else {%>
+              // Output the result in chunks, with one chunk per tuple.
+              char buffer[BUFSIZE];
+            <%}%>
+            // Read will block until there are sufficient bytes to fill the buffer
+            // or it is unblocked by a flush, reset, final marker or shutdown.
+            _fs->read (buffer, BUFSIZE);
+            streamsize n = _fs->gcount();
+            SPLAPPTRC(L_DEBUG, "read " << n << ": eof/bad/fail = " << _fs->eof() << "/" << _fs->bad() << "/" << _fs->fail(), SPL_OPER_DBG);
+            if (pe.getShutdownRequested() || _fs->bad() <%print "|| _reset" if $isInConsistentRegion;%>)
+              break;
+            <%if ($flushPerTuple) {%>
+              // Add data to the result without copying.
+              blob newBlob = blob();
+              blobList.push_back(newBlob);
+              blobList.back().adoptData((unsigned char *) buffer, n);
+              needDelete = false;
+              blobSize += n;
+              if (_fs->eof()) {
+                // Output the accumulated result as one tuple.
+                blob outBlob = blob();
+                if (blobSize > 0) {
+                  unsigned char *toData = new unsigned char[blobSize];
+                  outBlob.adoptData(toData, blobSize);
+                  for (std::list<blob>::iterator it = blobList.begin(); it != blobList.end(); it++) {
+                    uint64_t size;
+                    unsigned char const *fromData = it->getData(size);
+                    memcpy(toData, fromData, size);
+                    toData += size;
+                  }
+                }
+                {
+                  <%if ($isInConsistentRegion) { %>
+                    ConsistentRegionPermit crp(_crContext);
+                    if (!_reset)
+                  <%}%>
+                  {
+                    OPort0Type t(outBlob);
+                    submit (t, 0);
+                  }
+                }
+              }
+            <%} else {%> // !$flushPerTuple
+              if (n > 0)
+              {
+                // Output the next chunk of the result.
+                <%if ($isInConsistentRegion) { %>
+                  ConsistentRegionPermit crp(_crContext);
+                  if (!_reset)
+                <%}%>
+                {
+                  OPort0Type t(blob((unsigned char *) buffer, n));
+                  submit (t, 0);
+                }
+              }
+            <%}%>
+        }
+        <%if ($flushPerTuple) {%>
+            if (needDelete)
+                delete [] buffer;
+        <%}%>
+
+        // Exit on shutdown.
+        if (pe.getShutdownRequested())
+            break;
+
+        // Output punctuation if required.
+        <%if (!$flushPerTuple) {%>
+          {
+            <%if ($isInConsistentRegion) { %>
+              ConsistentRegionPermit crp(_crContext);
+              if (!_reset)
+            <%}%>
+            {
+              <%if ($flushOnPunct) {%>
+                if (!_final)
+              <%}%>
+              {
+                submit (Punctuation::WindowMarker, 0);
+              }
+            }
+          }
+        <%}%>
+
+        // Flush has been completed.
+        wakeOnFlushDone(finalSeen);
+
+        // Exit on final marker.
+        if (finalSeen)
+        {
+          SPLAPPTRC(L_DEBUG, "break because of final marker", SPL_OPER_DBG);
+          break;
+        }
+    }
+    SPLAPPTRC(L_DEBUG, "Decompress exiting...", SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::allPortsReady()
+{
+    createThreads (1);
+}
+
+void MY_OPERATOR::process (Tuple& tuple, uint32_t port)
+{
+    SPLAPPTRC(L_DEBUG, "process (Tuple&, uint32_t)", SPL_OPER_DBG);
+    IPort0Type <%=$inTupleName%> = static_cast<IPort0Type&>(tuple);
+    AutoMutex am(_mutex);
+    if (_flushInProgress) {
+        waitForFlushInProgressOrShutdown();
+        if (getPE().getShutdownRequested())
+            return;
+    }
+    if (!_blobSource) {
+        checkForBadInput();
+        open();
+    }
+    _blobSource->addBlob (<%=$decompressionInput%>);
+    <%if ($flushPerTuple) {%>
+        flushHaveMutex();
+    <%}%>
+}
+
+void MY_OPERATOR::open()
+{
+    SPLAPPTRC(L_DEBUG, "open()", SPL_OPER_DBG);
+    _filt_str.reset(new filtering_streambuf<input>(<%=$compression%>_decompressor(), 1, 4));
+    _fs.reset(new istream(_filt_str.get()));
+    _filt_str->push(BlobSourceV2());
+    _fs->imbue(locale::classic());
+    _blobSource = _filt_str->component<BlobSourceV2>(1);
+    _open.signal();
+}
+
+void MY_OPERATOR::process (const Punctuation& punct, uint32_t port)
+{
+    SPLAPPTRC(L_DEBUG, "process (Punctuation&, uint32_t)", SPL_OPER_DBG);
+    <%if ($flushOnPunct) {%>
+        if (punct == Punctuation::WindowMarker) {
+            flush();
+        } else
+    <%} elsif ($flushPerTuple) {%>
+        if (punct == Punctuation::WindowMarker) {
+            submit (Punctuation::WindowMarker, 0);
+        } else
+    <%}%>
+    if (punct == Punctuation::FinalMarker) {
+        AutoMutex am(_mutex);
+        _final = true;
+        if (_blobSource) {
+            flushHaveMutex();
+        } else {
+            checkForBadInput();
+            _open.signal();
+            waitForFlushDoneOrShutdown();
+        }
+    }
+}
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    SPLAPPTRC(L_DEBUG, "prepareToShutdown()", SPL_OPER_DBG);
+    AutoMutex am(_mutex);
+    if (_blobSource)
+        _blobSource->shutDown();
+    _open.signal();
+    _flushPending.broadcast();
+    _flush.signal();
+}
+
+void MY_OPERATOR::flushHaveMutex() {
+    SPLAPPTRC(L_DEBUG, "flushHaveMutex()", SPL_OPER_DBG);
+    // Mutex is already held.
+    if (_flushInProgress) {
+        waitForFlushInProgressOrShutdown();
+        if (getPE().getShutdownRequested())
+            return;
+    }
+    if (_blobSource) {
+        // There are data to be flushed.
+        _blobSource->setNonBlockingMode();
+        _flushInProgress = true;
+        waitForFlushDoneOrShutdown();
+        if (getPE().getShutdownRequested())
+            return;
+        // Wake any other waiters so they can proceed.
+        _flushInProgress = false;
+        _flushPending.broadcast();
+    }
+    checkForBadInput();
+}
+
+void MY_OPERATOR::flush() {
+    SPLAPPTRC(L_DEBUG, "flush()", SPL_OPER_DBG);
+    AutoMutex am(_mutex);
+    flushHaveMutex();
+}
+
+void MY_OPERATOR::checkForBadInput() {
+    SPLAPPTRC(L_DEBUG, "checkForBadInput()", SPL_OPER_DBG);
+    // Mutex is already held.
+    if (_fs.get() && _fs->bad() && !_blobSource) {
+        // Decompression could not be performed and the decompression loop has exited.
+        // Reset _fs so the exception is not thrown again for the same occurrence.
+        _fs.reset();
+        SPLTRACEMSGANDTHROW(SPLRuntimeDecompressOperator, L_ERROR, SPL_APPLICATION_RUNTIME_DECOMPRESS_BAD_INPUT, SPL_OPER_DBG);
+    }
+}
+
+void MY_OPERATOR::waitForFlushDoneOrShutdown() {
+    SPLAPPTRC(L_DEBUG, "waitForFlushDoneOrShutdown()", SPL_OPER_DBG);
+    // Mutex is already held.
+    while (!_flushDone) {
+        if (getPE().getShutdownRequested())
+            return;
+        _flush.wait(_mutex);
+    }
+    _flushDone = false;
+}
+
+void MY_OPERATOR::wakeOnFlushDone(bool &finalSeen) {
+    SPLAPPTRC(L_DEBUG, "wakeOnFlushDone()", SPL_OPER_DBG);
+    // After a flush we will reset the input stream to its initial state.
+    AutoMutex am(_mutex);
+    _blobSource = NULL;
+    <%if ($isInConsistentRegion) { %>
+        if (_reset) {
+            // Reset _fs so an exception is not thrown due to insufficient data to perform a decompression.
+            _fs.reset();
+            _reset = false;
+            _flushInProgress = false;
+            _flushPending.broadcast();
+        } else
+    <%}%>
+    {
+        _flushDone = true;
+        _flush.signal();
+        if (_final) {
+            finalSeen = true;
+        }
+    }
+}
+
+void MY_OPERATOR::waitForFlushInProgressOrShutdown() {
+    SPLAPPTRC(L_DEBUG, "waitForFlushInProgressOrShutdown()", SPL_OPER_DBG);
+    // Mutex is already held.
+    while (_flushInProgress && !getPE().getShutdownRequested()) {
+        _flushPending.wait(_mutex);
+    }
+}
+
+void MY_OPERATOR::waitForOpenOrShutdown() {
+    SPLAPPTRC(L_DEBUG, "waitForOpenOrShutdown()", SPL_OPER_DBG);
+    AutoMutex am(_mutex);
+    while (!_blobSource && !_final && !getPE().getShutdownRequested()) {
+        _open.wait(_mutex);
+    }
+}
+
+<%if ($isInConsistentRegion) {%>
+void MY_OPERATOR::drain() {
+    SPLAPPTRC(L_DEBUG, "drain", SPL_OPER_DBG);
+    flush();
+    if (getPE().getShutdownRequested())
+        SPLTRACEMSGANDTHROW(SPLRuntimeDecompressOperator, L_ERROR, SPL_APPLICATION_RUNTIME_DECOMPRESS_SHUTDOWN_ON_DRAIN, SPL_OPER_DBG);
+}
+
+void MY_OPERATOR::reset(Checkpoint& ckpt) {
+    SPLAPPTRC(L_DEBUG, "reset", SPL_OPER_DBG);
+    doReset();
+}
+
+void MY_OPERATOR::resetToInitialState() {
+    SPLAPPTRC(L_DEBUG, "resetToInitialState", SPL_OPER_DBG);
+    doReset();
+}
+
+void MY_OPERATOR::doReset() {
+    AutoMutex am(_mutex);
+    if (_blobSource) {
+        // There are data to be flushed.
+        _blobSource->setNonBlockingMode();
+        _flushInProgress = true;
+        _reset = true;
+    }
+}
+
+<%} # end of consistent region support %>
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

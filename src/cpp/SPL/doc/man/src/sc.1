@@ -1,0 +1,198 @@
+.TH sc 1  "November 28, 2010" "version 2.0" "USER COMMANDS"
+.SH NAME
+sc \- compile or translate SPL application
+.SH SYNOPSIS
+.B sc [options] -M <main-composite>
+
+.B sc [options] --translate -f <dps-file>
+.SH DESCRIPTION
+.BR "sc" " is the Stream Processing Language (SPL) compiler for IBM Streams. It is used to compile SPL applications. A successful compilation will result in the generation of Processing Element (PE) binaries and the Application Description Language (ADL) file. The latter can be submitted to the Streams runtime using the " "streamtool" " utility."
+.PP
+.BR "sc" " can also be used to translate Streams v1 programs into SPL ones, when presented with the " "\-\-translate" " option."
+.SH OPTIONS
+.TP
+\-h, \-\-help 
+Display help and exit.
+.TP
+\-C, \-\-clean-and-suppress 
+.RB "Clean compiler generated artifacts and suppress compilation."
+.TP
+\-F, \-\-use-transport=VALUE  
+.RB "Set the default transport protocol to one of " "tcp" ", " "llm_rum_tcp" ", or " "llm_rum_ib"  " (upper case variants also allowed as well). By default, the default transport protocol is " "tcp" "."
+.TP
+\-I, \-\-no-host-validation      
+Do not validate host names that appear in explicit host pools.
+.TP
+\-J, \-\-suppress-all-but-the-application-model
+.RB "Create an xml-based model of the application (" ".adl" " file), but suppress the creation of other application artifacts as well as their build process."
+.TP
+\-K, \-\-checkpoint-directory=VALUE
+Set the directory to be used for checkpointing to the specified path (needs to be a path accessible by all application hosts running PEs that belong to this application).
+.TP
+\-M, \-\-main-composite=VALUE 
+Main composite to use as the root of the expansion. This should be a fully qualified name.
+.TP
+\-O, \-\-set-relax-fusion-relocatability-restartability
+.RB "Do not imply exlocation constraints from restartable and relocatable configs. By default, such implications are taken into account. For instance, if an operator A has " "restartable=false" " and operator B has " "restartable=true" ", they have to be partition ex-located."
+.TP
+\-P, \-\-profile-all-operators=INT
+Set profiling for all operators. The following values are valid:
+.br
+    \(bu -1: no profiling (default) 
+.br
+    \(bu  0: profile but do not keep samples
+.br
+    \(bu >0: profile and keep samples in a reservoir of given size
+.TP
+\-S, \-\-profiling-sampling-rate=VALUE
+Set the sampling rate for profiling to the specified value. The value must be floating point value in the range [0.0,1.0]. The default is 1.
+.TP
+\-T, \-\-standalone-application 
+.RB "Create a standalone application executable. The executable will be named " "standalone" " and can be located under the " "bin" " directory within the output directory.
+.TP
+\-Z, \-\-max-pe-cpu-fraction=VALUE
+Set the maximum PE CPU fraction to be used for profile-driven automatic fusion. The value must be positive (>= 0), and the default is 0.8.
+.TP
+\-a, \-\-optimized-code-generation
+Generate optimized code with less runtime error checking. Furthermore, compile the resulting C++ code at the highest optimization level (With this option, the compilation flags used for C++ are \-O3 and \-NDEBUG for gcc. By default the generated C++ code is compiled with \-ggdb for gcc.). 
+.TP
+\-c, \-\-clean 
+Clean compiler generated artifacts prior to compilation.
+.TP
+\-d, \-\-default-pool-size=INT
+Set the size of the default pool to the specified value. The value has to be non-zero (>0). By default, the default pool is unsized.
+.TP
+\-f, \-\-spade-dps-file=VALUE
+.RB "SPL v1 file (with extension " ".dps" ") to translate into SPL.
+.TP
+\-g, \-\-debug
+.RB "Turn on the stream debugger by adding " "wrapper: sdb" " as a config for the main composite. A wrapper config specified in the source file, if any, takes precedence."
+.TP
+\-j, \-\-num-make-threads=INT 
+.RB "Use the specified number of threads for building the binaries. This is used as the -j parameter to " "make" " during the building of the generated C++ code."
+.TP
+\-k, \-\-prefer-facade-tuples
+Generate facade tuples when possible.
+.TP
+\-m, \-\-makefile-generation
+Generate a default makefile for building the SPL application.
+.TP
+\-p, \-\-part-mode=VALUE 
+Specify the fusion mode. Available options are:
+.br 
+    \(bu FDEF  - Default fusion (user-controlled)
+.br
+    \(bu FOPT  - Optimized fusion
+.TP
+\-r, \-\-num-distcc-remote-hosts=INT
+.RB "Set the number of remote hosts to use for distributed compile using " "distcc" ". Available " "build" " hosts are selected for use -- see " "streamtool lsavailablehosts" ". The local node is always part of the compilation."
+.TP
+\-s, \-\-static-link
+Generate statically linked PEs. This is required for SELinux support.
+.TP
+\-t, \-\-spl-path=VALUE
+Set toolkit lookup path(s) to the specified value. Separate multiple paths with ':'. Each path is a toolkit directory, a directory of toolkit directories, or a toolkit list XML file. This option overrides STREAMS_SPLPATH environment variable.
+.TP
+\-v, \-\-verbose-mode
+Put the compiler into verbose mode.
+.TP
+\-w, \-\-ld-flags=VALUE
+.RB "Pass the specified flags to " "ld" " while linking."
+.TP
+\-x, \-\-cxx-flags=VALUE
+Pass the specified flags to the C++ compiler while building.
+.TP
+\-z, \-\-code-beautification
+.RB "Generate nicely formatted C++ code. The " "uncrustify" " tool needs to be available in the system for this feature to work."
+.TP
+\-\-translate 
+Translate from SPL 1 to SPL 2.
+.TP
+\-\-no-mixed-mode-preprocessing
+.RB "Do not pre-process mixed-mode (" ".splmm" ") files."
+.TP
+\-\-no-toolkit-indexing
+Do not perform toolkit indexing in the compilation directory.
+.TP
+\-\-output-directory=VALUE
+Set the directory where the application artifacts are placed to the specified path.
+.TP
+\-\-data-directory=VALUE 
+Set the location of the data directory to be used to the specified path.
+.TP
+\-\-transport-stat-dir=VALUE
+Set the location of the directory to be used for finding transport statistic files to the specified path.
+.SH EXAMPLES
+Assume the following directory layout:
+
+.nf
+    \\_ sample/
+         \\_ WordCount.spl
+.fi
+
+Further assume that there is a main composite named sample::WordCount defined in the SPL program.
+.PP
+.TP
+1) Generate a make file:
+
+.B sc \-m \-M sample::WordCount
+
+This will result in the following directory layout:
+
+.nf
+    \\_ Makefile
+       sample/
+         \\_ WordCount.spl
+.fi
+
+The generated makefile can be used to compile the application by typing 
+.BR "make" "."
+.PP
+.TP
+2) Compile an application:
+
+.B sc \-M sample::WordCount
+
+This will result in the following directory layout:
+
+.nf
+    \\_ data/
+       output/
+         \\_ sample.WordCount.adl
+            ...
+       sample/
+         \\_ WordCount.spl
+       toolkit.xml
+.fi
+
+The generated .adl file can be used to submit the application to the Streams runtime.
+.PP
+.TP
+3) Compile an application as standalone:
+
+.B sc \-T \-M sample::WordCount
+
+This will result in the following directory layout:
+
+.nf
+    \\_ data/
+       output/
+         \\_ bin/
+              \\_ standalone
+                 ...
+            ...
+       sample/
+         \\_ WordCount.spl
+       toolkit.xml
+.fi
+
+The generated standalone executable can be run via the command: 
+.B ./output/bin/standalone
+.PP
+.SH EXIT STATUS
+.BR "sc" " returns a zero exist status if the compilatoon succeeds. Non zero is returned in case of failure."
+
+.SH SEE ALSO
+.BR "streamtool" " (1),"
+.BR "spl-make-toolkit" " (1)"
+

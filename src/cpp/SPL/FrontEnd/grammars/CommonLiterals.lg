@@ -1,0 +1,63 @@
+lexer grammar CommonLiterals;
+options {language = C;}
+
+BANG             : '!';
+NEQ              : '!=';
+DQUOTE           : '"';
+DOLLAR           : '$';
+AND              : '&';
+LPAREN           : '(';
+RPAREN           : ')';
+STAR             : '*';
+PLUS             : '+';
+PLUS_EQ          : '+=';
+COMMA            : ',';
+MINUS            : '-';
+DOT_NEQ          : '.!=';
+DOT_AND          : '.&';
+DOT              : '.';
+DOT_STAR         : '.*';
+DOT_PLUS         : '.+';
+DOT_MINUS        : '.-';
+DOT_SLASH        : './';
+DOT_LT           : '.<';
+DOT_LEQ          : '.<=';
+DOT_GT           : '.>';
+DOT_BAR          : '.|';
+SLASH            : '/';
+COLON            : ':';
+SEMI             : ';';
+LESS             : '<';
+LEQ              : '<=';
+EQ               : '=';
+GT               : '>';
+WHITE_SPACE      : (' '|'\t'|'\n'|'\r')+    { $channel = HIDDEN; };
+LBRACKET         : '[';
+RBRACKET         : ']';
+HAT              : '^';
+ELSE             : 'else';
+FALSE            : 'false';
+IF               : 'if';
+STREAM           : 'stream';
+TRUE             : 'true';
+USE              : 'use';
+WHILE            : 'while';
+LCURLY           : '{';
+RCURLY           : '}';
+BAR              : '|';
+TILDE            : '~';
+fragment LETTER     : 'a'..'z' | 'A'..'Z' | '_';
+fragment STRINGESC  : '\\' ('"'|'t'|'n'|'r'|'u' HEXDIGIT HEXDIGIT HEXDIGIT HEXDIGIT);
+fragment STRINGCHAR : ~('\n'|'\r'|'\\'|'"');
+fragment EXPONENT   : ('e'|'E') ('+'|'-')? DIGIT+;
+fragment NUM_SUFFIX : NUM_SUF_T | NUM_SUF_B | NUM_SUF_T NUM_SUF_B | NUM_SUF_B NUM_SUF_T;
+fragment NUM_SUF_T  : 's' | 'u' | 'f' | 'd';
+fragment NUM_SUF_B  : 'b' | 'h' | 'w' | 'l' | 'q';
+fragment DIGIT      : '0'..'9';
+fragment HEX_PRE    : '0x'; 
+fragment HEXDIGIT   : DIGIT | 'a'..'f' | 'A'..'F';
+
+
+
+
+

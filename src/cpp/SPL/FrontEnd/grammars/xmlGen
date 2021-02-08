@@ -1,0 +1,408 @@
+#!/usr/bin/env perl
+
+use strict;
+use Parse::RecDescent;
+use Getopt::Long qw(:config no_ignore_case bundling);
+use Data::Dumper;
+
+
+package Production;
+
+my $order = 0;
+
+sub new
+{
+   my ($class, $name, $loc, $rule) = @_;
+   my $self = { _name => $name, _loc => $loc, _rule => $rule, _order => $order };
+   ++$order;
+   bless $self, $class;
+   return $self;
+}
+
+sub print
+{
+   my ($self, $indent) = @_;
+   my $pad = sprintf("%${indent}s");
+   print "${pad}<production name=\"$self->{_name}\"$self->{_loc} order=\"$self->{_order}\" gen=\"yes\">\n";
+   $self->{_rule}->print($indent+3);
+   print "${pad}</production>\n";
+}
+
+1;
+
+#*****************************************
+package Fragment;
+
+sub new
+{
+   my ($class, $name, $rule) = @_;
+   my $self = { _name => $name, _rule => $rule };
+   bless $self, $class;
+   return $self;
+}
+
+sub print
+{
+   my ($self, $indent) = @_;
+   my $pad = sprintf("%${indent}s");
+   print "${pad}<fragment name=\"$self->{_name}\" gen=\"no\">\n";
+   $self->{_rule}->print($indent+3);
+   print "${pad}</fragment>\n";
+}
+
+1;
+
+#*****************************************
+package Sequence;
+
+sub new
+{
+   my ($class, $terms) = @_;
+   my $self = { _terms => $terms, _rep => "" };
+   bless $self, $class;
+   return $self;
+}
+
+sub setRep
+{
+    my ($self, $rep) = @_;
+    $self->{_rep} = $rep;
+}
+
+sub print
+{
+   my ($self, $indent) = @_;
+   my $pad = sprintf("%${indent}s");
+   if (scalar @{$self->{_terms}} > 1) {
+      print "${pad}<sequence>\n";
+      $indent += 3;
+   }
+   foreach my $term (@{$self->{_terms}}) {
+      $term->print($indent);
+   }
+   if (scalar @{$self->{_terms}} > 1) {
+      $indent -= 3;
+      print "${pad}</sequence>\n";
+   }
+}
+
+1;
+
+#*****************************************
+package SpecialTerminal;
+
+sub new
+{
+   my ($class, $name) = @_;
+   my $self = { _name => $name };
+   bless $self, $class;
+   return $self;
+}
+
+sub print
+{
+   my ($self, $indent) = @_;
+   my $pad = sprintf("%${indent}s");
+   print "${pad}<specialTerminal>$self->{_name}</specialTerminal>\n";
+}
+
+1;
+
+#*****************************************
+package Terminal;
+
+sub new
+{
+   my ($class, $name, $loc) = @_;
+   $name =~ s/'//g;
+   my $self = { _name => $name, _loc => $loc };
+   bless $self, $class;
+   return $self;
+}
+
+sub print
+{
+   my ($self, $indent) = @_;
+   my $pad = sprintf("%${indent}s");
+   $self->{_name} =~ s/&/&amp;/g;
+   $self->{_name} =~ s/</&lt;/g;
+   $self->{_name} =~ s/>/&gt;/g;
+   $self->{_name} =~ s/'/&apos;/g;
+   print "${pad}<terminal$self->{_loc}>$self->{_name}</terminal>\n";
+}
+
+1;
+
+#*****************************************
+package Enumeration;
+
+sub new
+{
+   my ($class, $value) = @_;
+   $value =~ s/"//g;
+   my $self = { _value => $value };
+   bless $self, $class;
+   return $self;
+}
+
+sub print
+{
+   my ($self, $indent) = @_;
+   my $pad = sprintf("%${indent}s");
+   print "${pad}<enumeration>$self->{_value}</enumeration>\n";
+}
+
+1;
+
+#*****************************************
+package TerminalRange;
+
+sub new
+{
+   my ($class, $start, $end) = @_;
+   my $self = { _start => $start, _end => $end };
+   bless $self, $class;
+   return $self;
+}
+
+sub print
+{
+   my ($self, $indent) = @_;
+   my $pad = sprintf("%${indent}s");
+   print "${pad}<terminalRange>\n";
+   $self->{_start}->print($indent+3);
+   $self->{_end}->print($indent+3);
+   print "${pad}</terminalRange>\n";
+}
+
+1;
+
+#*****************************************
+package Dot;
+
+sub new
+{
+   my ($class, $rep) = @_;
+   my $self = { _rep => $rep };
+   bless $self, $class;
+   return $self;
+}
+
+sub print
+{
+   my ($self, $indent) = @_;
+   my $pad = sprintf("%${indent}s");
+   print "${pad}<dot$self->{_rep}/>\n";
+}
+
+1;
+
+#*****************************************
+package NonTerminal;
+
+sub new
+{
+   my ($class, $name, $args, $rep) = @_;
+   my $self = { _name => $name, _args => $args, _rep => $rep };
+   bless $self, $class;
+   return $self;
+}
+
+sub print
+{
+   my ($self, $indent) = @_;
+   my $pad = sprintf("%${indent}s");
+   my $v = $indent+3;
+   my $innerPad = sprintf("%${v}s");
+   print "${pad}<nonTerminal name=\"$self->{_name}\"$self->{_rep}>";
+   print "${innerPad}<args>$self->{_args}</args>" if ($self->{_args} ne "");
+   print "</nonTerminal>\n";
+}
+
+1;
+
+#*****************************************
+package Choice;
+
+sub new
+{
+   my ($class, $sequence, $tail) = @_;
+   my $self = { _sequence => $sequence, _tail => $tail, _rep => "" };
+   bless $self, $class;
+   return $self;
+}
+
+sub setRep
+{
+    my ($self, $rep) = @_;
+    $self->{_rep} = $rep;
+}
+
+sub print
+{
+   my ($self, $indent) = @_;
+   my $pad = sprintf("%${indent}s");
+   print "${pad}<choice$self->{_rep}>\n";
+   $self->{_sequence}->print($indent+3);
+   foreach my $term (@{$self->{_tail}}) {
+      $term->print($indent+3);
+   }
+   print "${pad}</choice>\n";
+}
+
+1;
+
+#*****************************************
+package SyntacticPredicate;
+
+sub new
+{
+   my ($class, $sequence) = @_;
+   my $self = { _sequence => $sequence };
+   bless $self, $class;
+   return $self;
+}
+
+sub print
+{
+   my ($self, $indent) = @_;
+   my $pad = sprintf("%${indent}s");
+   print "${pad}<syntacticPredicate>\n";
+   $self->{_sequence}->print($indent+3);
+   print "${pad}</syntacticPredicate>\n";
+}
+
+1;
+#*****************************************
+package Not;
+
+sub new
+{
+   my ($class, $sequence) = @_;
+   my $self = { _sequence => $sequence };
+   bless $self, $class;
+   return $self;
+}
+
+sub print
+{
+   my ($self, $indent) = @_;
+   my $pad = sprintf("%${indent}s");
+   print "${pad}<not>\n";
+   $self->{_sequence}->print($indent+3);
+   print "${pad}</not>\n";
+}
+
+1;
+#*****************************************
+package main;
+
+my %opts;
+my @options = ('file=s', 'grammar|g', 'code-model|c', 'debug|d');
+GetOptions(\%opts, @options);
+die ("file not specified") if (!defined($opts{file}));
+die ("parse type not specified") if (!defined($opts{'grammar'}) && !defined($opts{'code-model'}));
+our $debug = defined($opts{debug}) ? $opts{debug} : 0;
+
+sub parseLine($)
+{
+   my ($line) = @_;
+
+my $grammar = <<'EOL';
+
+  rep                : '?' { " repetition=\"?\"" }
+                     | '*' { " repetition=\"*\"" }
+                     | '+' { " repetition=\"+\"" }
+                     | { "" }
+                     
+  loc                : '@' { " needsLocation=\"true\"" }
+                     | { "" }                     
+
+  terminal           : { print "trying terminal\n" if ($main::debug); } /'[^']+'/ loc  { print "success: terminal: $item[-2]\n" if ($main::debug); new main::Terminal($item[-2], $item[-1]) }
+
+  terminalRange      : terminal '..' terminal    { new main::TerminalRange($item[-3], $item[-1]) }
+
+  specialTerminal    : /[A-Z]+/
+  
+  enumeration        : /"[^"]+"/                  { print "success: enumeration: $item[-1]\n" if ($main::debug); new main::Enumeration($item[-1]) }
+
+  args               : '[' /[^\]]*/ ']'           { "$item[-2]" }
+                     | { "" }
+
+  nonTerminal        : /\./ rep                   { new main::Dot($item[-1]) }
+                     | /\w+/i args rep            { new main::NonTerminal($item[-3], $item[-2], $item[-1]) }
+
+  not                : '~' term                   { new main::Not($item[-1]) }
+
+  term               : syntacticPredicate
+                     | not
+                     | group 
+                     | terminalRange
+                     | enumeration
+                     | specialTerminal            { new main::SpecialTerminal($item[-1]) }
+                     | terminal
+                     | nonTerminal
+
+  group              : { print "trying group.choice\n" if ($main::debug); } '(' choice ')' ...!...'=' rep { print "success: group.choice\n" if ($main::debug); $item[-4]->setRep($item[-1]); $item[-4] }
+                     | { print "trying group.sequence\n" if ($main::debug); } '(' sequence ')' ...!...'=' rep { print "success: group.choice\n" if ($main::debug); $item[-4]->setRep($item[-1]); $item[-4] }
+
+  syntacticPredicate : { print "trying syntacticPredicate\n" if ($main::debug); } '(' sequence ')=>' { new main::SyntacticPredicate($item[-2]) }
+
+  choiceTail         : '|' sequence
+
+  choice             : { print "trying choice\n" if ($main::debug); } sequence choiceTail(s) { new main::Choice($item[-2], $item[-1]) }
+
+  sequence           : { print "trying sequence\n" if ($main::debug); } term(s?) { new main::Sequence($item[-1]) }
+
+  rule               : { print "trying rule.choice\n" if ($main::debug); } choice  { print "success: rule.choice\n" if ($main::debug); $item[-1] }
+                     | { print "trying rule.sequence\n" if ($main::debug); } sequence { print "success: rule.sequence\n" if ($main::debug); $item[-1] }
+
+  prodName           : /\w+/i
+
+  production         : prodName loc ':' rule { new main::Production($item[-4], $item[-3], $item[-1]); }
+  
+  fragment           : 'fragment' prodName ':' rule { new main::Fragment($item[-3], $item[-1]); }
+
+  startrule          : fragment   {$item[-1]->print(3) }
+                     | production { $item[-1]->print(3) }
+EOL
+
+   my $comment = $line;
+   $comment =~ s/&/&amp;/g;
+   $comment =~ s/>/&gt;/g;
+   $comment =~ s/</&lt;/g;
+   $comment =~ s/'/&apos;/g;
+   $comment =~ s/--/&#45;&#45;/g;
+   print "<!-- $comment -->\n";
+   my $parser = Parse::RecDescent->new($grammar);
+   defined $parser->startrule(\$line) or print STDERR "Not matched: $line\n";
+   $line =~ s/^\s+//;
+   print STDERR "Not matched $line \n" if ($line ne "");
+   print "\n";
+}
+
+print "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n";
+print "<?xml-stylesheet type=\"text/xsl\" href=\"grammar2html.xsl\"?>\n";
+print "<grammar>\n";
+open(FILE, "$opts{file}") or die("Can't open $opts{file}");
+my $inCommentBlock = 0;
+while(<FILE>) {
+   chomp;
+   if (/^\/\*\*/) {
+        $inCommentBlock = 1;
+        next;
+   } elsif (/^\*\//) {
+        $inCommentBlock = 0;
+        next;
+   }
+   if ($opts{'grammar'} && /^\@splProduction (.*)/) {
+      parseLine($1) if ($inCommentBlock);
+   }
+   if ($opts{'code-model'} && /^\@codeModel (.*)/) {
+      parseLine($1) if ($inCommentBlock);
+   }
+}
+print "</grammar>\n";
+
+
+

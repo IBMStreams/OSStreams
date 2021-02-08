@@ -1,0 +1,231 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$DeDuplicate.html">
+The `DeDuplicate` operator suppresses duplicate tuples that are seen within a specified time period.
+
+# Checkpointed data
+
+When the `DeDuplicate` operator is checkpointed, it checkpoints the most recently seen tuples according to the given 'timeOut', 'count', or 'delta' value.
+Logic state variables (if present) are also included in checkpoint.
+
+# Behavior in a consistent region
+
+The `DeDuplicate` operator can be an operator within the reachability graph of a consistent region. It cannot be the start of a consistent region. The `DeDuplicate` operator checkpoints and resets the most recently seen tuples according to the given 'timeOut', 'count', or 'delta' value. Any logic state variables (if present) are also automatically checkpointed and resetted. The behavior of the 'timeOut' parameter does not change. This means that the time spent draining, checkpointing, and resetting the consistent region are part of the elapsed time accounted for evicting tuples from the operator.
+
+# Checkpointing behavior in an autonomous region
+
+When the `DeDuplicate` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `DeDuplicate` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `DeDuplicate` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring name, uint32 age&gt; Data = Beacon () {
+            param period : 0.1;
+            output
+                Data : name = "test", age = (uint32)(random()*80.0);
+        }
+
+        // only pass tuples that have unique ages in the last minute
+        stream&lt;rstring name, uint32 age&gt; Out = DeDuplicate(Data)
+        {
+          param
+            timeOut : 60.0;  // only remember for 60 seconds
+            key : age / 3u;  // expression to be used for checking duplicates
+        }
+    }
+
+    //detect duplicates based on couple of attribute values
+    // Duplicated data will go to the Duplicates stream
+    (stream&lt;rstring name , rstring country&gt; Out; stream&lt;Data&gt; Duplicates) = DeDuplicate (Data) {
+      param timeOut : 60.0;
+      key : name, country; //duplicate checking uses both name and country.
+      // "Harvey", "Canada" is not a duplicate of "Harvey", "USA"
+    }
+
+</description>
+      <iconUri size="16">deDuplicate_16.gif</iconUri>
+      <iconUri size="32">deDuplicate_32.gif</iconUri>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="DeDuplicate">
+          <description>Basic DeDuplicate template</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = DeDuplicate(${inputStream})   {
+            param
+                ${parameter}:${parameterExpression};
+            output
+                ${outputStream} : ${outputExpression};
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="DeDuplicate with Suppressed Tuples">
+          <description>Basic DeDuplicate template</description>
+          <template>(stream&lt;${schema}&gt; ${outputStream}; stream&lt;${inputStream}&gt; ${outputStream2}) = DeDuplicate(${inputStream})   {
+            param
+                ${parameter}:${parameterExpression};
+            output
+                ${outputStream} : ${outputExpression};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>timeOut</name>
+        <description>
+Specifies the number of seconds during which no duplicate of a tuple is emitted.
+If this parameter is not specified, the default value is `600.0` seconds (10 minutes).
+Identical tuples, which are separated by more than **timeOut** seconds, are seen on the output port.
+
+This parameter cannot be used with the **count** or **deltaAttribute** parameters.
+
+**Note**: Tuples are retained by the `DeDuplicate` operator until **timeOut** seconds elapse,
+**count** tuples are processed, or until **delta** is large enough.
+If the rate of incoming unique tuples is large, large values of these parameters might cause the operator to occupy a huge amount of memory.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>count</name>
+        <description>
+Specifies that identical tuples are suppressed within the next **count** tuples that are received.
+This parameter cannot be used with the **timeOut** or **deltaAttribute** parameters.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>deltaAttribute</name>
+        <description>
+Specifies the input attribute that is used to control the suppression of duplicates.
+This parameter is analogous to the delta function for window clauses.
+Together with the **delta** parameter, duplicate tuples are suppressed
+unless the original value of the **deltaAttribute** parameter is increased more than the **delta** value.
+This parameter is of type integral, floating point, enum, or time stamp.
+
+This parameter cannot be used with the **count** or **timeOut** parameters.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Attribute</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>delta</name>
+        <description>
+Specifies the difference between the original value of the **deltaAttribute** parameter on an unduplicated tuple and that of the current tuple.
+If the difference is greater than the **delta** parameter value, the tuple is emitted.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>key</name>
+        <description>
+Specifies a list of expressions that are used to determine whether a tuple is a duplicate.
+If this parameter is omitted, the whole tuple is used as the key.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+      </parameter>
+      <parameter>
+        <name>resetOnDuplicate</name>
+        <description>
+Specifies whether a duplicate tuple that is suppressed causes the timeOut, count,
+or deltaAttribute on the saved tuple to be reset to that of the current value.
+The timeOut resets the time to the current time.
+The count resets to the current tuple number.
+The deltaAttribute resets to the current value of the attribute.
+
+If this parameter is not specified, the default value is `true`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>flushOnPunctuation</name>
+        <description>
+Specifies whether punctuation causes the operator to forget all history of remembered tuples.
+If this parameter is not specified, the default value is `false`.
+If the parameter value is `true`, all remembered keys are erased when punctuation is received.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `DeDuplicate` operator has one input port, which ingests the possibly duplicated tuples.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `DeDuplicate` operator has one or two output ports.
+The first output port receives the tuples that are not duplicates for the criteria.
+
+The first output port allows assignments to output attributes.
+The output tuple attributes whose assignments are not specified are automatically forwarded from the input ones.
+After the automatic forwarding, the operator expects all output tuple attributes to be completely assigned.
+</description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+      <outputPortSet>
+        <description>
+The second output port (if present) receives the tuples that are duplicates for the criteria.
+The stream type of the second output port must match that of the input port.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>true</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns="http://www.ibm.com/xmlns/prod/streams/api/state"
+            targetNamespace="http://www.ibm.com/xmlns/prod/streams/api/state"
+            elementFormDefault="qualified"
+            attributeFormDefault="unqualified">
+<!-- This schema defines the state types for a Streams instance. -->
+
+<xsd:include schemaLocation="streamsTypes.xsd"/>
+
+<!-- instanceStateType -->
+<xsd:simpleType name="instanceStateType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This represented the possible state values associated with an IBM
+      Streams instance. Instances can have the following states:
+
+      failed           - All resources in the instance failed.
+      partiallyFailed  - Some resources failed or partially failed, or all resources
+                         partially failed.
+      partiallyRunning - Some resources in the instance do not report as running,
+                         but no resource in the instance reports as failed or
+                         partially failed. The non-running resources might be
+                         partially running, quiesced, or in a transition state
+                         such as starting or stopping.
+      running          - All resources in the instance are running.
+      starting         - The resources in the instance are being started.
+      stopped          - The instance is not started.
+      stopping         - All resources in the instance are being stopped.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:restriction base="xsd:string">
+    <xsd:enumeration value="failed"/>
+    <xsd:enumeration value="partiallyFailed"/>
+    <xsd:enumeration value="partiallyRunning"/>
+    <xsd:enumeration value="running"/>
+    <xsd:enumeration value="starting"/>
+    <xsd:enumeration value="stopped"/>
+    <xsd:enumeration value="stopping"/>
+  </xsd:restriction>
+</xsd:simpleType>
+
+<!-- hostStateType -->
+<xsd:simpleType name="hostStateType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This represented the possible state values associated with a resource.
+      Resources can have the following states:
+
+      stopped          - Services on the resource are stopped.
+      starting         - Services on the resource are being started.
+      running          - All services on the resource are running or waiting as expected.
+      quiescing        - Services on the resource are being stopped so that the resource
+                         can be quiesced.
+      quiesced         - The resource is quiesced and no services are running on it.
+      failed           - All services on the resource report as failed or degraded.
+      partiallyRunning - Not all services report as running, but no services report
+                         as failed or degraded.
+      partiallyFailed  - Some services, but not all, report as failed or degraded.
+      unknown          - No IBM Streams services are running on the resource.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:restriction base="xsd:string">
+    <xsd:enumeration value="stopped"/>
+    <xsd:enumeration value="starting"/>
+    <xsd:enumeration value="running"/>
+    <xsd:enumeration value="quiescing"/>
+    <xsd:enumeration value="quiesced"/>
+    <xsd:enumeration value="failed"/>
+    <xsd:enumeration value="partiallyRunning"/>
+    <xsd:enumeration value="partiallyFailed"/>
+    <xsd:enumeration value="unknown"/>
+  </xsd:restriction>
+</xsd:simpleType>
+
+<!-- hostSchedulableStateType -->
+<xsd:simpleType name="hostSchedulableStateType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This represented the possible schedulability state values associated
+      with a resource. This indicates whether a resource is available to run
+      streams processing applications. Resources can have the following schedulability states:
+
+      draining      - The resource is doing a controlled shutdown. Existing streams
+                      processing applications are terminating and no additional
+                      streams processing applications can be started on this resource.
+      failed        - The resource is not schedulable because the host controller
+                      service failed or is not responding.
+      starting      - The resource is not schedulable because the host controller
+                      service is starting and is not yet available to schedule
+                      processing elements.
+      degraded      - The resource is not schedulable because the host controller
+                      service is degraded.
+      notApplicable - The resource cannot be used to schedule processing elements
+                      because it is not configured to run applications. If the host
+                      controller service is not running on the resource, it cannot
+                      run applications.
+      schedulable   - The resource is running normally, the host controller service
+                      is available, and the resource can be used to run streams
+                      processing applications.
+      stopped       - The host controller service and all applications are
+                      stopped.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:restriction base="xsd:string">
+    <xsd:enumeration value="degraded"/>
+    <xsd:enumeration value="draining"/>
+    <xsd:enumeration value="failed"/>
+    <xsd:enumeration value="notApplicable"/>
+    <xsd:enumeration value="schedulable"/>
+    <xsd:enumeration value="starting"/>
+    <xsd:enumeration value="stopped"/>
+  </xsd:restriction>
+</xsd:simpleType>
+
+<!-- serviceNameType -->
+<xsd:simpleType name="serviceNameType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This represented the service names associated with a Streams instance.
+      Instances have the following services:
+
+      app - Application deployment service
+      hc  - Host controller service
+      sam - Application manager service
+      sch - Scheduler service
+      srm - Application metrics service
+      view - View service
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="app"/>
+      <xsd:enumeration value="hc"/>
+      <xsd:enumeration value="sam"/>
+      <xsd:enumeration value="sch"/>
+      <xsd:enumeration value="srm"/>
+      <xsd:enumeration value="view"/>
+  </xsd:restriction>
+</xsd:simpleType>
+
+
+<!-- serviceStateType -->
+<xsd:simpleType name="serviceStateType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This represented the possible state values associated with a domain or instance
+      service. Domain and instance services can have the following states:
+
+      degraded - This state applies only to the host controller service. The
+                 host controller service is running now but previously failed a
+                 health check. When the service is in this state, the resource is
+                 no longer schedulable. The service must be restarted to restore
+                 it to a running state and make the resource schedulable again.
+      failed   - The service is not responding.
+      running  - The service is running.
+      starting - The service is starting.
+      stopped  - The service was not started or it was stopped as a result of a
+                 stop instance, quiesce resource, or remove host operation.
+      stopping - The service is stopping.
+      waiting  - The service is a standby service that is waiting to be used for
+                 high availability.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="degraded"/>
+      <xsd:enumeration value="failed"/>
+      <xsd:enumeration value="running"/>
+      <xsd:enumeration value="starting"/>
+      <xsd:enumeration value="stopped"/>
+      <xsd:enumeration value="stopping"/>
+      <xsd:enumeration value="waiting"/>
+      <xsd:enumeration value="updating"/>
+      <xsd:enumeration value="unknown"/>
+  </xsd:restriction>
+</xsd:simpleType>
+
+<!-- jobStateType -->
+<xsd:simpleType name="jobStateType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This enumeration lists the states for a job in a Streams instance.
+      The potential job states are:
+
+      cancelled   - The job was cancelled.
+      cancelling  - IBM Streams is processing a cancel request for the job.
+      constructed - The job is starting.
+      failed      - A problem occurred during initial job submission processing
+                    and the job failed.
+      running     - The job is running.
+    </xsd:documentation>
+  </xsd:annotation>
+   <xsd:restriction base="xsd:string">
+     <xsd:enumeration value="cancelled"/>
+     <xsd:enumeration value="cancelling"/>
+     <xsd:enumeration value="constructed"/>
+     <xsd:enumeration value="failed"/>
+     <xsd:enumeration value="running"/>
+   </xsd:restriction>
+</xsd:simpleType>
+
+<!-- healthSummaryType -->
+<xsd:simpleType name="healthSummaryType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This enumeration lists the health summary states that represent
+      the health of a job or PE within in a Streams instance. The values are:
+
+      healthy            - For a job, this indicates that the job is running and all
+                           of the PEs within the job are healthy.
+                           For a PE, this indicates that the PE is running and all
+                           of the required and optional connections are connected.
+      partiallyHealthy   - For a job, at least one PE in the job has a healthSummary
+                           value of partiallyHealthy and the remaining PEs are either healthy
+                           or partiallyHealthy.
+                           For a PE, the PE is running and all of the required connections
+                           are connected, but some of the optional connections are in the
+                           process of being connected.
+      partiallyUnhealthy - For a job, at least one of the PEs in the job is unhealthy.
+                           For a PE, the PE is not stopped or in the process of stopping,
+                           but either the state is not running or some required connections
+                           are not yet connected. This health summary value can also occur
+                           when the PE state is unknown.
+      unhealthy          - For a job, all of the PEs in the job are unhealthy.
+                           For a PE, the PE is stopped or is in the process of stopping.
+    </xsd:documentation>
+  </xsd:annotation>
+   <xsd:restriction base="xsd:string">
+     <xsd:enumeration value="healthy"/>
+     <xsd:enumeration value="partiallyHealthy"/>
+     <xsd:enumeration value="partiallyUnhealthy"/>
+     <xsd:enumeration value="unhealthy"/>
+   </xsd:restriction>
+</xsd:simpleType>
+
+<!-- peStateType -->
+<xsd:simpleType name="peStateType">
+  <xsd:annotation>
+    <xsd:documentation>
+    This enumeration lists the states for a PE in a Streams instance.
+    The potential PE states are:
+
+    constructed - The PE is initializing.
+    restarting  - The PE is restarting.
+    running     - The PE is running.
+    starting    - The PE is starting.
+    stopped     - The PE is stopped.
+    stopping    - The PE is stopping.
+    unknown     - The host controller service cannot be contacted to determine
+                  the current state of the PE.
+    </xsd:documentation>
+   </xsd:annotation>
+   <xsd:restriction base="xsd:string">
+     <xsd:enumeration value="constructed"/>
+     <xsd:enumeration value="restarting"/>
+     <xsd:enumeration value="running"/>
+     <xsd:enumeration value="starting"/>
+     <xsd:enumeration value="stopped"/>
+     <xsd:enumeration value="stopping"/>
+     <xsd:enumeration value="unknown"/>
+   </xsd:restriction>
+ </xsd:simpleType>
+
+<!-- peReasonCodeType -->
+<xsd:simpleType name="peReasonCodeType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This enumeration lists the reasons a PE might be in a particular state.
+      The potential PE reason codes are:
+
+      automatic   - The system automatically transitioned the PE to this state.
+      crash       - The PE processing stopped unexpectedly with a signal
+                    condition such as a segmentation violation (SEGV).
+      failure     - The PE processing completed, but it returned a
+                    completion code that indicates that a failure occured.
+      hostFailure - The PE is transitioning to a new resource because the
+                    resource it was running on experienced a failure. The
+                    host controller service that is associated with the resource
+                    was removed or restarted.
+      none        - No reason code is available.
+      setCapabilitiesFailure - The host controller service cannot set the
+                    requested authority for the PE.
+      userRequest - There was a user request to move the PE to this state, for
+                    example, stopping the PE because of a job cancellation request.
+      voluntary   - The PE stopped because its processing completed successfully
+                    without any errors.
+      noViableResource - No scheduler service cannot find a resource to run the PE.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:restriction base="xsd:string">
+    <xsd:enumeration value="automatic"/>
+    <xsd:enumeration value="crash"/>
+    <xsd:enumeration value="failure"/>
+    <xsd:enumeration value="hostFailure"/>
+    <xsd:enumeration value="none"/>
+    <xsd:enumeration value="setCapabilitiesFailure"/>
+    <xsd:enumeration value="userRequest"/>
+    <xsd:enumeration value="voluntary"/>
+    <xsd:enumeration value="noViableResource"/>
+  </xsd:restriction>
+</xsd:simpleType>
+
+<!-- connectionHealthType -->
+<xsd:simpleType name="connectionHealthType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This enumeration lists the connection health states that represent
+      the health of the connections in a PE. The values are:
+
+      connected          - All of the connections are connected.
+      partiallyConnected - One or more of the connections are still trying
+                           to connect.
+      disconnected       - All connections are still trying to connect or
+                           the PE is stopped.
+      unknown            - The host controller service cannot be contacted
+                           to determine the current state of the connections.
+    </xsd:documentation>
+  </xsd:annotation>
+   <xsd:restriction base="xsd:string">
+     <xsd:enumeration value="connected"/>
+     <xsd:enumeration value="partiallyConnected"/>
+     <xsd:enumeration value="disconnected"/>
+     <xsd:enumeration value="unknown"/>
+   </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="connectionStateType">
+  <xsd:annotation>
+    <xsd:documentation>
+      This enumeration lists the possible connection state values.  The values are:
+
+      initial            - The connection ports did not initiate a connection yet.
+      connecting         - The connection ports initiated the connection, but the connection is not established yet.
+      connected          - The connection ports are connected.
+      disconnected       - The connection ports are disconnected. In this case, unless the PE that initiated the connection
+                           shuts down, it tries to reconnect.
+      closed             - The connection was shut down because one of the connection endpoints stopped.
+      unknown            - The application manager service cannot determine the current state of the connection.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:restriction base="xsd:string">
+    <xsd:enumeration value="initial"/>
+    <xsd:enumeration value="connecting"/>
+    <xsd:enumeration value="connected"/>
+    <xsd:enumeration value="disconnected"/>
+    <xsd:enumeration value="closed"/>
+    <xsd:enumeration value="unknown"/>
+  </xsd:restriction>
+</xsd:simpleType>
+
+
+</xsd:schema>

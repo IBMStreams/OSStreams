@@ -1,0 +1,6 @@
+<?xml version="1.0" ?>
+<standaloneModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/standalone"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/standalone standaloneModel.xsd">
+</standaloneModel>

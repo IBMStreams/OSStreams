@@ -1,0 +1,119 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use  strict;
+use warnings;
+use XML::Simple;
+use Getopt::Std;
+use Data::Dumper;
+
+sub badUsage($)
+{
+   my ($rc) = @_;
+   print "Usage: fix-xml [-h] -s num -i infile.xlf\n";
+   print "-h: Print this help information\n";
+   print "-i filename: filename is the xml file containing the message definitions\n";
+   print "-s number: number is the starting message number";
+   exit($rc);
+}
+
+my %opts;
+getopts('hi:s:', \%opts);
+
+badUsage(0) if ($opts{'h'});
+badUsage(1) unless ($opts{'i'});
+badUsage(1) unless ($opts{'s'});
+
+my $xml = new XML::Simple;
+my $data = $xml->XMLin($opts{'i'}, KeepRoot => 1, KeyAttr => [], ForceArray => ['group', 'trans-unit']);
+
+my $i = $opts{'s'};
+
+foreach my $group (@{$data->{'xliff'}->{'file'}->{'body'}->{'group'}}) {
+   if ($group->{'id'} eq "Example") { next; }
+   foreach my $message (@{$group->{'trans-unit'}}) {
+      my $resname = $message->{'resname'};
+      my $severity = substr($resname, 9, 1);
+      my $newResname = sprintf("CDISP%04u%s", $i, $severity);
+      $message->{'resname'} = $newResname;
+      my $newId = sprintf("StreamsSPLMessages_%s", $newResname);
+      $message->{'id'} = $newId;
+      ++$i;
+   }
+}
+
+#print Dumper($data);
+my $out = $xml->XMLout($data, RootName => undef);
+
+print "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+# put the comment block back in
+   my $comment1 = <<EOC1;
+        <!-- =============================================================== -->
+        <!-- TRNOTE Please refer to the "XML Localization Interchange File   -->
+        <!-- Format (.xlf) files" section in the translation instructions    -->
+        <!-- file for more information on this file.                         -->
+        <!--                                                                 -->
+        <!-- NLS_ENCODING=UTF-8                                              -->
+        <!-- TRNOTE Return this file using the UTF-8 encoding.               -->
+        <!--                                                                 -->
+        <!-- NLS_MESSAGEFORMAT_VAR                                           -->
+        <!-- TRNOTE Because of a behavior with the Java MessageFormat class, -->
+        <!-- any message in the Java Resource Bundle that has a {0} string   -->
+        <!-- in it, must escape all single quotes in that message. To escape -->
+        <!-- the single quote, just insert another single quote before it.   -->
+        <!-- For example, the following message                              -->
+        <!--    "Can't find card with name [{0}]"                            -->
+        <!-- would be changed to                                             -->
+        <!--    "Can''t find card with name [{0}]"                           -->
+        <!--                                                                 -->
+        <!-- TRNOTE Do not translate the text between the curly braces. This -->
+        <!-- text is reserved and should not be translated. For example,     -->
+        <!-- the text in the following curly braces should not be translated:-->
+        <!--    {0,number} {0,number,percent} {0,date} {0,time}              -->
+        <!--                                                                 -->
+        <!-- TRNOTE For the target language setting, please use the          -->
+        <!-- appropriate value for your locale as indicated in parenthesis:  -->
+        <!--   Danish (da), Dutch (nl), Finnish (fi), French (fr),           -->
+        <!--   German (de), Italian (it), Norwegian - Bokmal (no),           -->
+        <!--   Brazilian Portuguese (pt-BR), Portuguese (pt-PT),             -->
+        <!--   Spanish (es), Swedish (sv), Czech (cs), Hungarian (hu),       -->
+        <!--   Polish (pl), Russian (ru), Simplified Chinese (zh),           -->
+        <!--   Traditional Chinese (zh-TW), Japanese (ja), Korean (ko),      -->
+        <!--   Arabic (ar), Hebrew (he), Slovakian (sk), Slovenian (sl),     -->
+        <!--   Thai (th), Turkish (tr)                                       -->
+        <!--                                                                 -->
+        <!-- TRNOTE Please start translating the following entries.          -->
+        <!-- =============================================================== -->
+EOC1
+
+   my $comment2 = <<EOC2;
+        <!-- =============================================================== -->
+        <!-- TRNOTE Do not translate the following group                     -->
+        <!-- =============================================================== -->
+EOC2
+
+my $start = 0;
+my $index = index($out, "<body>\n", $start);
+print substr($out, 0, $index+7);
+print $comment1;
+$start = $index+7;
+$index = index($out, "</group>\n", $start+1);
+print substr($out, $start, $index - $start + 9);
+$start = $index+9;
+print $comment2;
+print substr($out, $start);

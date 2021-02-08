@@ -1,0 +1,857 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/runtime/sam"
+  xmlns:adl="http://www.ibm.com/xmlns/prod/streams/application"
+  xmlns:aadl="http://www.ibm.com/xmlns/prod/streams/application/augmented"
+  xmlns:ex="http://www.ibm.com/xmlns/prod/streams/runtime/utils"
+  xmlns:mr="http://www.ibm.com/xmlns/prod/streams/runtime/utils/mr"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/runtime/sam"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<xs:import
+  namespace="http://www.ibm.com/xmlns/prod/streams/application"
+  schemaLocation="applicationModel.xsd"/>
+
+<xs:import
+  namespace="http://www.ibm.com/xmlns/prod/streams/application/augmented"
+  schemaLocation="augmentedApplicationModel.xsd"/>
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/runtime/utils/mr"
+           schemaLocation="../UTILS/MessageRecordingTypes.xsd"/>
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/runtime/utils"
+           schemaLocation="../UTILS/Exception.xsd"/>
+
+<!-- top-level elements: for these elements we need the XSD compiler to create
+     XML serialization and de-serialization functions
+-->
+
+<xs:element name="inputPortInfo" type="inputPortInfoType"/>
+<xs:element name="jobInfo" type="jobInfoType"/>
+<xs:element name="jobsInfo" type="jobsInfoType"/>
+<xs:element name="outputPortInfo" type="outputPortInfoType"/>
+<xs:element name="peInfo" type="peInfoType"/>
+<xs:element name="pesInfo" type="pesInfoType"/>
+<xs:element name="peCollectionOperationStatus" type="peCollectionOperationStatusType"/>
+<xs:element name="peStateInfo" type="peStateInfoType"/>
+<xs:element name="pesStateInfo" type="pesStateInfoType"/>
+<xs:element name="peConfigStateInfo" type="peConfigStateInfoType"/>
+<xs:element name="samSummaryState" type="samSummaryStateType"/>
+<xs:element name="streamPropertyNames" type="streamPropertyNamesType"/>
+<xs:element name="streamPropertyName" type="streamPropertyNameType"/>
+<xs:element name="systemStateConstraint" type="systemStateConstraintType"/>
+<xs:element name="systemStateScoping" type="systemStateScopingType"/>
+<xs:element name="systemState" type="systemStateType"/>
+<xs:element name="systemTopologyScoping" type="systemTopologyScopingType"/>
+<xs:element name="systemTopology" type="systemTopologyType"/>
+<xs:element name="submitParams" type="submitParamsType"/>
+<xs:element name="cancelParams" type="cancelParamsType"/>
+<xs:element name="portConnectionsInfo" type="portConnectionsInfoType"/>
+<xs:element name="jobNotification" type="jobNotificationType"/>
+<xs:element name="excludeJobs" type="excludeJobsType"/>
+<xs:element name="eTag" type="eTagType"/>
+
+<!--
+-->
+<!-- eTagType -->
+  <xs:complexType name="eTagType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores an eTag or timestamp identifier.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="lastTopologyUpdateTS" type="xs:double" use="required"/>
+  </xs:complexType>
+
+<!--excludeJobsType -->
+  <xs:complexType name="excludeJobsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure is a container for a collection of job ids, to be excluded from the applicationSetsType returned by SAM in the systemTopologyType.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="jobs" type="aadl:jobIdType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!--jobsInfoType -->
+  <xs:complexType name="jobsInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure is a container for runtime information about a collection of jobs (represented by the sequence of 'job' elements), used by SAM to return status information.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="job" type="jobInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- jobInfoType -->
+  <xs:complexType name="jobInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure is a container for runtime information regarding a single job. It contains several job runtime attributes (identifiers, name, state, etc.) as well as information on its collection of Processing Elements.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="pes" type="pesInfoType"/>
+      <xs:element name="health" type="aadl:jobHealthType"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="appsetId" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="applicationScope" type="xs:string" use="required"/>
+    <xs:attribute name="state" type="aadl:jobStateType" use="required"/>
+    <xs:attribute name="user" type="xs:token" use="required"/>
+    <xs:attribute name="submitTime" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="jobGroup" type="xs:string" use="optional"/>
+  </xs:complexType>
+
+<!-- pesInfoType -->
+  <xs:complexType name="pesInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure is a container for runtime information on a collection of Processing Elements.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="pe" type="peInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- peInfoType -->
+  <xs:complexType name="peInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure is a container for runtime information on a Processing Element. It includes identifier attributes (index, id, jobId) and state information regarding the knowledge that SAM has on the PE (e.g, state, reason (for being on that state, and whether the state is stale (because the host for the PE is down)) and launchCount). It includes information on the set of input and output ports this PE has, the PE's process id and as well as an overall health indicator for the PE.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="health" type="aadl:peHealthType"/>
+      <xs:element name="inputPorts" type="inputPortsInfoType"/>
+      <xs:element name="outputPorts" type="outputPortsInfoType"/>
+      <xs:element name="currentTracing" type="mr:tracingType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="pendingTracing" type="mr:tracingType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="operInstances" type="operInstancesInfoType"/>
+    </xs:sequence>
+    <xs:attribute name="index" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="id" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="jobId" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="host" type="xs:string" use="required"/>
+    <xs:attribute name="isStateStale" use="required" type="xs:boolean"/>
+    <xs:attribute name="state" type="aadl:peStateType" use="required"/>
+    <xs:attribute name="reason" type="aadl:peStateReasonType" use="required"/>
+    <xs:attribute name="launchCount" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="pid" type="xs:unsignedLong" use="required"/>
+  </xs:complexType>
+
+<!-- peStateInfoType -->
+  <xs:complexType name="peStateInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure is a container for runtime state information on a Processing Element. It includes identifier attributes id, PID (process id of PE) and state information regarding the knowledge that HC has on the PE (e.g, state, reason (for being on that state)).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="id" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="state" type="aadl:peStateType" use="required"/>
+    <xs:attribute name="reason" type="aadl:peStateReasonType" use="required"/>
+    <xs:attribute name="pid" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="host" type="xs:string" use="optional"/>
+  </xs:complexType>
+
+<!-- pesStateInfoType -->
+  <xs:complexType name="pesStateInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure is a container for multiple PE state elements.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="peStateInfo" type="peStateInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="hostShutdown" use="optional" type="xs:boolean" default="false"/>
+    <xs:attribute name="hostBeingShutdown" use="optional" type="xs:string"/>
+  </xs:complexType>
+
+<!-- peConfigStateInfoType -->
+  <xs:complexType name="peConfigStateInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure is a container for runtime configuration state information on a Processing Element. It includes identifier attributes id, and state information regarding the configuration that HC has on the PE (e.g, tracing level).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="config" type="mr:tracingType" minOccurs="1" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="peId" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="updateSeqNum" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="opStatus" type="configUpdateStatusType" use="required"/>
+  </xs:complexType>
+
+<!-- configUpdateStatusType -->
+  <xs:simpleType name="configUpdateStatusType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the operation status codes of the related update attempt.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="success"/>
+      <xs:enumeration value="failure_dueTo_PECShutdown"/>
+      <xs:enumeration value="failure_dueTo_FailureToContactPEC"/>
+      <xs:enumeration value="failure"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- inputPortsInfoType -->
+  <xs:complexType name="inputPortsInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure is a container for runtime information on a collection of PE input ports.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="inputPort" type="inputPortInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- outputPortsInfoType -->
+  <xs:complexType name="outputPortsInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure is a container for runtime information on a collection of PE output ports.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="outputPort" type="outputPortInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- inputPortInfoType -->
+  <xs:complexType name="inputPortInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents runtime information concerning a PE's input port. The port is identified by a runtime identifier (id) along with the index from ADL, and it includes information on its dynamic connections, broken down into compile-time information as generated by the SPL compiler (importedStreams) and runtime information computed by SAM (dynamicConnections).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="importedStreams" type="adl:importedStreamsType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="dynamicConnections" type="inputPortDynamicConnectionsInfoType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="index" type="xs:unsignedLong" use="required"/>
+  </xs:complexType>
+
+<!-- inputPortDynamicConnectionsInfoType -->
+  <xs:complexType name="inputPortDynamicConnectionsInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information, concerning the dynamic connections for an input port as computed by SAM.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="dynamicConnection" type="inputPortDynamicConnectionInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- inputPortDynamicConnectionInfoType -->
+  <xs:complexType name="inputPortDynamicConnectionInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information concerning a particular input port dynamic connection. Specifically, the state of the connection and the following identifiers related to the remote connection endpoint:
+         - remote PE id
+         - remote output port id
+         - id of the job which the remote PE belongs to
+         - remote PE index
+         - remote PE output port index
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="importIndexes" type="aadl:importIndexesType"/>
+    </xs:sequence>
+    <xs:attribute name="ppeId" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="poportId" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="state" type="aadl:connectionStateType" use="required"/>
+    <xs:attribute name="pjobId" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="ppeIndex" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="poportIndex" type="xs:unsignedLong" use="required"/>
+  </xs:complexType>
+
+<!-- outputPortDynamicConnectionsInfoType -->
+  <xs:complexType name="outputPortDynamicConnectionsInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information concerning the dynamic connections for an output port as computed by SAM.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="dynamicConnection" type="outputPortDynamicConnectionInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- outputPortDynamicConnectionInfoType -->
+  <xs:complexType name="outputPortDynamicConnectionInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information concerning a particular output port dynamic connection. Specifically, the state of the connection and the following identifiers related to the remote connection endpoint:
+         - remote PE id
+         - remote input port id
+         - id of the job which the remote PE belongs to
+         - remote PE index
+         - remote PE input port index
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="peId" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="iportId" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="state" type="aadl:connectionStateType" use="required"/>
+    <xs:attribute name="jobId" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="peIndex" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="iportIndex" type="xs:unsignedLong" use="required"/>
+  </xs:complexType>
+
+<!-- outputPortStaticConnectionsInfoType -->
+  <xs:complexType name="outputPortStaticConnectionsInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information concerning the static connections for an output port as computed by SAM.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="staticConnection" type="outputPortStaticConnectionInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- outputPortStaticConnectionInfoType -->
+  <xs:complexType name="outputPortStaticConnectionInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information concerning a particular output port static connection. Specifically, it extends outgoingStaticOPConnectionType with connection state.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="aadl:outgoingStaticOPConnectionType">
+        <xs:attribute name="state" type="aadl:connectionStateType" use="required"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- outputPortInfoType -->
+  <xs:complexType name="outputPortInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents runtime information concerning a PE's output port. The port is identified by a runtime identifier (id) along with the index from ADL, and it includes information on its static and dynamic connections, and whether the stream produced by this port is exported or not (the optional exportedStream).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="exportedStream" type="adl:exportedStreamType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="dynamicConnections" type="outputPortDynamicConnectionsInfoType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="staticConnections" type="outputPortStaticConnectionsInfoType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="index" type="xs:unsignedLong" use="required"/>
+  </xs:complexType>
+
+<!-- samSummaryStateType -->
+  <xs:complexType name="samSummaryStateType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the internal state of SAM in summary form (i.e., the number of application sets, jobs, PEs, input ports, output ports currently in the system).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="lastTopologyUpdateTS" type="xs:double" use="required"/>
+    <xs:attribute name="appsets" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="jobs" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="pes" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="iports" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="oports" type="xs:unsignedLong" use="required"/>
+  </xs:complexType>
+
+<!-- streamPropertyNamesScopingType -->
+  <xs:simpleType name="streamPropertyNamesScopingType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the scoping for stream properties related queries. Currently, an object of this type can refer to only properties whose anames are listed (explictly enumerated) or to all properties.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="all"/>
+      <xs:enumeration value="listed"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- streamPropertyNamesType -->
+  <xs:complexType name="streamPropertyNamesType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the names (through the sequence of 'name' elements) and the scope (through the 'scope' attribute) for stream properties on which a particular operation (e.g., adding, removing, updating, etc) will be applied.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="name" type="streamPropertyNameType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="scope" type="streamPropertyNamesScopingType" use="required"/>
+  </xs:complexType>
+
+<!-- streamPropertyNameType  -->
+  <xs:complexType name="streamPropertyNameType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a sequence of stream property names.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- systemTopologyType  -->
+  <xs:complexType name="systemTopologyType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the result of a dataflow topology query on SAM. The returned data is scoped according to the 'scope' element and contains (1) logical information as originally generated by the SPL compiler and returned as a collection of application sets (i.e., the 'applicationSets' object) and (2) runtime information on these applications available from SAM (i.e., the 'jobSets' object). When both are present, they are parallel data structures. In other words, each application in an application set corresponds to a job in the job set. Either of these resulting objects may or may not be present in the result, according to the query scoping parameters.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="scope" type="systemTopologyScopingType"/>
+      <xs:element name="applicationSets" type="applicationSetsType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="jobSets" type="jobSetsType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- applicationSetsType  -->
+  <xs:complexType name="applicationSetsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a sequence of application sets (physical and/or logical).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="applicationSet" type="adl:applicationSetType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- combinedApplicationSetType -->
+  <xs:complexType name="combinedApplicationSetType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure defines an application set and it is tied to a particular version of IBM Streams. An application set has a human-readable name as well as a description.  It contains the logical application set from the compiler, along with a physical application set after the expansion occurs.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="adl:applicationSetType">
+        <xs:sequence>
+          <xs:element name="physicalApplication" type="adl:applicationType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- jobSetsType  -->
+  <xs:complexType name="jobSetsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a sequence of job sets.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="jobSet" type="jobSetType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- jobSetType  -->
+  <xs:complexType name="jobSetType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a sequence of jobs.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="job" type="jobInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- systemTopologyScopingType  -->
+  <xs:complexType name="systemTopologyScopingType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the scope for a dataflow topology query. Currently, it allows scoping (via the 'selector' object) by job identifiers and user names and application name  meaning that only information relating to the specified jobs and users and applications will be returned by the query. Alternatively, the selector can specify that all of the information should be returned by not specifying any filters.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="jobs" type="aadl:jobIdType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="users" type="xs:token" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="applicationNames" type="xs:token" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="adlSelector" type="adlSelectEnumType" use="optional"/>
+  </xs:complexType>
+
+<!-- systemStateType  -->
+  <xs:complexType name="systemStateType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the result of a SAM internal system state query on SAM. The returned data is scoped according to the 'scope' element and contains in tabular form (1) the collection of application sets (i.e., the 'appsets' object, according to the query scope); (2) the collection of jobs (i.e., the 'jobs' object, according to the query scope); (3) the collection of Processing Elements (i.e., the 'pes' object, according to the query scope); (4) the collection of input ports (i.e., the 'inputPorts' object, for all PEs in the query scope); and (5) the collection of output ports (i.e., the 'outputPorts' object, for all PEs in the query scope).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="scope" type="systemStateScopingType"/>
+      <xs:element name="appsets" type="augmentedApplicationSetsType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="jobs" type="jobsType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="pes" type="managedPEsType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="inputPorts" type="aadl:augmentedPEInputPortsType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="outputPorts" type="aadl:augmentedPEOutputPortsType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="exportedStreamsInfo" type="exportedStreamsInfoType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="importSubscriptionsInfo" type="importSubscriptionsInfoType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="portConnectionsInfo" type="portConnectionsInfoType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="streamViewsInfo" type="aadl:streamViewsType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- systemStateScopingType  -->
+  <xs:complexType name="systemStateScopingType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the scope for SAM system state query. Currently, it allows scoping (via the 'selector' object) by job identifiers or PE identifier, meaning that only information relating to the specified jobs or PEs will be returned by the query. Filters based on application name can also be specified. Specifying constraints and filters will act as an AND filter. Alternatively, the selector can specify that all of the information should be returned.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="constrainedBy" type="systemStateConstraintType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="applicationNames" type="xs:token" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="selector" type="systemStateSelectorType" use="required"/>
+    <xs:attribute name="adlSelector" type="adlSelectEnumType" use="optional"/>
+  </xs:complexType>
+
+<!-- idsType -->
+  <xs:complexType name="idsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of object identifiers.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="object" type="idType" minOccurs="2" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- idType -->
+  <xs:complexType name="idType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores an identifier.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="id" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- systemStateConstraintType -->
+  <xs:complexType name="systemStateConstraintType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure enables one to constraint system state queries by specifying an identifier (via the id attribute) and the type for that identifier (via the idType attribute). When specifying more than 2 identifiers, the elements ids should be properly populated (and the id attribute left out).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="ids" type="idsType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:unsignedLong" use="optional"/>
+    <xs:attribute name="idType" type="systemStateIdConstraintType" use="required"/>
+  </xs:complexType>
+
+<!-- systemStateIdConstraintType  -->
+  <xs:simpleType name="systemStateIdConstraintType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration contains the types of the id constraints one can set. For example, a system state query might ask for all PEs (via the systemStateSelectorType) for a particular appset (by selecting "appset" from this enumeration).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="appset"/>
+      <xs:enumeration value="job"/>
+      <xs:enumeration value="pe"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- systemStateSelectorType  -->
+  <xs:simpleType name="systemStateSelectorType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration contains the selector options for SAM system state queries. It can include the complete internal state ('all'), or only information about a particular type of SAM object (e.g,, 'appsets', 'jobs', etc), or yet specific SAM objects of a particular type (e.g., 'specificAppsets', 'specificJobs', etc).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="all"/>
+      <xs:enumeration value="appsets"/>
+      <xs:enumeration value="exportedStreams"/>
+      <xs:enumeration value="importSubscriptions"/>
+      <xs:enumeration value="inputPorts"/>
+      <xs:enumeration value="jobs"/>
+      <xs:enumeration value="outputPorts"/>
+      <xs:enumeration value="pes"/>
+      <xs:enumeration value="portConnections"/>
+      <xs:enumeration value="streamViews"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- adlSelectEnumType  -->
+  <xs:simpleType name="adlSelectEnumType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration contains the selector options for SAM application or system state queries for ADL returning.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="both"/>
+      <xs:enumeration value="neither"/>
+      <xs:enumeration value="physADL_only"/>
+      <xs:enumeration value="logicADL_only"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- augmentedApplicationSetsType -->
+  <xs:complexType name="augmentedApplicationSetsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of application sets (with runtime information).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="appset" type="combinedAugmentedApplicationSetType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- combinedAugmentedApplicationSetType -->
+  <xs:complexType name="combinedAugmentedApplicationSetType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the runtime management information about an application set, which is identified by an 'id', and associated with one or more job - the job collection is stored in the 'jobs' element. Each SPL application in an application set corresponds to a runtime job.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="combinedApplicationSetType">
+        <xs:sequence>
+          <xs:element name="jobs" type="aadl:jobIdsType"/>
+        </xs:sequence>
+        <xs:attribute name="id" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="state" use="required" type="aadl:appSetStateType"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- jobsType  -->
+  <xs:complexType name="jobsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of jobs (with runtime information).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="job" type="aadl:jobType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- managedPEsType  -->
+  <xs:complexType name="managedPEsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of PEs (with SAM runtime information).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="pe" type="aadl:managedPEType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- exportedStreamsInfoType  -->
+  <xs:complexType name="exportedStreamsInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of exported streams.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="exportedStreamInfo" type="exportedStreamInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- exportedStreamInfoType  -->
+  <xs:complexType name="exportedStreamInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the information relating to an exported stream.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="exportedStream" type="adl:exportedStreamType"/>
+      <xs:element name="tupleType" type="adl:tupleTypeType"/>
+      <xs:element name="operInstanceConnection" type="adl:operInstancePEOutputConnectionType"/>
+    </xs:sequence>
+    <xs:attribute name="peId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="opId" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- importSubscriptionsInfoType  -->
+  <xs:complexType name="importSubscriptionsInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of import subscriptions.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="importSubscriptionInfo" type="importSubscriptionInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- importSubscriptionInfoType  -->
+  <xs:complexType name="importSubscriptionInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the information relating to an import subscription.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="importedStreams" type="adl:importedStreamsType"/>
+      <xs:element name="tupleType" type="adl:tupleTypeType"/>
+      <xs:element name="operInstanceConnection" type="adl:operInstancePEInputConnectionType"/>
+    </xs:sequence>
+    <xs:attribute name="ipId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="peId" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- portConnectionsInfoType  -->
+  <xs:complexType name="portConnectionsInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of port connections.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="portConnectionInfo" type="portConnectionInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- portConnectionInfoType  -->
+  <xs:complexType name="portConnectionInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a port connection and provides the PE IDs, port IDs, and port indexes for the connection endpoints.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="ipeId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="iportId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="iportIndex" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="opeId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="oportId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="oportIndex" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="isActive" use="required" type="xs:boolean"/>
+    <xs:attribute name="isStatic" use="required" type="xs:boolean"/>
+    <xs:attribute name="state" use="required" type="aadl:connectionStateType"/>
+    <xs:attribute name="timestamp" use="optional" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- submitParamsType  -->
+  <xs:complexType name="submitParamsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents job submission parameters.
+        This is not to be confused with the submit params related to SPL.
+        This structure is internal to SAM only.
+        directoryPath indicates the location of the directory where the adl file is located.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="disableHostLoadProtection" use="required" type="xs:boolean"/>
+    <xs:attribute name="directoryPath" use="optional" type="xs:string"/>
+  </xs:complexType>
+
+<!-- cancelParamsType  -->
+  <xs:complexType name="cancelParamsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents job cancel parameters
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="enableLogCollection" use="optional" type="xs:boolean" default="false"/>
+    <xs:attribute name="enableProfileCollection" use="optional" type="xs:boolean" default="false"/>
+    <xs:attribute name="forceCancel" use="optional" type="xs:boolean" default="false"/>
+    <xs:attribute name="logFileName" use="optional" type="xs:string" default=""/>
+    <xs:attribute name="profileFileName" use="optional" type="xs:string" default=""/>
+  </xs:complexType>
+
+<!-- operInstanceOutputPortInfoType  -->
+  <xs:complexType name="operInstanceOutputPortInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        Output port information containing viewable streams.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="streamViews" type="aadl:streamViewsType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- operInstanceOutputPortsInfoType  -->
+  <xs:complexType name="operInstanceOutputPortsInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a sequence of operInstanceOutputPortInfoType objects
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="outputPort" type="operInstanceOutputPortInfoType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!--operInstanceInfoType  -->
+  <xs:complexType name="operInstanceInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        Operator instance information.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="outputPorts" type="operInstanceOutputPortsInfoType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- operInstancesInfoType  -->
+  <xs:complexType name="operInstancesInfoType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a sequence of operInstancesInfoType objects
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="operInstance" type="operInstanceInfoType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- jobNotificationType -->
+  <xs:complexType name="jobNotificationType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure is a container for notification information regarding a single job. It contains the job's id and current status
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="id" type="xs:unsignedLong" use="required"/>
+    <xs:attribute name="state" type="aadl:jobStateType" use="required"/>
+  </xs:complexType>
+
+<xs:complexType name="peCollectionOperationStatusType">
+  <xs:sequence>
+    <xs:element name="peOperationStatus" 	type="peOperationStatusType" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="pesInfo" 				type="pesInfoType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="peOperationStatusType">
+  <xs:sequence>
+    <xs:element name="statusMessageInfo"   type="ex:additionalExceptionDataType"/>
+  </xs:sequence>
+  <xs:attribute name="peId"                type="xs:unsignedLong"   use="required"/>
+</xs:complexType>
+
+</xs:schema>

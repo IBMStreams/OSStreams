@@ -1,0 +1,106 @@
+<?xml version="1.0" ?>
+<operatorProfile
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator/profile"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator/profile operatorProfileModel.xsd">
+  <name>Operator2</name>
+  <baseCost>
+    <row timestamp="6" value="50"/>
+    <row timestamp="8" value="50"/>
+    <total>
+      <initialTimestamp>10</initialTimestamp>
+      <finalTimestamp>12</finalTimestamp>
+      <min>100</min>
+      <max>345</max>
+      <count>560</count>
+      <sum>4</sum>
+      <average>45.6</average>
+    </total>
+  </baseCost>
+  <inputPort>
+    <number>
+      <row timestamp="6" value="50"/>
+      <row timestamp="8" value="50"/>
+      <row timestamp="8" value="50"/>
+      <row timestamp="8" value="50"/>
+      <row timestamp="8" value="50"/>
+      <row timestamp="8" value="50"/>
+      <total>
+        <initialTimestamp>10</initialTimestamp>
+        <finalTimestamp>12</finalTimestamp>
+        <min>100</min>
+        <max>345</max>
+        <count>2</count>
+        <sum>100</sum>
+        <average>50</average>
+      </total>
+    </number>
+    <size>
+      <row timestamp="6" value="50"/>
+      <row timestamp="8" value="50"/>
+      <total>
+        <initialTimestamp>10</initialTimestamp>
+        <finalTimestamp>12</finalTimestamp>
+        <min>100</min>
+        <max>345</max>
+        <count>2</count>
+        <sum>100</sum>
+        <average>50</average>
+      </total>
+    </size>
+    <time>
+      <row timestamp="6" value="50"/>
+      <row timestamp="8" value="50"/>
+      <total>
+        <initialTimestamp>10</initialTimestamp>
+        <finalTimestamp>12</finalTimestamp>
+        <min>100</min>
+        <max>345</max>
+        <count>2</count>
+        <sum>100</sum>
+        <average>50</average>
+      </total>
+    </time>
+  </inputPort>
+  <outputPort>
+    <number>
+      <row timestamp="6" value="50"/>
+      <row timestamp="8" value="50"/>
+      <total>
+        <initialTimestamp>10</initialTimestamp>
+        <finalTimestamp>12</finalTimestamp>
+        <min>100</min>
+        <max>345</max>
+        <count>2</count>
+        <sum>100</sum>
+        <average>50</average>
+      </total>
+    </number>
+    <size>
+      <row timestamp="6" value="50"/>
+      <row timestamp="8" value="50"/>
+      <total>
+        <initialTimestamp>10</initialTimestamp>
+        <finalTimestamp>12</finalTimestamp>
+        <min>100</min>
+        <max>345</max>
+        <count>2</count>
+        <sum>100</sum>
+        <average>50</average>
+      </total>
+    </size>
+    <time>
+      <row timestamp="6" value="50"/>
+      <row timestamp="8" value="50"/>
+      <total>
+        <initialTimestamp>10</initialTimestamp>
+        <finalTimestamp>12</finalTimestamp>
+        <min>100</min>
+        <max>345</max>
+        <count>2</count>
+        <sum>100</sum>
+        <average>50</average>
+      </total>
+    </time>
+  </outputPort>
+</operatorProfile>

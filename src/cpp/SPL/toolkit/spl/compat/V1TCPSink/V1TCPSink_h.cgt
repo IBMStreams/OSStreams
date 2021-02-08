@@ -1,0 +1,83 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use V1TCPSinkCommon;
+    V1TCPSinkCommon::verify($model);
+    my $flush = $model->getParameterByName("flush");
+    my $role = $model->getParameterByName("role");
+    my $reconnectionBound = $model->getParameterByName("reconnectionBound");
+
+    # Apply defaults
+    $role = $role->getValueAt(0)->getSPLExpression();
+    if (!defined $flush) {
+        $flush = 0;
+    } else {
+        $flush = $flush->getValueAt(0)->getSPLExpression();
+    }
+    $reconnectionBound = $reconnectionBound->getValueAt(0)->getCppExpression()
+        if defined $reconnectionBound;
+
+    my @includes;
+    push @includes, "#include <sys/types.h>";
+    push @includes, "#include <sys/stat.h>";
+    push @includes, "#include <fcntl.h>";
+    push @includes, "#include <fstream>";
+    push @includes, "#include <boost/iostreams/stream.hpp>";
+    push @includes, "#include <boost/iostreams/filtering_streambuf.hpp>";
+    push @includes, "#include <boost/iostreams/device/file_descriptor.hpp>";
+    my $TCPconnector;
+    if ($role eq "client") {
+        $TCPconnector = "TCPClient";
+    } else {
+        $TCPconnector = "TCPServer";
+    }
+    push @includes, "#include <SPL/Toolkit/$TCPconnector.h>";
+    push @includes, "#include <SPL/Runtime/Common/Metric.h>";
+%>
+<%SPL::CodeGen::headerPrologue($model, \@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR
+{
+public:
+    MY_OPERATOR();
+
+    virtual void allPortsReady();
+
+    virtual void prepareToShutdown();
+
+    virtual void process(Tuple const & tuple, uint32_t port);
+
+    void process(Punctuation const & punct, uint32_t port);
+
+    virtual void process(uint32_t index);
+
+private:
+    void setup (int32_t fd);
+    void cleanup();
+
+    std::auto_ptr<boost::iostreams::file_descriptor_sink> _fd_sink;
+    std::auto_ptr<SPL::<%=$TCPconnector%>> _connector;
+    std::auto_ptr<boost::iostreams::filtering_streambuf<boost::iostreams::output> > _filt_str;
+    std::auto_ptr<std::ostream> _fs;
+    Mutex _mutex;
+    <%print "uint32_t _tuplesUntilFlush;" if $flush > 0;%>
+    bool _connected;
+    <%print "uint32_t _reconnectsLeft;" if defined $reconnectionBound;%>
+    Metric& _numReconnects;
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

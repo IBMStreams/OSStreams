@@ -1,0 +1,30 @@
+---
+BasedOnStyle: Mozilla
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+BinPackArguments: 'true'
+BreakConstructorInitializers: BeforeComma
+ColumnLimit: '100'
+IndentWidth: '4'
+ReflowComments: 'false'
+Standard: Cpp03
+UseTab: Never
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+	AfterClass: 'true'
+	AfterControlStatement: 'false'
+	AfterEnum: 'true'
+	AfterFunction: 'true'
+	AfterNamespace: 'false'
+	AfterObjCDeclaration: 'false'
+	AfterStruct: 'true'
+	AfterUnion: 'true'
+	AfterExternBlock: 'false'
+	BeforeCatch: 'false'
+	BeforeElse: 'false'
+	IndentBraces: 'false'
+	SplitEmptyFunction: 'false'
+	SplitEmptyRecord: 'false'
+	SplitEmptyNamespace: 'false'
+...

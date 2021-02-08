@@ -1,0 +1,105 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+<%
+   use SwitchCommon;
+   SwitchCommon::verify($model);
+
+   my $statusParam = $model->getParameterByName("status");
+   my $initialStatus = $model->getParameterByName("initialStatus");
+   my $statusExpr = $statusParam->getValueAt(0)->getCppExpression();
+   my $statusTupleName = $model->getInputPortAt(1)->getCppTupleName();
+   $initialStatus = $initialStatus ? $initialStatus->getValueAt(0)->getCppExpression() : 'false';
+%>
+
+MY_OPERATOR::MY_OPERATOR()
+    : _on(<%=$initialStatus%>), _shutdown(false)
+{
+}
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    AutoMutex am(_mutex);
+    _shutdown = true;
+    if (!_on)
+      _cv.signal();
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+    if (port != 0)
+        return;
+    AutoMutex am(_mutex);
+    while(!_on && !_shutdown)
+        _cv.wait(_mutex);
+    if (!_shutdown) {
+        submit(punct, 0);
+    }
+}
+
+void MY_OPERATOR::processWatermark(Punctuation const & wm, uint32_t port)
+{
+    if (port != 0)
+        return;
+    AutoMutex am(_mutex);
+    while(!_on && !_shutdown)
+        _cv.wait(_mutex);
+    if (!_shutdown) {
+        submit(wm, 0);
+    }
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+    AutoMutex am(_mutex);
+    if (port==0) {
+        while(!_on && !_shutdown)
+            _cv.wait(_mutex);
+        if (!_shutdown)
+          submit(tuple, 0);
+    } else {
+        const IPort1Type& <%=$statusTupleName%> = static_cast<const IPort1Type&>(tuple);
+        bool newStatus = <%=$statusExpr%>;
+        if (_on != newStatus) {
+            if (!_on) {
+                _on = true;
+                _cv.signal();
+              } else
+                _on = false;
+        }
+    }
+}
+
+void MY_OPERATOR::getCheckpoint(NetworkByteBuffer & opstate)
+{
+    AutoMutex am (_mutex);
+    <%if ($model->getContext()->getNumberOfStateVariables() > 0) {%>
+        checkpointStateVariables(opstate);
+    <%}%>
+    opstate.addBool (_on);
+}
+
+void MY_OPERATOR::restoreCheckpoint(NetworkByteBuffer & opstate)
+{
+    AutoMutex am (_mutex);
+    <%if ($model->getContext()->getNumberOfStateVariables() > 0) {%>
+        restoreStateVariables(opstate);
+    <%}%>
+    _on = opstate.getBool();
+}
+<%SPL::CodeGen::implementationEpilogue($model);%>

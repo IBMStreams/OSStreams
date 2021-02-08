@@ -1,0 +1,59 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use UDPSourceCommon;
+    UDPSourceCommon::verify($model);
+    my $encoding = $model->getParameterByName("encoding");
+    my $defaultTuple = $model->getParameterByName("defaultTuple");
+    my $defaultTupleType = ($defaultTuple) ? $defaultTuple->getValueAt(0)->getCppType() : "";
+    my $readPunctuations = $model->getParameterByName("readPunctuations");
+    $readPunctuations = $readPunctuations ? $readPunctuations->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    my @includes;
+    push @includes, "#include <SPL/Toolkit/UDPSource.h>";
+    push @includes, "#include <SPL/Runtime/Common/Metric.h>";
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+%>
+<%SPL::CodeGen::headerPrologue($model, \@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR<%if ($ckptKind ne "none") {%>, public StateHandler<%}%>
+{
+public:
+    MY_OPERATOR();
+
+    virtual void process(uint32_t index);
+
+    virtual void allPortsReady();
+
+    virtual void prepareToShutdown();
+
+private:
+   int _fd;
+   SPL::UDPSource *_connector;
+   uint64_t _tupleNumber;
+   <%if($defaultTuple) {%>
+      <%=$defaultTupleType%> _defaultTuple;
+   <%}
+   if ($encoding) {%>
+       std::string _encoding;
+   <%}%>
+   <%if ($readPunctuations) {%>
+       bool _sawFinal;
+   <%}%>
+   Metric& _numInvalidTuples;
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

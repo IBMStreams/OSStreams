@@ -1,0 +1,229 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description  docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.adapter$Import.html">
+The `Import` operator receives tuples from streams that are made available by `Export` operators
+of applications that are running in the same streaming middleware instance.
+
+Import streams are matched to `Export` streams. The match can be done by subscription or properties or by streamId name.
+
+The `Import` operator does not generate tuples inside stand-alone SPL applications.
+
+The `Import` operator does not allow a config clause to be specified.
+
+The `Import` operator behaves as multiple streams when connected to an input port that is punctuation-expecting.
+
+# Checkpointed data
+
+The `Import` operator does not support checkpointing.
+
+# Behavior in a consistent region
+
+The `Import` operator is not supported in a consistent region.
+
+# Checkpointing behavior in an autonomous region
+
+The `Import` operator does not allow a `config checkpoint` clause to be specified.
+
+# Examples
+
+This example uses the `Import` operator.
+
+    composite Main {
+      type SomeTupleType = int32 x;
+      graph
+        stream&lt;SomeTupleType&gt; I2 = Import() {
+          param applicationScope : "myApplicationScope";
+                 //application scope selected when exporting application launched
+               applicationName  : "some.nameSpace::MainOp";
+                 //main operator selected when exporting application launched
+               streamId : "StreamName";
+                 //outside-in name in case of nested composite invokes
+        }
+
+        stream&lt;SomeTupleType&gt; TechBargains = Import() {
+          param subscription : kind == "bargains" &amp;&amp; category == "tech";
+        }
+    }
+
+</description>
+      <iconUri size="16">import_16.gif</iconUri>
+      <iconUri size="32">import_32.gif</iconUri>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Import by Stream ID">
+          <description>Import by Stream ID</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = Import()  {
+            param
+                applicationName : "${mainCompositeName}";
+                streamId : "${streamName}";
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="Import by Subscription">
+          <description>Import by Subscription</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = Import()  {
+            param
+                subscription : ${subscriptionCondition};
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="Import by Subscription with Filter">
+          <description>Import by Subscription</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = Import()  {
+            param
+                subscription : ${subscriptionCondition};
+                filter       : ${filterCondition};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>subscription</name>
+        <description>
+Specifies the subscription expression that is used to specify the streams to be imported.
+The parameter can be a boolean or rstring predicate.
+The predicate refers to names that are defined by the properties of any `Export` operator
+within the `Import` operator's application scope and with a matching schema.
+
+If the parameter is an rstring, it must be a compile-time constant value.
+The **subscription** parameter can accept a *subscriptionExpression* with:
+* *nameOptionalSubscript* *relationalOperator* *literal*
+* *literal* in *splIdentifer*
+* *nameOptionalSubscript* % *int64Literal* *relationalOperator* *int64Literal*
+* *subscriptionExpression* ( '&amp;&amp;' *subscriptionExpression*) \*
+* *subscriptionExpression* ( '||' *subscriptionExpression*) \*
+* '(' *subscriptionExpression* ')'
+where:
+* *nameOptionalSubscript* is an *splIdentifier* ('\[' *intLiteral* '\]')?.
+* *relationalOperator* is one of ==, !=, &gt;, &gt;=, &lt;, or &lt;=.
+* *literal* is an rstring, float64, or int64 literal value.
+* *splIdentifier* is an SPL identifier.
+
+For example:
+    param subscription : (a == "hi") &amp;&amp; ("x" in b || g[4] &gt; 6.7 || id % 8l == 3l)
+
+If the application has user-defined parallelism and the `Import` operator is replicated in a parallel region,
+you can use the `getChannel()`,`getMaxChannels()`, `getLocalChannel()` and `getLocalMaxChannels()` SPL built-in functions in this parameter.
+The functions are evaluated when the job is submitted.
+
+You can update the subscription at run time from C++ primitive operators.
+</description>
+        <optional>false</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>applicationName</name>
+        <description>
+Specifies the name of the application from which the stream is imported.
+This parameter is valid only when you specify the **streamId** parameter.
+
+If the parameter is not specified, the fully qualified name of the main composite is used.
+For example, `\[namespace::\] compositeName`.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>applicationScope</name>
+        <description>
+Specifies the application scope that limits which exporting applications the import can be matched against.
+If this parameter is not specified, the application scope is the application scope of the importing application
+(this can be set using the applicationScope config directive on the main composite, and it has a default value of "Default").
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>streamId</name>
+        <description>
+Specifies the external name of the stream that is being imported.
+You cannot specify both the **streamId** and the **subscription** parameter in an `Import` operator.
+
+If neither the **streamId** nor **subscription** parameters are provided,
+the `Import` operator is a subscription import with an empty subscription that does not match any `Export` properties.
+
+If the application has user-defined parallelism and the `Import` operator is replicated in a parallel region,
+you can use the `getChannel()`, `getMaxChannels()`, `getLocalChannel()` and `getLocalMaxChannels()` SPL built-in functions in this parameter.
+The functions are evaluated when the job is submitted.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Constant</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>filter</name>
+        <description>
+Specifies the dynamic filter expression that is used to filter tuples from the `Export` operator.
+The parameter value has a boolean or rstring data type.
+Valid filter expressions use the same expression syntax that the **subscription** parameter expression accepts,
+but the symbols must be attributes in the output string schema.
+
+If the parameter has an rstring data type, it is parsed in the same way as an rstring of the **subscription** parameter.
+If a **filter** parameter is present, the `Import` operator submits downstream only the exported tuples
+for which the **filterExpression** evaluates to true.
+
+The **filter** parameter can accept a **filterExpression** with:
+* *nameOptionalSubscript* *relationalOperator* *literal*
+* '!'? *nameOptionalSubscript*
+* *literal* in *splIdentifer*
+* *arithmeticExpression* *relationalOperator* *intLiteral*
+* *filterExpression* ( '&amp;&amp;' *filterExpression*) \*
+* *filterExpression* ( '||' *filterExpression*) \*
+* '(' *filterExpression* ')'
+where:
+* *nameOptionalSubscript* is an *splIdentifier* ('\[' *intLiteral* '\]')?.
+* *relationalOperator* is one of ==, !=, &gt;, &gt;=, &lt;, or &lt;=.
+* *arithmeticExpression* is '~' *nameOptionalSubscript* or *nameOptionalSubscript* *arithmeticOperator* *intLiteral* or '~'? '(' *arithmeticExpression* ')' or '(' *arithmeticExpression* ')' *arithmeticOp* *intLiteral*.
+* *arithmeticOperator* is one of &amp;, |, ^, &lt;&lt;, >>, %, +, -, \*, or /.
+* *literal* is an rstring, float64, float32, int64, int32, int16, int8, uint64, uint32, uint16, uint8, or boolean literal value.
+* *splIdentifier* is an attribute in the output stream of the `Import` operator.
+  If there is a subscript or it is used with "in", it must have a list type, whose elements are one of the supported types for literals.
+  Otherwise, it must not have a list type.
+  If there is no operator and no literal, it must have boolean type.  If the '!' operator is used, it must have boolean type.
+
+
+If the application has user-defined parallelism and the `Import` operator is replicated in a parallel region,
+you can use the `getChannel()`, `getMaxChannels()`, `getLocalChannel()` and `getLocalMaxChannels()` SPL built-in functions in this parameter.
+The functions are evaluated when the job is submitted.
+
+You can update the filter at run time by using `setInputPortImportFilterExpression` from SPL or a C++ primitive operator.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>false</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Import` operator has a single output port, which produces tuples from the imported streams.</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>false</autoAssignment>
+        <completeAssignment>false</completeAssignment>
+        <rewriteAllowed>false</rewriteAllowed>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

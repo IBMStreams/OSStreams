@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<reference id="spldoc_reference_function_model">
+<title>Modèle de fonction SPL</title>
+<refbody>
+<section id="overview">
+<p>
+La structure du fichier modèle de fonction est une séquence d'un ou de plusieurs éléments functionSet.
+L'élément functionSet représente l'ensemble de fonctions natives déclarées dans ou incluses à partir d'un fichier d'en-tête C++.
+</p>
+</section>
+<section id="functionset">
+<dl>
+  <dlentry id="functionset__headerfilename">
+    <dt>Elément headerfilename</dt>
+    <dd>Contient le nom du fichier d'en-tête dans lequel sont déclarées les fonctions C++ ou sont inclus d'autres fichiers d'en-tête qui déclarent ces fonctions.
+    </dd>
+  </dlentry>
+  <dlentry id="functionset__cppnamespacename">
+    <dt>Elément cppnamespacename</dt>
+    <dd>Le second élément (facultatif), nommé cppNamespacename, fourni l'espace de nom C++ pour les fonctions. Si l'élément cppNamespacename n'est pas présent, l'espace de nom SPL avec "." converti en "::" est utilisé.
+    </dd>
+  </dlentry>
+  <dlentry id="functionset__functions">
+    <dt>Elément functions</dt>
+    <dd>Séquence d'un ou de plusieurs éléments de fonction, représentant chacun une signature de fonction native au format SPL.
+      <dl>
+        <dlentry id="functionset__functions__description">
+          <dt>Description</dt>
+          <dd>Description de la fonction.</dd>
+        </dlentry>
+        <dlentry id="functionset__functions__prototype">
+          <dt>Elément prototype</dt>
+          <dd>Prototype de la fonction native.  Les prototypes de la fonction native sont déclarés avec une syntaxe SPL, décrite dans le document  <i>IBMStreams Processing Language Specification.</i></dd>
+        </dlentry>
+        <dlentry id="functionset__functions__cppname">
+          <dt>Elément cppname (facultatif)</dt>
+          <dd>Indique le nom C++ de la fonction. Si ce nom n'est pas présent, le nom de la fonction SPL est utilisé.
+          </dd>
+        </dlentry>
+      </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="functionset__dependencies">
+    <dt>Elément dependencies (facultatif)</dt>
+    <dd>Séquence d'un ou de plusieurs éléments de bibliothèque, représentant chacun une dépendance de bibliothèque.
+Le format de l'élément de bibliothèque est exactement le même que celui utilisé pour les modèles d'opérateur.
+     <dl>
+        <dlentry id="functionset__dependencies__description">
+          <dt>Elément description (facultatif)</dt>
+          <dd>Description de la bibliothèque.
+          </dd>
+        </dlentry>
+        <dlentry id="functionset__dependencies__managedlibrary">
+          <dt>Elément managedlibrary</dt>
+          <dd>Indique les détails des artefacts de bibliothèque individuels. Les chemins peuvent contenir des variables d'environnement imbriquées entre des signes @ (par exemple : <tt>@FOO_FFT_HOME@/lib</tt>), qui seront entièrement résolues par le compilateur SPL lors de la compilation.
+            <dl>
+              <dlentry id="functionset__dependencies__managedlibrary_lib">
+                <dt>Elément lib (facultatif)</dt>
+                <dd>Indique un nom qui sera transmis à l'argument <tt>-l</tt> du compilateur C++ (par exemple, <tt>fft</tt> qui sera converti en <tt>-lfft</tt> lorsqu'il sera transmis à l'éditeur de liens)
+                </dd>
+              </dlentry>
+              <dlentry id="functionset__dependencies__managedlibrary_libPath">
+                <dt>Elément libPath (facultatif)</dt>
+                <dd>Indique un chemin qui sera transmis à l'argument <tt>-L</tt> .
+                </dd>
+              </dlentry>
+              <dlentry id="functionset__dependencies__managedlibrary_includePath">
+                <dt>Elément includePath (facultatif)</dt>
+                <dd>Indique un chemin qui sera transmis à l'argument <tt>-I</tt> .
+                </dd>
+              </dlentry>
+              <dlentry id="functionset__dependencies__managedlibrary_command">
+                <dt>Elément command (facultatif)</dt>
+                <dd>Chemin d'accès à un programme qui sera exécuté pour extraire les informations <tt>includePath, libPath</tt>et <tt>lib</tt>
+. Si le chemin d'accès au programme est relatif, il est supposé être la racine du répertoire du modèle d'opérateur. Le programme est exécuté trois fois, chaque fois avec un argument différent, appelé <tt>lib,
+libPath</tt>et <tt>includePath</tt>. La sortie standard de ces exécutions sera lue et chaque ligne (avec les espaces de début et de fin retirés) sera ajoutée à l'un des éléments <tt>lib, libPath</tt>et <tt>includePath</tt> , en fonction du type de l'exécution. Une ligne qui commence par # sera ignorée. Les chemins relatifs sont supposés être la racine du répertoire dans lequel se trouve le document XML du modèle d'opérateur.
+                </dd>
+              </dlentry>
+            </dl>
+          </dd>
+        </dlentry>
+    </dl>
+    </dd>
+  </dlentry>
+</dl>
+</section>
+<section id="example">
+  <title outputclass="splhead-1">Exemple</title>
+  <!-- START NON-TRANSLATABLE -->
+  <pre>
+  &lt;functionModel
+   xmlns="http://www.ibm.com/xmlns/prod/streams/spl/function"
+   xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/function functionModel.xsd"&gt;
+  &lt;functionSet&gt;
+    &lt;!-- header file to include from within C++ code --&gt;
+    &lt;headerFileName&gt;Sample.h&lt;/headerFileName&gt;
+    &lt;!-- functions lists the SPL prototypes of the functions implemented in this library --&gt;
+    &lt;functions&gt;
+      &lt;!-- use of CDATA allows easy use of &lt; in the prototypyes --&gt;
+      &lt;function&gt;
+        &lt;description&gt;Increment all list elements by a given amount&lt;/description&gt;
+        &lt;prototype cppName="increment_by"&gt;&lt;![CDATA[ void incrementBy(mutable list&lt;int32&gt; l, int32 incr) ]]&gt;&lt;/prototype&gt;
+      &lt;/function&gt;
+      &lt;function&gt;
+        &lt;description&gt;Join two lists&lt;/description&gt;
+        &lt;prototype&gt;&lt;![CDATA[ list&lt;int32&gt; joinLists(list&lt;int32&gt; a, list&lt;int32&gt; b) ]]&gt;&lt;/prototype&gt;
+      &lt;/function&gt;
+    &lt;/functions&gt;
+    &lt;dependencies&gt;
+      &lt;!-- This library can have several dependencies. We only use one here --&gt;
+      &lt;library&gt;
+        &lt;!-- A description for this library --&gt;
+        &lt;cmn:description&gt;Sample-Functions&lt;/cmn:description&gt;
+        &lt;cmn:managedLibrary&gt;
+          &lt;!-- the name of the library for linking. Will be used as -lSample --&gt;
+          &lt;cmn:lib&gt;Sample&lt;/cmn:lib&gt;
+          &lt;!-- Where to find the library. Relative to the current directory.
+               Will be used as -L&lt;dir&gt;/lib --&gt;
+          &lt;cmn:libPath&gt;lib&lt;/cmn:libPath&gt;
+          &lt;!-- Where to find the include file. Relative to the current directory.
+               Will be used as -I&lt;dir&gt; --&gt;
+          &lt;cmn:includePath&gt;./&lt;/cmn:includePath&gt;
+        &lt;/cmn:managedLibrary&gt;
+      &lt;/library&gt;
+    &lt;/dependencies&gt;
+  &lt;/functionSet&gt;
+&lt;/functionModel&gt;
+</pre>
+<!-- END NON-TRANSLATABLE -->
+</section>
+</refbody>
+</reference>

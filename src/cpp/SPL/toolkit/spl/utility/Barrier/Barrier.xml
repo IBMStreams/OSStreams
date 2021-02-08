@@ -1,0 +1,210 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Barrier.html">
+The `Barrier` operator is used to synchronize tuples from two or more streams.
+Corresponding tuples from each input port are used to create an output tuple.
+The `Barrier` operator creates and sends this output tuple only when all the tuples from the input ports are received.
+
+# Checkpointed data
+
+When the `Barrier` operator is checkpointed, any unmatched tuples are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Barrier` operator can be an operator within the reachability graph of a consistent region.
+It cannot start a consistent region.
+
+When in a consistent region, the `Barrier` is typically used to synchronize the results
+from performing parallel tasks on a stream in the region.
+Thus it is effectively stateless, as any single upstream tuple is fully processed
+when all of its parallel derived tuples have arrived at the `Barrier` and
+the resultant `Barrier` output tuple is processed by the downstream portion of the region.
+Thus no unmatched tuples are checkpointed and a reset of the region leaves the `Barrier` empty,
+with no unmatched tuples, ready for a new set of derived tuples from parallel processing.
+
+In the case where the `Barrier` operator is being used to synchronize logically unrelated streams,
+then when the region is made consistent, any unmatched tuples are checkpointed.
+If the region is reset, then the `Barrier` operator discards all its unmatched tuples
+and is repopulated with the unmatched tuples from the last time the region was consistent.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Barrier` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Barrier` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Examples
+
+This example uses the `Barrier` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring name, rstring gender, uint32 age&gt; BeatA = Beacon() {param period: 1f;}
+        stream&lt;rstring name, rstring gender, rstring job&gt; BeatB = Beacon() {param period: 1f;}
+        stream&lt;rstring name, rstring gender, uint64 salary&gt; BeatC = Beacon() {}
+
+        // with no buffer size, used for parallel tasks
+        stream&lt;rstring name, rstring gender, uint32 age&gt; OpA = Functor(BeatA) {}
+        stream&lt;rstring name, rstring gender, rstring job&gt; OpB = Functor(BeatB) {}
+        stream&lt;rstring name, rstring gender, uint32 age, rstring job&gt;
+            Res1 = Barrier(OpA; OpB) {}
+
+        // with buffer size, used for synchronizing independent sources
+        stream&lt;rstring name&gt; OtherBeat = Beacon() {}
+        stream&lt;rstring name1, rstring name2, rstring gender&gt;
+             Res2 = Barrier(BeatA; OtherBeat)
+        {
+          param bufferSize : 1000u;
+          output Res2 : name1 = BeatA.name, name2 = OtherBeat.name;
+        }
+
+        // with partitioning
+        stream&lt;rstring name, rstring gender, uint32 age, rstring job&gt;
+            Res3 = Barrier(OpA; OpB)
+         {
+          param partitionByLHS : OpA.name;
+                partitionByRHS : OpB.name;
+        }
+
+        // with partitioning and more than two ports
+        stream&lt;rstring name, rstring gender, uint64 salary&gt; OpC = Functor(BeatC) {}
+        stream&lt;rstring name, rstring gender, uint32 age, rstring job, uint64 salary&gt;
+            Res4 = Barrier(OpA; OpB; OpC)
+        {
+          param partitionBy0 : OpA.name, OpA.gender;
+                partitionBy1  : OpB.name, OpB.gender;
+                partitionBy2  : OpC.name, OpC.gender;
+        }
+    }
+
+</description>
+      <iconUri size="16">barrier_16.gif</iconUri>
+      <iconUri size="32">barrier_32.gif</iconUri>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <allowCustomLogic>false</allowCustomLogic>
+      <codeTemplates>
+        <codeTemplate name="Barrier">
+          <description>Basic Barrier template</description>
+          <template>stream&lt;${schema}&gt; ${outputStream} = Barrier(${inputStream1};${inputStream2}) {
+            param
+                ${parameter}:${parameterExpression};
+            output
+                ${outputStream}: ${outputExpression};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <description>
+The optional **partitionBy&lt;i&gt;** parameter, where *i* is a port number,
+specifies one or more expressions to be used for partitioning the input tuples from the port at index *i*,
+where the synchronization applies to matching partitions from different ports.
+When this parameter is specified, you must specify one **partitionBy** parameter for each input port.
+
+The **partitionByLHS** parameter is a synonym for the **partitionBy0** parameter.
+The **partitionByRHS** parameter is a synonym for a **partitionBy&lt;n-1&gt;** parameter,
+where *n* is the total number of input ports.
+
+All **partitionBy** parameters must have the same number of expressions
+and the types of the expressions at corresponding positions across different
+parameters must have matching types as well.
+      </description>
+      <allowAny>true</allowAny>
+      <parameter>
+        <name>bufferSize</name>
+        <description>
+Specifies an expression that is used for limiting the size of the internal buffer
+that is used to queue up tuples from an input port that do not yet have matching tuples from other ports.
+When the buffer fills up, it results in blocking until more space is available.
+By default, the buffer has no limit.
+The default option is often used to synchronize the results from performing parallel tasks on the same stream.
+
+This parameter is often used when the operator is used to synchronize streams
+that originate from different sources with potentially differing rates.
+However, this kind of usage implies that the operator is being used to synchronize
+logically unrelated streams. Such usage is discouraged.
+
+This parameter is not supported when the operator is in a consistent region.
+        </description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>uint32</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>partitionByRHS</name>
+        <description>
+Specifies expressions to be used for partitioning the input tuples from the right port,
+where the synchronization applies to matching partitions from different ports.
+
+When specified, one **partitionBy** parameter for each input port must appear.
+All **partitionBy** parameters must have the same number of expressions and the types of the expressions
+at corresponding positions across different parameters must have matching types as well.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+      </parameter>
+      <parameter>
+        <name>partitionByLHS</name>
+        <description>
+Specifies expressions to be used for partitioning the input tuples from the left port,
+where the synchronization applies to matching partitions from different ports.
+
+When specified, one **partitionBy** parameter for each input port must appear.
+All **partitionBy** parameters must have the same number of expressions and the types of the expressions
+at corresponding positions across different parameters must have matching types as well.
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Barrier` operator is configurable with two or more input ports, which ingest tuples to be synchronized.
+The `Barrier` operator does not support custom port logic to be specified in its invocations.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>2</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+      <inputPortOpenSet>
+        <description>Additional ports that ingest tuples to be synchronized.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+      </inputPortOpenSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Barrier` operator is configurable with a single output port, which produces the synchronized stream.
+The `Barrier` operator allows assignments to output attributes.
+The output tuple attributes whose assignments are not specified are automatically forwarded from the input ones.
+After the automatic forwarding, the `Barrier` operator expects all output tuple attributes to be completely assigned.
+        </description>
+        <expressionMode>Expression</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Free</windowPunctuationOutputMode>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

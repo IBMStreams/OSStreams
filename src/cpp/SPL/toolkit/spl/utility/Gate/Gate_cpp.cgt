@@ -1,0 +1,118 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+    use GateCommon;
+    GateCommon::verify($model);
+    my $maxUnackedTupleCount =
+        $model->getParameterByName("maxUnackedTupleCount")->getValueAt(0)->getCppExpression();
+    my $controlInputPort = $model->getInputPortAt(1);
+    my $controlTupleType = $controlInputPort->getCppTupleType();
+    my $controlTupleName = $controlInputPort->getCppTupleName();
+    my $numTuplesToAck = $model->getParameterByName("numTuplesToAck");
+    $numTuplesToAck = $numTuplesToAck ? $numTuplesToAck->getValueAt(0)->getCppExpression() : "1";
+%>
+
+<%SPL::CodeGen::implementationPrologue($model);%>
+
+MY_OPERATOR::MY_OPERATOR()
+: MY_BASE_OPERATOR(), _maxUnackedTupleCount (<%=$maxUnackedTupleCount%>),
+  _unackedCount(0), _done(false), _numWaiting(0)
+{
+    if (_maxUnackedTupleCount == 0)
+        _maxUnackedTupleCount = 1;
+}
+
+void MY_OPERATOR::process(Punctuation const & punct, uint32_t port)
+{
+    if (port != 0)
+        return;
+    if (punct == Punctuation::WindowMarker) {
+        AutoMutex am(_mutex);
+        assert (_unackedCount <= _maxUnackedTupleCount);
+        if (_unackedCount == _maxUnackedTupleCount) {
+            // Have to wait until we have an opening
+            while (!_done) {
+                _numWaiting++;
+                _waitForACKs.wait(_mutex);
+                _numWaiting--;
+                if (_done)
+                    return;
+                if (_unackedCount < _maxUnackedTupleCount)
+                    break;
+            }
+        }
+    } else if (punct == Punctuation::FinalMarker) {
+        AutoMutex am(_mutex);
+        _done = true;
+        _waitForACKs.broadcast();
+    }
+
+    // Submit after we release the mutex
+    submit (punct, 0);
+}
+
+void MY_OPERATOR::process(Tuple const & tuple, uint32_t port)
+{
+    switch (port) {
+        case 0:
+            {
+                AutoMutex am(_mutex);
+                assert (_unackedCount <= _maxUnackedTupleCount);
+                if (_unackedCount == _maxUnackedTupleCount) {
+                    // Have to wait until we have an opening
+                    while (!_done) {
+                        _numWaiting++;
+                        _waitForACKs.wait(_mutex);
+                        _numWaiting--;
+                        if (_done)
+                            return;
+                        if (_unackedCount < _maxUnackedTupleCount)
+                            break;
+                    }
+                }
+                _unackedCount++;
+            }
+            // After the mutex is released
+            submit (tuple, 0);
+            break;
+        case 1:
+            {
+                const <%=$controlTupleType%>& <%=$controlTupleName%> =
+                    static_cast<const <%=$controlTupleType%>&>(tuple);
+                AutoMutex am(_mutex);
+                uint32_t numTuplesToAck = <%=$numTuplesToAck%>;
+                _unackedCount -= numTuplesToAck;
+                assert (_unackedCount < _maxUnackedTupleCount);
+                if (_numWaiting) {
+                    if (_numWaiting == 1 || numTuplesToAck == 1)
+                        _waitForACKs.signal();
+                    else
+                        _waitForACKs.broadcast(); // let them all fight for it
+                }
+            }
+            break;
+    }
+}
+
+void MY_OPERATOR::prepareToShutdown()
+{
+    AutoMutex am(_mutex);
+    _done = true;
+    _waitForACKs.broadcast();
+}
+
+<%SPL::CodeGen::implementationEpilogue($model);%>

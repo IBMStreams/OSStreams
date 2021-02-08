@@ -1,0 +1,463 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<reference id="spldoc_reference_operator_model">
+<title>SPL-Operatormodell</title>
+<refbody>
+<section id="overview">
+<p>
+Ein Operatormodell kann zum Beschreiben eines primitiven C++- oder Java-Operators verwendet werden. Die Gruppe von Elementen, die in einem Java-Operatormodell vorhanden sein k”nnen, ist mit Ausnahme eines Spezialelements, das fr JVM-bezogene Konfigurationen verwendet wird, eine strikte Untergruppe der Elemente, die in einem C++-Operatormodell vorhanden sein k”nnen.
+</p>
+</section>
+<section id="context">
+<title outputclass="splhead-1">Kontext</title>
+<p>
+Das Element 'context' beschreibt die Eigenschaften, die fr den gesamten Operator gelten und nicht bestimmten Parametern oder Ports des Operators zugeordnet sind. Es enth„lt auch allgemeine Definitionen, die an anderen Stellen im Operatormodell referenziert werden.
+</p>
+<dl>
+  <dlentry id="context__description">
+    <dt>Beschreibung</dt>
+    <dd>Das optionale Element 'description' stellt eine šbersicht des Operators bereit.</dd>
+  </dlentry>
+  <dlentry id="context__metrics">
+    <dt>Metriken</dt>
+    <dd>Das optionale Element 'metrics' enth„lt die Liste der Metriken, die vom Operator verfgbar gemacht werden.
+Es ist als Liste von Metrikelementen strukturiert, wobei jedes Metrikelement einen Namen, eine Beschreibung und eine Art enth„lt.
+      <dl>
+        <dlentry id="context__metrics_kind_counter">
+          <dt>Art: Z„hler</dt>
+          <dd>Stellt Metriken dar, deren Werte nicht gesenkt oder nicht erh”ht werden
+          </dd>
+        </dlentry>
+        <dlentry id="context__metrics_kind_gauge">
+          <dt>Art: Messanzeige</dt>
+          <dd>Stellt Metriken dar, deren Werte ge„ndert werden k”nnen, d. h., sie k”nnen gesenkt oder erh”ht werden.
+          </dd>
+        </dlentry>
+        <dlentry id="context__metrics_kind_time">
+          <dt>Art: Zeit</dt>
+          <dd>Stellt Metriken dar, die einen Zeitpunkt bezeichnen.
+          </dd>
+        </dlentry>
+      </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="context__customliterals">
+    <dt>Angepasste Literale</dt>
+    <dd>Das optionale Element 'customLiterals' erfasst die Kennungen, die in Parameterkonfigurationen eines Operators vorkommen k”nnen. Es ist als Liste von Aufz„hlungselementen strukturiert. Beispielsweise kann ein Quellenoperator (Source) verschiedene Quellenformate untersttzen. In diesem Fall kann eine Aufz„hlung namens FileFormat vorliegen, die die Werte <tt>{csv, xml, bin}</tt> enth„lt.
+    </dd>
+  </dlentry>
+  <dlentry id="context__customoutputfunctions">
+    <dt>Angepasste Ausgabefunktionen (nur C++)</dt>
+    <dd>Das optionale Element 'customOutputFunctions' erfasst die Ausgabefunktionsprototypen, die von einem Operator in seinen Ausgabeattributzuweisungen verwendet werden. Es ist als Liste von customOutputFunction-Elementen strukturiert, wobei jede Aufz„hlung einen Namen und eine Liste von Ausgabefunktionsprototypen enth„lt. Beispielsweise kann ein Datenverbundoperator (Aggregate) relationale Aggregationen untersttzen. In diesem Fall kann eine Aufz„hlung namens RelationalAggs vorliegen, die Ausgabefunktionen wie <tt>{Min, Max, Avg, Sum usw.}</tt> enth„lt.
+    </dd>
+  </dlentry>
+  <dlentry id="context__dependencies">
+    <dt>Abh„ngigkeiten (optional)</dt>
+    <dd>Eine Sequenz mit mindestens einem Bibliothekselement, von denen jedes eine Bibliotheksabh„ngigkeit darstellt.
+Das Bibliothekselementformat stimmt mit dem fr Operatormodelle verwendeten Format exakt berein.
+     <dl>
+        <dlentry id="context__dependencies__description">
+          <dt>Beschreibung (optional)</dt>
+          <dd>Eine Beschreibung der Bibliothek
+          </dd>
+        </dlentry>
+        <dlentry id="context__dependencies__managedlibrary">
+          <dt>Verwaltete Bibliothek</dt>
+          <dd>Gibt die Details der einzelnen Bibliotheksartefakte an. Die Pfade k”nnen in @-Zeichen eingebettete Umgebungsvariablen (z. B.: <tt>@FOO_FFT_HOME@/lib</tt>) enthalten, die w„hrend der Kompilierung vom SPL-Compiler aufgel”st werden.
+            <dl>
+              <dlentry id="context__dependencies__managedlibrary__lib">
+                <dt>lib (optional)</dt>
+                <dd>Gibt einen Namen an, der an das Argument <tt>-l</tt> des C++-Compilers bergeben werden soll (beispielsweise <tt>fft</tt>, was bei der šbergabe an den Linker in <tt>-lfft</tt> umgesetzt wird)
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__libpath">
+                <dt>libPath (optional)</dt>
+                <dd>Gibt einen Pfad an, der an das Argument <tt>-L</tt> des C++-Compilers bergeben werden soll.
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__includepath">
+                <dt>includePath (optional)</dt>
+                <dd>Gibt einen Pfad an, der an das Argument <tt>-I</tt> des C++-Compilers bergeben werden soll.
+                </dd>
+              </dlentry>
+              <dlentry id="context__dependencies__managedlibrary__command">
+                <dt>command (optional)</dt>
+                <dd>Ein Pfad zu einem Programm, das zum Abrufen von <tt>includePath-, libPath-</tt> und <tt>lib</tt>-Informationen verwendet wird. Ist der Pfad zum Programm relativ, wird angenommen, dass er im Verzeichnis des Operatormodells beginnt. Das Programm wird dreimal ausgefhrt, wobei jedes Mal ein anderes Argument verwendet wird, n„mlich <tt>lib, libPath</tt> und <tt>includePath</tt>. Die Standardausgabe dieser Ausfhrungen wird gelesen und jede Zeile wird (mit abgeschnittenen Leerzeichen) abh„ngig vom Typ der Ausfhrung einem der Elemente <tt>lib, libPath</tt> bzw. <tt>includePath</tt> hinzugefgt. Eine mit # beginnende Zeile wird ignoriert. Bei relativen Pfaden wird angenommen, dass sie in dem Verzeichnis beginnen, in dem sich das XML-Dokument fr das Operatormodell befindet.
+                </dd>
+              </dlentry>
+            </dl>
+          </dd>
+        </dlentry>
+    </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="context__providessinglethreadedexecutioncontext">
+    <dt>Stellt Single-Thread-Ausfhrungskontext bereit (nur C++)</dt>
+    <dd><p>Das Element <tt>providesSingleThreadedContext</tt> beschreibt die Threading-Semantik des Operators in Bezug auf den Ausfhrungsablauf. Ein Operator stellt einen Single-Thread-Ausfhrungskontext nur in folgenden F„llen bereit:
+      <ul>
+        <li>Er fhrt keine gleichzeitigen šbergabeaufrufe aus, auáer seine Prozessmethoden werden gleichzeitig aufgerufen.</li>
+        <li>Seine šbergabeaufrufe sind abgeschlossen, bevor der Prozessaufruf, der die šbergabe ausgel”st hat, abgeschlossen ist.</li>
+      </ul>
+    </p>
+    <p>Quellenoperatoren und Nicht-Quellenoperatoren haben Prozessmethoden und die obige Definition gilt global. Wenn ein Operator auf der Basis der Definition šbergabeaufrufe hat, die nicht von einem Prozessaufruf ausgel”st werden, beispielsweise jene, die von einem zeitbasierten Ereignis ausgel”st werden, stellt dieser Operator keinen Single-Thread-Ausfhrungskontext bereit. Beachten Sie, dass diese Definition keinen šbergabeaufruf erfordert, um unter demselben Thread ausgefhrt zu werden, der den Prozessaufruf ausfhrt, der die šbergabe ausgel”st hat (obwohl sie gew”hnlich unter dem gleichen Thread ausgefhrt werden).
+    </p>
+    <p>Es gibt mehrere gltige Werte fr diese Eigenschaft:
+<ul>
+  <li><tt>Never:</tt> Instanzen dieses Operators stellen nie einen Single-Thread-Ausfhrungskontext bereit.</li>
+  <li><tt>Always:</tt> Instanzen dieses Operators stellen immer einen Single-Thread-Ausfhrungskontext bereit.</li>
+  <li><tt>WindowBound:</tt> Instanzen dieses Operators, die keine zeitbasierten Fensterbereinigungsrichtlinien oder zeitbasierten Fenstertriggerrichtlinien angeben, stellen einen Single-Thread-Ausfhrungskontext bereit.</li>
+  <li><tt>WindowEvictionBound:</tt> Instanzen dieses Operators, die keine zeitbasierten Fensterbereinigungsrichtlinien angeben, stellen einen Single-Thread-Ausfhrungskontext bereit.</li>
+  <li><tt>WindowTriggerBound:</tt> Instanzen dieses Operators, die keine zeitbasierten Fenstertriggerrichtlinien angeben, stellen einen Single-Thread-Ausfhrungskontext bereit.</li>
+  <li><tt>WindowPartitionEvictionBound:</tt> Instanzen dieses Operators verwenden einen Thread zum Implementieren der Partitionsbereinigung. Verwenden Sie diese Einstellung, wenn Tupel vom Ereignis onWindowPartitionEvictionSelection bergeben werden.</li>
+</ul>
+    </p>
+<p>
+Als Beispiel soll ein Filteroperator<tt></tt> dienen. Der Filteroperator<tt></tt> fhrt keine gleichzeitigen šbergabeaufrufe durch, auáer wenn seine Prozessmethode gleichzeitig aufgerufen wird. Seine šbergabeaufrufe werden durch ankommende Tupel ausgel”st. Wenn er ein Tupel ber einen Prozessaufruf empf„ngt, fhrt er einen šbergabeaufruf durch, falls das empfangene Tupel die Filterbedingung bergibt und falls dieser šbergabeaufruf abgeschlossen wird, bevor der Prozessaufruf, der ihn ausgel”st hat, abgeschlossen wird. Somit stellen alle Instanzen eines Filteroperators<tt></tt> einen Single-Thread-Kontext bereit und die Einstellung <tt>Always</tt> ist zutreffend.
+</p>
+<p>
+Implementierungsanmerkung: Das Element <tt>providesSingleThreadedContext</tt> wird zur Aktivierung der SPL-Laufzeit verwendet, um unn”tige Threadsynchronisation zu vermeiden. Die Festlegung des Werts 'Never' ist zwar fr alle Operatoren sicherer, sie verhindert jedoch Optimierungen, die den Synchronisationsaufwand reduzieren, wenn der Operator einen Single-Thread-Kontext bereitstellt. Die Angabe eines anderen Werts als 'Never', der mit der Threading-Semantik inkonsistent ist, die durch den Operator implementiert wird, fhrt zu nicht definiertem Verhalten.
+</p>
+    </dd>
+  </dlentry>
+  <dlentry id="context__incrementalcompilationstrategy">
+    <dt>Strategie fr schrittweise Kompilierung (nur C++)</dt>
+    <dd><p>Gibt an, wie der Compiler die schrittweise Kompilierung von Operatoren verwalten soll. Auswahlm”glichkeiten:
+       <ul>
+         <li><tt>SourceDependent:</tt> In diesem Modus generiert der Compiler die Operatorquelle nur neu, wenn sie nicht auf dem neuesten Stand der SPL-Quelle oder des Codegenerators fr diesen Operator ist. Dies ist der Standardmodus.</li>
+         <li><tt>ResultDependent:</tt> In diesem Modus generiert der Compiler die Operatorquelle immer, aktualisiert die Quellendateien jedoch nur, wenn sie sich von dem Bestand vor der Kompilierung unterscheiden. Verwenden Sie diesen Modus, wenn sich der Operatorcodegenerator auf externe Konfigurationen verl„sst, die nicht durch die in der SPL-Quelle angegebene Parametrisierung erfasst werden.
+         </li>
+       </ul>
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__allowCustomLogic">
+    <dt>Angepasste Logik zulassen (nur C++)</dt>
+    <dd><p>Dieses optionale Element gibt an, ob die Verwendung eines Operators eine Klausel 'logic' einschlieáen darf, die Status-, <tt>onTuple</tt>- oder <tt>onPunct</tt>-Verarbeitung angibt. Wird dieses Element auf 'false' gesetzt, kann keine Klausel 'logic' fr den Operator angegeben werden. Wird dieses Element nicht angegeben, gilt der Standardwert 'true'.
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__codetemplate">
+    <dt>Codevorlage</dt>
+    <dd><p>Dieses optionale Element gibt mindestens eine Codevorlage fr den Operator an.
+Sie wird in IDEs kontextabh„ngigen Content-Assist-Mens und SPLDOC-Dokumenten angezeigt.
+Jede Codevorlage hat ein Namensattribut, das sie benennt, ein Beschreibungselement, das sie beschreibt, und ein Wertelement, das eine Zeichenfolge ist, die den Standardcode fr die Vorlage enth„lt.
+Wird die Vorlage in IDE verwendet, wird der Standardcode in den Quellcode integriert.
+Die Teile des Codes, die im Format ${Name} vorliegen, geben die Teile an, die vom Benutzer angepasst werden mssen. IDE verwendet die in ${} angegebene Kennung, um die anpassbaren Teile anzugeben. Es folgt ein Beispiel fr den Operator 'Barrier':
+</p>
+<p>
+<!-- START NON-TRANSLATABLE -->
+<codeblock>
+&lt;codeTemplates>
+  &lt;codeTemplate name="Barrier">
+    &lt;description>Basic Barrier template&lt;/description>
+    &lt;template>
+      &lt;![CDATA[
+        stream&lt;${schema}> ${outputStream} = Barrier(${inputStream1};${inputStream2})
+        {
+          param
+            ${parameter}: ${parameterExpression};
+          output
+            ${outputStream}: ${outputExpression};
+          ${cursor}
+        }
+      ]]&gt;
+    &lt;template>
+  &lt;/codeTemplate>
+&lt;/codeTemplates>
+</codeblock>
+<!-- END NON-TRANSLATABLE -->
+    </p></dd>
+   </dlentry>
+   <dlentry id="context__splexpressiontree">
+    <dt>SPL-Ausdrucksbaum (nur C++)</dt>
+    <dd><p>Ein optionales Element, das die Generierung der SPL-Ausdrucksb„ume zur Verwendung in generischen primitiven C++-Operatoren steuert.</p>
+      <ul>
+      <li><tt>param</tt> - Bei der Angabe <tt>true</tt> wird der SPL-Ausdrucksbaum fr Parameter generiert.</li>
+      <li><tt>output</tt> - Bei der Angabe <tt>true</tt> wird der SPL-Ausdrucksbaum fr Ausgabe generiert.</li>
+      <li><tt>cppCode</tt> -  Bei der Angabe <tt>true</tt> wird jeder Knoten in der generierten Operatorinstanz-XML mithilfe von Vorlagen mit C++-Code erweitert.
+Dieser C++-Code kann zum Generieren des C++-Codes fr einen SPL-Ausdruck verwendet werden. Als Beispiel folgt SPL-Code:
+<p>
+<codeblock>
+param predicates : {a = "a" == In.letter, b = "b" == In.letter};
+</codeblock>
+</p>
+<p>
+Der generierte SPL-Ausdrucksbaum enth„lt Folgendes:
+</p>
+<p>
+<!-- START NON-TRANSLATABLE -->
+<codeblock>
+&lt;expressionTree cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})">
+  &lt;literal cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})" type="1">
+    &lt;tuple count="2" cppCode="SPL::BeJwrMUoyTEwyTAIAC7UCCQ({attr:0}, {attr:1})" type="1">
+      &lt;attr id="a">
+        &lt;value cppCode="({Lhs} == {Rhs})" type="2">
+          &lt;expn cppCode="({Lhs} == {Rhs})">
+            &lt;binary cppCode="({Lhs} == {Rhs})" op="==" type="2">
+              &lt;lhs cppCode="SPL::rstring("a")">
+                &lt;literal cppCode="SPL::rstring("a")" type="0">"a"&lt;/literal>
+              &lt;/lhs>
+              &lt;rhs cppCode="iport$0.get_letter()">
+                &lt;attribute attribute="letter" cppCode="iport$0.get_letter()" type="0">
+                  &lt;lhs cppCode="iport$0">
+                    &lt;stream cppCode="iport$0" name="In" port="0" type="3"/>
+                  &lt;/lhs>
+                &lt;/attribute>
+              &lt;/rhs>
+            &lt;/binary>
+          &lt;/expn>
+        &lt;/value>
+      &lt;/attr>
+</codeblock>
+<!-- END NON-TRANSLATABLE -->
+</p>
+<p>
+Mit den Vorlagen (beispielsweise <tt>{Lhs}, {attr:0}</tt>) wird sichergestellt, dass Codeersatz ordnungsgem„á definiert ist.
+</p>
+<p>
+Diese Ausdrcke stellen den SPL-Ausdruck dar, sind jedoch in einem einfach verwendbaren Format verfgbar.
+Perl-Objekte werden von <tt>SPL::Operator::Instanz::Ausdrucksbaum</tt> abgeleitet und haben eine Art, einen Typ und Methoden, um auf die Felder des Ausdrucks zuzugreifen. <tt>ExpressionTreeVisitor</tt> ist ein Visitormuster, das einfache Verwendbarkeit des Ausdrucksbaums erm”glicht. Weitere Informationen finden Sie in der <i></i>Dokumentation zur API fr die Generierung von IBM SPL-Code (SPL - Streams Processing Language).
+</p>
+      </li>
+      </ul>
+    </dd>
+   </dlentry>
+   <dlentry id="context__capability">
+    <dt>Betriebssystemfunktionalit„t (nur C++)</dt>
+    <dd><p>Diese optionale Liste von Elementen gibt Sonderzugriffsrechte fr den Operator an. IBM Streams untersttzt das Linux-Funktionalit„tsmodell ber das Element 'capability'. Sie k”nnen eine beliebige Anzahl Elemente einschlieáen, um die genauen Zugriffsrechte anzugeben, die Ihr Operator erfordert. Beispielsweise gibt <tt>&lt;capability&gt;CAP_NET_RAW+eip&lt;/capability&gt;</tt> an, dass der Operator die Berechtigung zum Zugreifen auf Raw Sockets ben”tigt. Beachten Sie, dass die IBM Streams-Instanzen so konfiguriert sein mssen, dass sie PE-Prozessen die Ausfhrung mit besonderer Betriebssystemfunktionalit„t erm”glichen.
+    </p></dd>
+   </dlentry>
+</dl>
+</section>
+
+<section id="input_port_set">
+<title outputclass="splhead-1">Eingabeportgruppe</title>
+<p>
+Eingabeports sind in Form von Portgruppen definiert. Eine Portgruppe ist eine feste Anzahl Ports mit derselben Konfiguration.
+Dadurch wird das Wiederholen derselben Konfiguration fr unterschiedliche Ports vermieden. Eine Portgruppe kann offen sein. In diesem Fall kann sie null oder mehr Ports mit derselben Konfiguration enthalten. Ein Element 'inputPorts' enth„lt keine oder mehr inputPortSet-Elemente gefolgt von einem optionalen Element 'inputPortOpenSet'.
+</p>
+<dl>
+  <dlentry id="input_port_set__cardinality">
+    <dt>Kardinalit„t</dt>
+    <dd>Definiert die Anzahl der Ports, die von der Portgruppe dargestellt werden. Diese Eigenschaft gilt fr nicht ge”ffnete Ports.
+    </dd>
+  </dlentry>
+  <dlentry  id="input_port_set__optional">
+    <dt>Optional</dt>
+    <dd>Ein boolescher Wert, der angibt, ob die Eingabeportgruppe optional ist.
+    </dd>
+  </dlentry>
+    <dlentry  id="input_port_set__controlport">
+    <dt>Steuerport</dt>
+    <dd>Das optionale Element 'controlPort' informiert den Compiler, dass ber diesen Port empfangene Tupel nur zum Steuern des Operators verwendet werden und dass keine Tupel bergeben werden, wenn Tupel ber diesen Port verarbeitet werden.
+Wird dieses Element nicht angegeben, ist der Wert 'false'. Der SPL-Compiler gibt Warnungen aus, wenn im Operatordiagramm Schleifen gefunden werden, da dies zu Deadlock oder unendlicher Rekursion fhren kann. Das Setzen von 'controlPort' auf 'true' informiert den Compiler, dass dieser Port keine weiteren Tupel bergibt und dass dies eine erwartete (und harmlose) Rckkopplungsschleife ist. Daher wird fr diesen Port keine Warnung ausgegeben.
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowingmode">
+    <dt>Fenstertechnikmodus</dt>
+    <dd>Das Element 'windowingMode' gibt die gltigen Fenstertechnikkonfigurationen fr den Port an. Optionen: NonWindowed, Windowed und OptionallyWindowed.
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowpunctuationinputmode">
+    <dt>Eingabemodus fr Fensterpunktuation</dt>
+    <dd>
+Das Element 'windowPunctuationInputMode' gibt die Punktuationssemantik des Eingabeports an. Gltige Optionen:
+<ul>
+<li><tt>Expecting</tt> - Dieser Port erwartet fr die ordnungsgem„áe Funktionsweise des Operators Fensterpunktuationen und daher muss ihm ein punktuierter Datenstrom zugefhrt werden.</li>
+<li><tt>Oblivious</tt> - Dieser Port erfordert fr die ordnungsgem„áe Funktionsweise des Operators keine Punktuationen und daher gibt es keine Einschr„nkungen fr die Verbindungen, die fr ihn hergestellt werden k”nnen.</li>
+<li><tt>WindowBound</tt> - Dieser Port ist ein Port des Typs 'Expecting', wenn er ein punktuationsbasiertes Fenster hat, und andernfalls ist er ein Port des Typs 'Oblivious'.</li>
+</ul>
+   </dd>
+  </dlentry>
+  <dlentry id="input_port_set__windowexpressionmode">
+    <dt>Fensterausdrucksmodus</dt>
+    <dd>Dieses Element teilt dem Compiler mit, welche Typen von Fenstertechnikausdrcken gltig sind. Wird dieses Element nicht angegeben, ist der Standardwert <tt>Constant</tt>.
+    <ul>
+      <li><tt>Constant</tt> - Ausdrcke in <tt>count</tt>, <tt>time</tt> und <tt>delta</tt> mssen Konstanten sein, die w„hrend der Kompilierung ausgewertet werden k”nnen oder die im Fall von Laufzeitausdrcken keine Eingabetupelattribute referenzieren.</li>
+      <li><tt>AttributeFree</tt> - Ausdrcke k”nnen keine Eingabetupelattribute referenzieren. Ein Ausdruck wie <tt>time ((int32) getSubmissionTimeValue("timeParam"))</tt> kann verwendet werden. Bei 'delta' darf nur das zweite Argument ein attributfreier Laufzeitausdruck sein. Das erste Argument ist weiterhin ein Attribut aus dem Eingabedatenstrom.</li>
+    </ul>
+   </dd><!-- windowexpressionmode -->
+  </dlentry>
+  <dlentry id="input_port_set_rewriteallowedforwindowexpression">
+    <dt>Neuschreiben fr Fensterausdruck zul„ssig (nur C++)</dt>
+    <dd>Wird dieses boolesche Element auf 'true' gesetzt, teilt dies dem Compiler mit, dass er den Fensterausdruck neu schreiben kann, so wie das Element <tt>rewriteAllowed</tt> die Ausdrcke neu schreibt, die in den Parameterwerten vorkommen. Weitere Informationen zum Element 'rewriteAllowed' finden Sie in <tt>Parameter</tt>. Wird das Element <tt>rewriteAllowedForWindowExpression</tt> nicht angegeben, wird der Wert standardm„áig auf 'false' gesetzt. <tt>rewriteAllowedForWindowExpression</tt> muss 'false' sein (oder ausgelassen werden), wenn der primitive C++-Operator den Wert als Literal prfen will.
+    </dd>
+  </dlentry>
+  <dlentry id="input_port_set_tuplemutationallowed">
+    <dt>Tupelmutation zul„ssig</dt>
+    <dd>Das Element 'tupleMutationAllowed' definiert, ob die an den Eingabeport angeh„ngte Verarbeitungslogik (dazu geh”ren die Logik, die den Prozessfunktionen des Operators zugeordnet ist, und die Verarbeitung, die als Teil der im SPL-Code angegebenen onTuple-Klauseln ausgefhrt wird) ein ankommendes Tupel mutieren kann. Es kann fr Operatoren, die die empfangenen Tupel modifizieren wollen, auf 'true' gesetzt werden.
+   </dd>
+  </dlentry>
+</dl>
+
+</section>
+<section  id="output_port_set">
+  <title outputclass="splhead-1">Ausgabeportgruppe</title>
+  <p>
+Ausgabeports sind so wie Eingabeports in Form von Portgruppen definiert. Eine Portgruppe ist eine feste Anzahl Ports mit derselben Konfiguration. Dadurch wird das Wiederholen derselben Konfiguration fr unterschiedliche Ports vermieden. Eine Portgruppe kann offen sein. In diesem Fall kann sie null oder mehr Ports mit derselben Konfiguration enthalten. Ein Element 'outputPorts' enth„lt keine oder mehr outputPortSet-Elemente gefolgt von einem optionalen Element 'outputPortOpenSet'.
+  </p>
+  <dl>
+  <dlentry  id="output_port_set__cardinality">
+    <dt>Kardinalit„t</dt>
+    <dd>Definiert die Anzahl der Ports, die von der Portgruppe dargestellt werden. Diese Eigenschaft gilt fr nicht ge”ffnete Ports.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__optional">
+    <dt>Optional</dt>
+    <dd>Ein boolescher Wert, der angibt, ob die Ausgabeportgruppe optional ist.
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set_expressionmode">
+    <dt>Ausdrucksmodus (nur C++)</dt>
+    <dd>
+Das Element 'expressionMode' beschreibt die gltige Syntax der Attributzuweisungen fr diesen Port.
+Beachten Sie, dass der Wert 'CustomLiteral' fr 'expressionMode' fr Ausgabeports nicht gltig ist und zu einem Kompilierungsfehler fhrt. Gltige Werte fr den Ausdrucksmodus:
+<ul>
+<li><tt>Attribute:</tt> Zuweisungen fr Ausgabeattribute dieses Ports mssen Datenstromattribute sein. Beispiel: Ausgabe <tt>Out : x = In.y;</tt>, jedoch nicht <tt>x = In.y.z</tt>.</li>
+<li><tt>AttributeFree:</tt> Zuweisungen fr Ausgabeattribute dieses Ports k”nnen keine Eingabedatenstromattribute referenzieren. Beispiel: Ausgabe <tt>Out : x = 3 + random(3);</tt>, jedoch nicht <tt>x = In.x + 3</tt>.</li>
+<li><tt>Constant:</tt> Zuweisungen fr Ausgabeattribute dieses Ports mssen w„hrend der Kompilierung in eine Konstante ausgewertet werden k”nnen. Beispiel: Ausgabe <tt>Out : x = 3 + pow(2, 3);</tt>, jedoch nicht <tt>x = random(3)</tt>.</li>
+<li><tt>Expression:</tt> Dies ist der flexibelste Ausdrucksmodus; jeder SPL-Ausdruck mit einem richtigen Typ kann als Zuweisung zu den Ausgabeattributen dieses Ports vorkommen. Beispiel: Ausgabe <tt>Out : x = A.y + B.z;</tt>.</li>
+<li><tt>Nonexistent:</tt> Ausgabeattributzuweisungen k”nnen in der SPL-Quelle fr diesen Port nicht angegeben werden.</li>
+</ul>
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set__autoassignment">
+    <dt>Automatische Zuweisung</dt>
+    <dd>
+Das Element <tt>autoAssignment</tt> definiert, ob nicht zugewiesene Attribute automatisch von den Attributen der Eingabeports zugewiesen werden.
+Wird dieses Element auf 'true' gesetzt, schreibt der SPL-Compiler den Operatoraufruf (w„hrend der Kompilierung) neu, als ob die nicht zugewiesenen Ausgabeattribute explizite Zuweisungen im Ausgabeabschnitt h„tten. Jedem Ausgabeattribut mit fehlender Zuweisung wird ein Eingabeattribut mit demselben Namen und Typ oder demselben Namen und dem Typ <tt>T</tt> zugewiesen, wobei der Ausgabeattributtyp <tt>optional&lt;T&gt;</tt> ist. Wenn ein solches Eingabeattribut nicht vorhanden ist oder mehrere solcher Eingabeattribute vorhanden sind, wird w„hrend der Kompilierung ein Fehler gemeldet. Beachten Sie, dass der Wert 'Constant' fr 'expressionMode' mit dem Wert 'true' fr 'autoAssignment' inkompatibel ist.
+Diese Kombination fhrt zu einem Kompilierungsfehler.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__completeassignment">
+    <dt>Vollst„ndige Zuweisung</dt>
+    <dd>
+Das Element <tt>completeAssignment</tt> definiert, ob alle Ausgabeportattribute fr einen gltigen Aufruf des Operators zugewiesen sein mssen. Dies wird w„hrend der Kompilierung berprft. Wenn dieses Element eines Operators im Operatormodell auf 'true' gesetzt ist und wenn nicht alle Ausgabeattribute nach der automatischen Zuweisung (sofern angefordert) fr eine bestimmte Instanz dieses Operators ber Zuweisungen verfgen, wird ein Fehler gemeldet.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__rewriteallowed">
+    <dt>Neuschreiben zul„ssig (nur C++)</dt>
+    <dd>
+Das Element <tt>rewriteAllowed</tt> gibt an, ob der Compiler die Ausdrcke neu schreiben darf, die in den Ausgabeattributzuweisungen fr diesen Port vorkommen.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__outputfunctions">
+    <dt>Ausgabefunktionen</dt>
+    <dd>
+Das Element 'outputFunctions' definiert die gltigen angepassten Ausgabefunktionen, die in Ausgabeattributzuweisungen vorkommen k”nnen.
+Es ist optional. Wenn es vorhanden ist, enth„lt es zwei Unterelemente: das Element 'type', das den Namen des angepassten Ausgabefunktionstyps definiert (so wie in RelationalAggs), und das Element 'default', das die Standardausgabefunktion definiert, die bei der Durchfhrung der automatischen Zuweisung von Ausgabeattributen verwendet werden soll. Dieser Wert muss ein gltiger Funktionsname fr den verwendeten angepassten Ausgabefunktionstyp sein (wie in Last fr RelationalAggs). Beachten Sie, dass die Standardausgabefunktion automatisch eingefgt wird, wenn der Benutzercode eine Ausgabeattributzuweisung ohne Ausgabefunktion fr einen Port angibt, der eine Ausgabefunktion erwartet.
+    </dd>
+  </dlentry>
+    <dlentry id="output_port_set__finalpunctuationoutputscope">
+    <dt>Portbereich fr Endpunktuation</dt>
+    <dd>
+Das optionale Element <tt>finalPunctuationPortScope</tt> gibt die Gruppe der Eingabeports an, die von der SPL-Sprachlaufzeit fr Endpunktuationweiterleitung verwendet werden sollen. Standardm„áig leiten Operatoren, die Eingabe- und Ausgabeports haben, Endpunktuationen von ihren Eingabeports automatisch an ihre Ausgabeports weiter. Dies wird durch das Generieren einer Endpunktuation an einem Ausgabeport erzielt, wenn eine Endpunktuation an allen Eingabeports empfangen wird. Mit 'finalPunctuationPortScope' kann die Gruppe von Eingabeports begrenzt werden, die fr die Weiterleitung der Endpunktuation verwendet werden soll. Dieses Element kann auch zum Inaktivieren der automatischen Weiterleitung von Endpunktuationen verwendet werden, indem die Gruppe der fr Weiterleitung zu verwendenden Eingabeports auf die leere Gruppe gesetzt wird. In diesem Fall muss der Operatorentwickler sicherstellen, dass der Ausgabeport eine Endpunktuation erh„lt.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__windowpunctuationoutputmode">
+    <dt>Ausgabemodus fr Fensterpunktuation</dt>
+    <dd>
+Das Element 'windowPunctuationOutputMode' gibt die Fensterpunktuationssemantik des Ausgabeports an. Optionen:
+<ul>
+<li><tt>Generating</tt> - Dieser Port generiert Fensterpunktuationen.</li>
+<li><tt>Free</tt> - Dieser Port ist frei von Fensterpunktuationen.</li>
+<li><tt>Preserving</tt> - Dieser Port beh„lt die empfangenen Fensterpunktuationen bei. Wenn ein Operator mehrere Eingabeports hat, muss das Element 'windowPunctuationInputPort' angegeben werden, um anzugeben, welche Eingabeportpunktuation beibehalten wird.</li>
+</ul>
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__tuplemutationallowed">
+    <dt>Tupelmutation zul„ssig</dt>
+    <dd>
+Das Element <tt>tupleMutationAllowed</tt> definiert, ob dieser Operator es nachgeschalteten Operatoren erlaubt, die Ausgabetupel zu mutieren, die ber den šbergabeaufruf an diesen Port bergeben werden. Wird dieses Element auf 'true' gesetzt, erwartet die Verarbeitungslogik des Operators, dass die an diesen Port bergebenen Tupeln als Ergebnis des šbergabeaufrufs modifiziert werden.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__windowpunctuationinputport">
+    <dt>Eingabeport fr Fensterpunktuation</dt>
+    <dd>
+Wie oben erw„hnt, ordnet das Element <tt>windowPunctuationInputPort</tt> einen Eingabeport einem Ausgabeport zu, der die Punktuation beibeh„lt. Dieses Element kann nur angegeben werden, wenn der Fensterpunktuationsmodus des Ausgabeports 'Preserving' ist.
+'windowPunctuationInputPort' kann auf -1 gesetzt werden, wodurch dieselbe Semantik wie ein fehlendes Element 'windowPunctuationInputPort' vorliegt.
+Sie mssen beachten, dass Punktuationsweiterleitung fr Fensterpunktuationen (im Gegensatz zu Endpunktuationen) von der SPL-Sprachlaufzeit nicht automatisch ausgefhrt wird und dass das Operatormodell verwendet wird, um den SPL-Compiler ber das Verhalten zu informieren, das vom Operator implementiert wird. Weitere Informationen finden Sie in <i>IBM Streams Processing Language Toolkit Development Reference</i>.
+    </dd>
+  </dlentry>
+  <dlentry id="output_port_set__outputassignmentportscope">
+    <dt>Portbereich fr Ausgabezuweisung</dt>
+    <dd>
+Das optionale Element <tt>outputAssignmentPortScope</tt> begrenzt, welche Eingabeportattribute in Ausgabezuweisungen fr diesen Port vorkommen drfen.
+ Wird ein Bereich angegeben, drfen nur Attribute von den Ports, die durch den Bereich angegeben werden, in den Ausgabezuweisungen fr diesen Port vorkommen.
+    </dd>
+  </dlentry>
+</dl>
+</section>
+
+<section id="parameters">
+<title outputclass="splhead-1">Parameter</title>
+<p>
+Das Element 'parameters' beschreibt die gltigen Parameter, mit denen ein Operator konfiguriert werden kann.
+Es beschreibt auch die gltige Syntax fr solche Parameterkonfigurationen.
+</p>
+<dl>
+  <dlentry id="parameters__allowany">
+    <dt>Beliebige Parameter zulassen</dt>
+    <dd>Dieses Element ist ein boolesches Flag, das festlegt, ob ein Operator beliebige Parameter ohne Einschr„nkungen verarbeiten kann.
+Ein Operator kann beliebige Parameter verarbeiten und dennoch zus„tzliche Parameter und zugeh”rige Einschr„nkungen angeben.
+    </dd><!-- Allow Any -->
+  </dlentry>
+  <dlentry id="parameters__parameter">
+    <dt>Parameter</dt>
+    <dd><p>Jedes Element 'parameter' enth„lt mehrere Unterelemente.
+    </p>
+      <dl>
+       <dlentry id="parameters__parameter__name">
+         <dt>Name</dt>
+         <dd>Das Element <tt>name</tt> ist der Name der Parameter wie im SPL-Quellcode.
+Beispielsweise kann ein Funktoroperator<tt></tt> einen Parameter <tt>filter</tt> haben.</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__description">
+         <dt>Beschreibung</dt>
+         <dd>Eine optionale Beschreibung dieses Parameters.</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__optional">
+         <dt>Optional</dt>
+         <dd>Ein boolescher Wert, der angibt, ob diese Parameter optional ist. Der Wert 'false' bedeutet, dass der Parameter im SPL-Quellcode angegeben werden muss. </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__rewriteallowed">
+         <dt>Neuschreiben zul„ssig (nur C++)</dt>
+         <dd>Dieser boolesche Parameter erm”glicht dem Compiler das Neuschreiben der Ausdrcke, die in den Werten dieses Parameters vorkommen, indem Literale (einschlieálich der Literale, die sich durch den Auswertungsschritt w„hrend der Kompilierung ergeben) durch Variablen ersetzt werden, deren Werte w„hrend der Ausfhrung geladen werden. Hierdurch kann der Compiler weniger Code fr Operatoren generieren, die sich in ihren Parameterkonfigurationen geringfgig unterscheiden. In bestimmten F„llen untersuchen die Operatorcodegeneratoren den Parameterwert, um unterschiedlichen Code auf der Basis des bestimmten gefundenen Werts zu generieren oder Kompilierzeitvalidierung durchzufhren.
+Beispielsweise kann <tt>format: csv</tt> zur Generierung von spezialisiertem Code fr einen Quellenoperator (Source) fhren. In solchen F„llen muss das Neuschreiben von Ausdrcken inaktiviert werden.</dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__expressionmode">
+         <dt>Ausdrucksmodus</dt>
+         <dd>
+           <ul>
+             <li><tt>Attribute</tt> - Beschr„nkt die Parameterwerte auf Datenstromattribute.</li>
+             <li><tt>AttributeFree</tt> - Der Parameterwert ist ein Ausdruck, der keine Referenz auf ein Datenstromattribut enth„lt.</li>
+             <li><tt>Constant (nur C++)</tt> - Die Parameterwerte mssen w„hrend der Kompilierung in eine Konstante ausgewertet werden k”nnen.</li>
+             <li><tt>CustomLiteral</tt> - Beschr„nkt die Parameterwerte auf gltige Werte von einer der angepassten Literalaufz„hlungen, die im Kontextabschnitt des Modells definiert sind.</li>
+             <li><tt>Expression (nur C++)</tt> - Dies ist der flexibelste Ausdrucksmodus; jeder SPL-Ausdruck mit einem korrekten Typ kann als Parameterwert vorkommen. </li>
+           </ul>
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__type">
+         <dt>Typ</dt>
+         <dd>Der Typ (<tt>type</tt>) eines Parameters ist entweder der SPL-Typ seiner Werte (wie beispielsweise <tt>list&lt;ustring></tt>) oder ein angepasster Literalname (wie beispielsweise <tt>SourceFormat</tt>). Der Typ kann auch ausgelassen werden. In diesem Fall ist jeder SPL-Typ eine šbereinstimmung. Das Unterelement 'type' eines Parameters kann einen leeren Wert haben, wodurch die gleiche Semantik wie ein fehlendes Element 'type' vorliegt.
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__cardinality">
+         <dt>Kardinalit„t</dt>
+         <dd>Die maximale Anzahl Werte, die der Parameter akzeptiert. Wird dieser Parameter ausgelassen oder auf den Wert -1 gesetzt, wird die Anzahl Werte als unbegrenzt angenommen. Die Anzahl Parameterwerte muss mit der Kardinalit„t bereinstimmen. Das Unterelement 'cardinality' kann auf den Wert -1 gesetzt werden, wodurch dieselbe Semantik wie ein fehlendes Element 'cardinality' vorliegt.
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__portScope">
+         <dt>Portbereich (nur C++)</dt>
+         <dd>Mit diesem Element werden die Datenstromattribute begrenzt, die in einem Parameterwert fr einen bestimmten Eingabeport oder fr eine Liste von Eingabeports vorkommen. Portindizes beginnen ab 0. Wird der Portbereich ausgelassen, gibt es fr Datenstromattribute keine Einschr„nkungen.
+         </dd>
+       </dlentry>
+       <dlentry id="parameters__parameter__customOutputFunction">
+         <dt>Angepasste Ausgabefunktion (nur C++)</dt>
+         <dd>Dieses optionale Element eines Parameters gibt den Namen eines angepassten Ausgabefunktionssatzes an, der im Element 'context' definiert ist, und macht die in dieser Gruppe definierten Funktionen w„hrend der Kompilierung eines Parameters sichtbar. Es ist die Verantwortung des Operators, richtigen C++-Code zu generieren, der angepasste Ausgabefunktionen fr den Parameter einbezieht, so wie dies fr 'use' in einer Klausel 'output' der Fall w„re.
+         </dd>
+       </dlentry>
+      </dl>
+    </dd><!-- Parameter -->
+  </dlentry>
+</dl> <!-- Parameters -->
+</section>
+</refbody>
+</reference>

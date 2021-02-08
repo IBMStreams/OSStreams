@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/toolkitList"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/spl/toolkitList"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+  <!-- The toolkit list model. -->
+  <xs:element name="toolkitList" type="toolkitListType"/>
+
+  <!-- each element is a directory path, or a link to a toolkitList XML.
+       Relative paths are relative to the directory containing this file. -->
+  <xs:complexType name="toolkitListType">
+    <xs:sequence>
+      <xs:element name="toolkit" type="toolkitType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- If both toolkit and list are specified, the toolkit is processed first, then the list -->
+  <xs:complexType name="toolkitType">
+    <!-- The path to the toolkit directory -->
+    <xs:attribute name="directory" type="xs:string"/>
+    <!-- a listFile gives the path to a toolkitList XML file -->
+    <xs:attribute name="listFile" type="xs:string"/>
+  </xs:complexType>
+</xs:schema>

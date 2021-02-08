@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<operatorModel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator" xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common" xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description>This operator forwards tuples from one of its input ports to its output port.
+The Selector operator can be used in a consistent region.  It must have at
+least one input port, and typically has multiple input ports.  It has exactly
+one output port.  When used in a consistent region, it selects the input port
+from which it receives the first tuple.  It forwards all tuples from that port
+to its output port, and discards tuples from the others.  On reset, it stops
+using the input port it had selected, and again selects the port from which
+it receives the first tuple.
+
+Limitations
+If this is used as an operator-driven start operator, it never initiates a drain.
+
+Recommendations
+This operator is part of the ReplayableStart operator, and probably is not useful
+on its own.
+</description>
+      <providesSingleThreadedContext>Never</providesSingleThreadedContext>
+      <allowCustomLogic>true</allowCustomLogic>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+    </parameters>
+    <inputPorts>
+      <inputPortOpenSet>
+        <tupleMutationAllowed>true</tupleMutationAllowed>
+        <windowingMode>OptionallyWindowed</windowingMode>
+        <windowPunctuationInputMode>WindowBound</windowPunctuationInputMode>
+      </inputPortOpenSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Generating</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

@@ -1,0 +1,591 @@
+#!/usr/bin/perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use warnings;
+use Getopt::Std;
+use File::Basename;
+use FindBin;
+use lib $FindBin::Bin;
+
+####MAIN
+my ($file, $nativeXml);
+my %opts;
+my $sname = basename($0);
+my $help ="Usage: $sname [-f] [-g <expr-evaluator>] [-i <include-dir>] \
+        [-H <header-to-include> -o <base dir> <built-in-funcs> <cleaned-built-in-funcs>
+   -f force
+   -g <expr-evaluator> .cpp file to be generated, which contains code for calling built-in functions
+   -H <header-to-include>  header to include for function.xml
+   -i <include-dir>  directory to include for function.xml
+   -o <base dir> base location for file to be generated, which will contain the function model for the built-in functions
+       {
+           <built-in-funcs> .h file to be read in, which contains the c++ declarations of built-in functions
+           <cleaned-built-in-funcs> .h file to be generated, same as <built-in-funcs> but cleaned up (code generation directives removed)
+       } *
+\n";
+getopts('fg:ho:i:H:',\%opts) or do {
+  print $help;
+  exit 1;
+};
+
+if($opts{h} || !$opts{o}) {
+  print $help;
+  exit 0;
+}
+
+if (@ARGV == 0 || (@ARGV & 1) == 1) {
+  print $help;
+  exit 0;
+}
+
+# base dir location
+my $basedir = $opts{o};
+
+my ($libname, $libpath,$fname, $includename, $funcsets);
+$funcsets = "";
+my @floats = ( 'float32','float64');
+my @decimals = ('decimal32', 'decimal64', 'decimal128');
+my @floatingpoints = (@floats, @decimals);
+my @integers = ( 'int8','int16', 'int32', 'int64',
+                 'uint8','uint16', 'uint32', 'uint64' );
+my @complexs = ('complex32', 'complex64');
+my @numerics = (@floatingpoints, @integers, @complexs);
+my @strings = ('rstring', 'ustring');
+my @primitives = (@numerics, @strings,  'boolean', 'timestamp');
+my @ordereds = (@floatingpoints, @integers, @strings,  'boolean', 'timestamp');
+if ($opts{g}) {
+   open (GENFILE, ">$opts{g}") or die "Cannot create $opts{g}: $!\n";
+   print GENFILE  "
+#include <SPL/Core/ExpressionEvaluator.h>
+#include <SPL/Runtime/Function/BuiltinSPLFunctions.h>
+
+using namespace SPL;\n\n";
+}
+
+my $fcnNumber = -1;
+my $bigSwitch = "";       # will contain generated switch
+my $bigEvaluatableSwitch = "";   # will contain generated switch for evaluatable functions
+
+my %meta;
+$meta{int8} = "INT8"; $meta{int16} = "INT16"; $meta{int32} = "INT32"; $meta{int64} = "INT64";
+$meta{uint8} = "UINT8"; $meta{uint16} = "UINT16"; $meta{uint32} = "UINT32";
+$meta{uint64} = "UINT64"; $meta{float32} = "FLOAT32"; $meta{float64} = "FLOAT64";
+$meta{decimal32} = "DECIMAL32"; $meta{decimal64} = "DECIMAL64";
+$meta{decimal128} = "DECIMAL128"; $meta{complex32} = "COMPLEX32";
+$meta{complex64} = "COMPLEX64"; $meta{rstring} = "RSTRING";
+$meta{ustring} = "USTRING"; $meta{boolean} = "BOOLEAN"; $meta{timestamp} = "TIMESTAMP";
+
+sub getOneArg($)
+{
+    my $argType = shift;
+    if ($argType =~ /list<(.*)>/) {
+        print GENFILE "get_list_$1()";
+    } elsif ($argType =~ /set<(.*)>/) {
+        print GENFILE "get_set_$1()";
+    } else {
+        print GENFILE "get_$argType()";
+    }
+}
+
+sub genOneCall($$\@$$)
+{
+    # generate one call, filling in the argument types
+    my $name = shift;
+    my $numArgs = shift;
+    my $args = shift;
+    my $spaces = shift;
+    my $ns = shift;
+    printf GENFILE "$spaces    result.assign (::${ns}::$name(";
+    for (my $i = 0; $i < $numArgs; $i++) {
+        if ($i > 0) {
+            printf GENFILE ", ";
+        }
+        printf GENFILE "args[$i].";
+        getOneArg (${$args}[$i]);
+    }
+    printf GENFILE "));\n";
+    printf GENFILE "$spaces    return true;\n";
+}
+
+sub genFcnCall($$\@\@$$$)
+{
+    my $name = shift;
+    my $numArgs = shift;
+    my $args = shift;
+    my $words = shift;
+    my $patt = shift;
+    my $selector = shift;
+    my $ns = shift;
+    if (!defined ($patt)) {
+        genOneCall ($name, $numArgs, @{$args}, "", $ns);
+    } else {
+        printf GENFILE "    // name = $name, numArgs = $numArgs, args = @{$args}, @{$words}\n";
+        # do replacements
+        # we need to figure out if this is legal.   Use the first argument to figure it
+        # out
+        my $arg0 = @{$args}[0];
+        if ($arg0 =~ /listSet<(.*)>/) {
+            # need to handle both list and set
+            printf GENFILE "    if (args[$selector].type() == MetaType::LIST) {\n";
+            printf GENFILE "        switch (args[$selector].elementType()) {\n";
+            foreach my $l (@{$words}) {
+                my @larg = @{$args};
+                for (my $i = 0; $i < $numArgs; $i++) {
+                    $larg[$i] =~ s/$patt/$l/g;
+                    $larg[$i] =~ s/listSet/list/;
+                }
+                printf GENFILE "            case MetaType::$meta{$l}:\n";
+                genOneCall ($name, $numArgs, @larg, "            ", $ns);
+            }
+            printf GENFILE "            default: return false;\n";
+            printf GENFILE "        }\n";
+            printf GENFILE "    } else if (args[$selector].type() == MetaType::SET) {\n";
+            printf GENFILE "        switch (args[$selector].elementType()) {\n";
+            foreach my $l (@{$words}) {
+                my @larg = @{$args};
+                for (my $i = 0; $i < $numArgs; $i++) {
+                    $larg[$i] =~ s/$patt/$l/g;
+                    $larg[$i] =~ s/listSet/set/;
+                }
+                printf GENFILE "            case MetaType::$meta{$l}:\n";
+                genOneCall ($name, $numArgs, @larg, "            ", $ns);
+            }
+            printf GENFILE "            default: return false;\n";
+            printf GENFILE "        }\n";
+            printf GENFILE "    }\n    return false;\n";
+            return;
+        }
+        if ($arg0 =~ /list<(.*)>/) {
+            # list argument (duh)
+            printf GENFILE "    if (args[$selector].type() != MetaType::LIST)\n\treturn false;\n";
+            printf GENFILE "    switch (args[$selector].elementType()) {\n";
+        } elsif ($arg0 =~ /set<(.*)>/) {
+            # list argument (duh)
+            printf GENFILE "    if (args[$selector].type() != MetaType::SET)\n\treturn false;\n";
+            printf GENFILE "    switch (args[$selector].elementType()) {\n";
+        } else {
+            # just a pattern
+            printf GENFILE "    switch (args[$selector].type()) {\n";
+        }
+        foreach my $l (@{$words}) {
+            my @larg = @{$args};
+            for (my $i = 0; $i < $numArgs; $i++) {
+                $larg[$i] =~ s/$patt/$l/g;
+            }
+            printf GENFILE "        case MetaType::$meta{$l}:\n";
+            genOneCall ($name, $numArgs, @larg, "        ", $ns);
+        }
+        printf GENFILE "        default: return false;\n";
+        printf GENFILE "    }\n    return false;\n";
+    }
+}
+
+sub genFuncs($$)
+{
+    my $x = $_[0];
+        my $ns = $_[1];
+    my ($name, $ret, $numArgs, @arg);
+    no strict "vars";
+    my @words;
+    my $patt;
+    return if ($x =~ /NONE/);
+    $bigSwitch .=
+        "        case $fcnNumber: return fcn$fcnNumber (args, result);\n";
+    $bigEvaluatableSwitch .=
+        "        case $fcnNumber: return true;\n";
+    my $selector = 0;
+    eval "$x";
+    # create the evaluation function
+    print GENFILE
+"static bool fcn$fcnNumber (const std::vector<ExpressionValue>& args,
+                                   ExpressionValue& result)
+{
+";
+
+    if ($x =~ /\@primitive\@/) {
+        @words = @primitives;
+        $patt = "\\\@primitive\\\@";
+    } elsif ($x =~ /\@ordered\@/) {
+        @words = @ordereds;
+        $patt = "\\\@ordered\\\@";
+    } elsif ($x =~ /\@numeric\@/) {
+        @words = @numerics;
+        $patt = "\\\@numeric\\\@";
+    } elsif ($x =~ /\@float\@/) {
+        @words = @floats;
+        $patt = "\\\@float\\\@";
+    } elsif ($x =~ /\@decimal\@/) {
+        @words = @decimals;
+        $patt = "\\\@decimal\\\@";
+    } elsif ($x =~ /\@floatingpoint\@/) {
+        @words = @floatingpoints;
+        $patt = "\\\@floatingpoint\\\@";
+    } elsif ($x =~ /\@string\@/) {
+        @words = @strings;
+        $patt = "\\\@string\\\@";
+    } elsif ($x =~ /\@integer\@/) {
+        @words = @integers;
+        $patt = "\\\@integer\\\@";
+    } elsif ($x =~ /\@complex\@/) {
+        @words = @complexs;
+        $patt = "\\\@complex\\\@";
+    } else {
+        die "Unknown \@NAME\@ in $x\n" if ($x =~ /\@/);
+    }
+    genFcnCall ($name, $numArgs, @arg, @words, $patt, $selector,$ns);
+print GENFILE "}\n\n";
+}
+
+my $docState;
+my $docDescription;
+my $docDescriptionLines;
+my $docParameters;
+my $docReturn;
+my $docNotes;
+my $docThrows;
+
+sub genNativeXml()
+{
+    # did we find anything interesting?
+    if ($funcsets ne "") {
+      die "Need native XML location\n" if !$nativeXml;
+
+      # okay, let use write some XML
+      open(OFILE, ">$nativeXml") or
+        die "Unable to create $nativeXml: $!\n";
+      # header
+      print OFILE
+    "<functionModel
+       xmlns=\"http://www.ibm.com/xmlns/prod/streams/spl/function\"
+       xmlns:cmn=\"http://www.ibm.com/xmlns/prod/streams/spl/common\"
+       xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+       xsi:schemaLocation=\"http://www.ibm.com/xmlns/prod/streams/spl/function functionModel.xsd\">\n";
+      print OFILE $funcsets;
+      print OFILE "</functionModel>\n";
+      close (OFILE);
+    }
+    $funcsets = ""; # reset for next use
+    $nativeXml = undef;
+
+}
+
+sub fcnDocEncode($)
+{
+    my ($doc) = @_;
+    return "" if $doc eq "";
+    my @lines = split ("\n", $doc);
+    my $out = "";
+    foreach my $line (@lines) {
+        # encode for inclusion in XML
+        $line =~ s/&/\&amp;/g;
+        $line =~ s/</\&lt;/g;
+        $line =~ s/>/\&gt;/g;
+        # remove leading spaces
+        $line =~ s/^  *//g;
+        # prevent unintended interpretation of characters as SPLDOC markup
+        $line =~ s/^([+\-*=#!@])/\\$1/g;
+        $line =~ s/([\[\]\{\}])/\\$1/g;
+        # allow leading "- " to be interpreted as a list
+        $line =~ s/^\\\- /\* /;
+        # add line to output
+        $out .= "\n" if $out ne "";
+        $out .= $line;
+    }
+    return $out;
+}
+
+sub fcnDocXml()
+{
+    my $doc = "";
+    $doc .= "        <description>\n";
+    if ($docDescriptionLines ne "") {
+        $doc .= fcnDocEncode($docDescriptionLines) . "\n";
+    }
+    if ($docNotes ne "") {
+        my @notes = split ("\n", $docNotes);
+        foreach my $note (@notes) {
+            $doc .= "\n" . "Note: " . fcnDocEncode($note) . "\n";
+        }
+    }
+    if ($docParameters ne "") {
+        my @params = split ("\n", $docParameters);
+        foreach my $param (@params) {
+            $doc .= "\@param " . fcnDocEncode($param) . "\n";
+        }
+    }
+    if ($docReturn ne "") {
+        $doc .= "\@return " . fcnDocEncode($docReturn) . "\n";
+    }
+    if ($docThrows ne "") {
+        my @throws = split ("\n", $docThrows);
+        foreach my $throw (@throws) {
+            $doc .= "\@throws " . fcnDocEncode($throw) . "\n";
+        }
+    }
+    $doc .= "        </description>\n";
+    return $doc;
+}
+
+sub clearDoc()
+{
+    $docState = "none";
+    $docDescription = "";
+    $docDescriptionLines = "";
+    $docParameters = "";
+    $docReturn = "";
+    $docNotes = "";
+    $docThrows = "";
+}
+
+sub collectDocumentation($)
+{
+    my $line = shift;
+    if (!/\/\/\//) {
+        # end of comments
+        clearDoc();
+    }
+    $line =~ s:.*/// ::;
+    if ($line =~ /\@(\w+)\s+(.*)/) {
+        if ($1 eq "spldir") {
+            genNativeXml(); # finsh off the old one
+            mkdir "$basedir/$2";
+            mkdir "$basedir/$2/native.function";
+            $nativeXml = "$basedir/$2/native.function/function.xml";
+        } elsif ($1 eq "splnative") {
+            $docState = "end";
+        } elsif ($docState eq "end") {
+            # stop collecting documentation for the SPL function (the C++ function may have additional documentation)
+        } elsif ($1 eq "param" || $1 eq "splparam") {
+            if ($docParameters eq "") {
+                $docParameters = $2;
+            } else {
+                $docParameters .= "\n$2";
+            }
+            $docState = "param";
+        } elsif ($1 eq "return" || $1 eq "splreturn") {
+            $docReturn = $2;
+            $docState = "return";
+        } elsif ($1 eq "note" || $1 eq "splnote") {
+            if ($docNotes eq "") {
+                $docNotes = $2;
+            } else {
+                $docNotes .= "\n$2";
+            }
+            $docState = "notes";
+        } elsif ($1 eq "throws") {
+            if ($docThrows eq "") {
+                $docThrows = $2;
+            } else {
+                $docThrows .= "\n$2";
+            }
+            $docState = "throws";
+        } elsif ($1 eq "spldesc") {
+            if ($docDescription eq "") {
+                $docDescription = $2;
+                $docDescriptionLines = $2;
+            } else {
+                $docDescription .= " $2";
+                $docDescriptionLines .= "\n$2";
+            }
+            $docState = "description";
+        }
+    } else {
+        if ($docState eq "end") {
+            # stop collecting documentation for this function
+        } elsif ($docState eq "param") {
+            $docParameters .= " $line";
+        } elsif ($docState eq "return") {
+            $docReturn .= " $line";
+        } elsif ($docState eq "notes") {
+            $docNotes .= " $line";
+        } elsif ($docState eq "throws") {
+            $docThrows .= " $line";
+        } else {
+            if ($docDescription eq "") {
+                $docDescription = $line;
+                $docDescriptionLines = $line;
+            } else {
+                $docDescription .= " $line";
+                $docDescriptionLines .= "\n$line";
+            }
+            $docState = "description";
+        }
+    }
+}
+
+# generate a function.xml from each .h file and generate documentation
+clearDoc();
+while (@ARGV) {
+    $file = $ARGV[0];
+    if (!-e $file) {
+        print "Unable to open $file\n";
+        exit 1;
+    }
+
+    # Scan through the file looking for important data;
+    open(HFILE, ">$ARGV[1]") or die "Cannot create $ARGV[1]: $!\n";
+    my $includepath;
+    if ($opts{i}) {
+        $includepath = "          <cmn:includePath>$opts{i}</cmn:includePath>\n";
+    } else {
+        $includepath = "";
+    }
+
+    # remove these 2 from the list of files
+    shift (@ARGV);
+    shift (@ARGV);
+
+    my $cppFcnName = "";
+    my $cppNamespace = "";
+    my $funcs = "";
+    my $hLine = "";
+
+    open(FILEIN, "<$file") or die "Cannot open $file: $!\n";
+    while (<FILEIN>) {
+      if (/<SPL\/Runtime\/Function\/Builtin/) {
+          s/Builtin//;
+      }
+      $hLine = $_;
+      $hLine =~ s/(\/\/\/ \@)cpp/$1/;
+      print HFILE $hLine if (!/\/\/\/ \@spl/);
+      chomp;
+
+      # collect the API documentation
+      collectDocumentation ($_);
+
+      # Now we only care about SPL lines
+      next if (!/\/\/\/\s+\@spl/);
+      if (/\@splname\s+(\S*)/) {
+        $fname = $1;
+        next;
+      }
+      if (/\@spllibpath\s+(\S*)/) {
+        $libpath .= "      <cmn:libPath>$1</cmn:libPath>\n";
+        next;
+      }
+      if (/\@spllib\s+(\S*)/) {
+        $libname .= "        <cmn:lib>$1</cmn:lib>\n";
+        next;
+      }
+      if (/\@splcppfcn\s+(\S*)/) {
+        $cppFcnName .= " cppName=\"$1\"";
+        next;
+      }
+      if (/\@splcppns\s+(\S*)/) {
+        $cppNamespace = $1;
+        next;
+      }
+      if (/\@splinclude\s+(\S*)/) {
+        $includepath .= "        <cmn:includePath>$1</cmn:includePath>\n";
+        next;
+      }
+      if (/\@splnative\s+(.*)/) {
+          $funcs .= "      <function>\n";
+          $funcs .= fcnDocXml();
+          $funcs .= "        <prototype$cppFcnName><![CDATA[ $1 ]]></prototype>\n";
+          $funcs .= "      </function>\n";
+          $fcnNumber++;
+          $cppFcnName = "";
+          next;
+      }
+      if (/\@spleval\s+(.*)/) {
+          genFuncs($1,$cppNamespace) if $opts{g};
+          next;
+      }
+    }
+    close (HFILE);
+    close (FILEIN);
+    if ($funcs ne "") {
+        $funcsets .=
+                "  <functionSet>\n";
+        if ($opts{H}) {
+            $funcsets .=
+                "    <headerFileName>$opts{H}</headerFileName>\n";
+        }
+        if ($cppNamespace ne "") {
+            $funcsets .=
+                "    <cppNamespaceName>$cppNamespace</cppNamespaceName>\n";
+        }
+        $funcsets .=
+                "    <functions>\n" . $funcs .
+                "    </functions>\n";
+        if (defined $libname ||
+            defined $libpath ||
+            $includepath ne "") {
+            $funcsets .=
+                "    <dependencies>\n" .
+                "      <library>\n";
+            if (defined $fname) {
+                $funcsets .=
+                "        <cmn:description>$fname</cmn:description>\n";
+            }
+            $funcsets .=
+                "        <cmn:managedLibrary>\n";
+            if (defined $libname) {
+                $funcsets .= $libname;
+            }
+            if (defined $libpath) {
+                $funcsets .= $libpath;
+            }
+            $funcsets .= $includepath;
+            $funcsets .=
+                "        </cmn:managedLibrary>\n" .
+                "      </library>\n" .
+                "    </dependencies>\n";
+        }
+        $funcsets .=
+                "  </functionSet>\n";
+    }
+}
+
+genNativeXml();
+if ($opts{g}) {
+    # close off the file, including our big switch statement
+   print GENFILE  "
+bool SPL::ExpressionEvaluator::evaluateBuiltin (
+                                uint32_t fcnNum,
+                                const std::vector<ExpressionValue>& args,
+                                ExpressionValue& result)
+{
+    switch (fcnNum) {
+";
+   print GENFILE $bigSwitch;
+
+   #finish it off
+   print GENFILE
+"        default: return false;
+    }
+    return false;
+}\n";
+
+    # close off the file, including another big switch statement
+   print GENFILE  "
+bool SPL::ExpressionEvaluator::isBuiltinEvaluatable (uint32_t fcnNum)
+{
+    switch (fcnNum) {
+";
+   print GENFILE $bigEvaluatableSwitch;
+
+   #finish it off
+   print GENFILE
+"        default: return false;
+    }
+    return false;
+}\n";
+}

@@ -1,0 +1,3955 @@
+/* ------------------------------------------------------------------ */
+/* decimal header                                                     */
+/* ------------------------------------------------------------------ */
+/* Copyright (c) IBM Corporation, 2006.  All rights reserved.         */
+/*                                                                    */
+/* This software is made available under the terms of the IBM         */
+/* alphaWorks License Agreement (distributed with this software as    */
+/* alphaWorks-License.txt).  Your use of this software indicates      */
+/* your acceptance of the terms and conditions of that Agreement.     */
+/*                                                                    */
+/* Please send comments, suggestions, and corrections to the author:  */
+/*   mfc@uk.ibm.com                                                   */
+/*   Mike Cowlishaw, IBM Fellow                                       */
+/*   IBM UK, PO Box 31, Birmingham Road, Warwick CV34 5JL, UK         */
+/* ------------------------------------------------------------------ */
+
+#ifndef _DECIMAL
+#define _DECIMAL
+
+#include "decConfig.h"
+
+#include <sstream>
+#include <string.h>
+
+#include "decCommon.h"
+
+/* from <fenv.h> */
+
+namespace ibm {
+namespace decimal {
+
+// is_decimal_fp unary type trait:
+template <class _T>
+struct _Is_decimal_fp_aux {
+        static const bool value = false;
+};
+
+template <>
+struct _Is_decimal_fp_aux<decimal32> {
+        static const bool value = true;
+};
+
+template <>
+struct _Is_decimal_fp_aux<decimal64> {
+        static const bool value = true;
+};
+
+template <>
+struct _Is_decimal_fp_aux<decimal128> {
+        static const bool value = true;
+};
+
+template <class _T>
+struct is_decimal_floating_point
+        : std::tr1::integral_constant<bool, _Is_decimal_fp_aux<_T>::value> {
+        typedef bool value_type;
+        typedef std::tr1::integral_constant<bool, _Is_decimal_fp_aux<_T>::value>
+                type;
+        operator type() const { return type(); }
+};
+
+// _Is_packed_decimal_aux type trait
+template <class _T>
+struct _Is_packed_decimal_aux {
+        static const bool value = false;
+};
+
+template <uint32_t _Digits, uint32_t _Scale>
+struct _Is_packed_decimal_aux<_PackedDecimal<_Digits, _Scale> > {
+        static const bool value = true;
+};
+
+// _Is_decimal_aux type trait
+template <class _T>
+struct _Is_decimal_aux {
+        static const bool value = _Is_decimal_fp_aux<_T>::value ||
+                                  _Is_packed_decimal_aux<_T>::value;
+};
+
+// promotion traits for binary arithmetic operators:
+template <bool _Cond, class _First, class _Second>
+struct _IfElse {
+        typedef _First type;
+};
+
+template <class _First, class _Second>
+struct _IfElse<false, _First, _Second> {
+        typedef _Second type;
+};
+
+// The primary template will match only if _LHS is an integral type.
+template <class _LHS, class _RHS>
+struct _PromotionTraits {
+        typedef _RHS type;
+};
+
+template <class _RHS>
+struct _PromotionTraits<decimal32, _RHS> {
+        typedef typename _IfElse<_Is_decimal_fp_aux<_RHS>::value,
+                                 _RHS, decimal32>::type type;
+};
+
+template <class _RHS>
+struct _PromotionTraits<decimal128, _RHS> {
+        typedef decimal128 type;
+};
+
+template <class _RHS>
+struct _PromotionTraits<decimal64, _RHS> {
+        typedef decimal64 type;
+};
+
+template <>
+struct _PromotionTraits<decimal64, decimal128> {
+        typedef decimal128 type;
+};
+
+// type is integral or any decimal type, including decimal32,
+// decimal64, decimal128, or a packed decimal type
+template <typename _C>
+struct _Is_int_or_dec {
+        static const bool value = std::tr1::is_integral<_C>::value ||
+                                  _Is_decimal_aux<_C>::value;
+};
+
+// type is integral or one of the decimal floating point types,
+// decimal32, decimal64, or decimal128
+template <typename _C>
+struct _Is_int_or_decfp {
+        static const bool value = std::tr1::is_integral<_C>::value ||
+                                  _Is_decimal_fp_aux<_C>::value;
+};
+
+// template constraints:
+template <bool _B, typename _U = void>
+struct _Enable_if_c {
+        typedef _U type;
+};
+
+template <typename _U>
+struct _Enable_if_c<false, _U> {};
+
+template <class _U>
+struct _Enable_if_dec :
+         public _Enable_if_c<_Is_decimal_aux<_U>::value, _U> {};
+
+template <class _C, typename _U = void>
+struct _Enable_if_int_or_dec :
+         public _Enable_if_c<_Is_int_or_dec<_C>::value, _U> {};
+
+template <class _LHS, class _RHS, typename _U>
+struct _Enable_if_LHS_is_dfp_and_RHS_is_int_or_dfp :
+         public _Enable_if_c<_Is_decimal_fp_aux<_LHS>::value &&
+                             _Is_int_or_decfp<_RHS>::value,
+                             _U> {};
+
+template <class _LHS, class _RHS, typename _U>
+struct _Enable_if_LHS_is_dec_and_RHS_is_int_or_dec :
+         public _Enable_if_c<_Is_decimal_aux<_LHS>::value &&
+                             _Is_int_or_dec<_RHS>::value,
+                             _U> {};
+
+template <typename _LHS, class _RHS, typename _U>
+struct _Enable_if_LHS_is_int_and_RHS_is_dec :
+         public _Enable_if_c<std::tr1::is_integral<_LHS>::value &&
+                             _Is_decimal_aux<_RHS>::value,
+                             _U> {};
+
+template <class _LHS, class _RHS>
+struct _Arith_LHS_is_dfp_and_RHS_is_int_or_dfp :
+         public _Enable_if_LHS_is_dfp_and_RHS_is_int_or_dfp<_LHS, _RHS, 
+                               typename _PromotionTraits<_LHS, _RHS>::type > {};
+
+template <typename _LHS, class _RHS>
+struct _Arith_LHS_is_int_and_RHS_is_dec :
+         public _Enable_if_LHS_is_int_and_RHS_is_dec<_LHS, _RHS, _RHS> {};
+
+template <typename _LHS, class _RHS>
+struct _Assign_LHS_is_int_and_RHS_is_dec :
+         public _Enable_if_LHS_is_int_and_RHS_is_dec<_LHS, _RHS, _LHS &> {};
+
+template <class _LHS, class _RHS>
+struct _Compare_LHS_is_dec_and_RHS_is_int_or_dec :
+         public _Enable_if_LHS_is_dec_and_RHS_is_int_or_dec<_LHS,
+                                                            _RHS, bool> {};
+
+template <typename _LHS, class _RHS>
+struct _Compare_LHS_is_int_and_RHS_is_dec :
+         public _Enable_if_LHS_is_int_and_RHS_is_dec<_LHS, _RHS, bool> {};
+
+template <class _U, typename _RET>
+struct _Constrain_if_dec :
+         public _Enable_if_c<_Is_decimal_aux<_U>::value, _RET> {};
+
+// FmtTraits specializations
+template <>
+class _FmtTraits<decimal32> {
+public:
+        typedef _Context32                         _Context;
+        typedef decimal32                          _Fmt;
+        typedef _DecBase<_FmtTraits<decimal32> >   _Base;
+        typedef _DecBase<_FmtTraits<decimal32> > * _BasePtr;
+
+        static void _FromNumber(_BasePtr _Tgt, const _DecNumber & _Src)
+                {
+                _Context _Ctxt;
+                _Src._ToDecimal32(_Tgt, &_Ctxt);
+                }
+
+        static void _FromNumber(_BasePtr _Tgt, const _DecNumber & _Src,
+                                _Context * _Ctxt)
+                { _Src._ToDecimal32(_Tgt, _Ctxt); }
+
+        static const uint8_t _Zero[];
+        static const uint8_t _Max[];
+        static const uint8_t _Min[];
+        static const uint8_t _Epsilon[];
+        static const uint8_t _Denormalized_min[];
+        static const uint8_t _INF[];
+        static const uint8_t _NAN[];
+        static const uint8_t _SNAN[];
+
+        static const std::size_t _NumBytes = 4UL;
+};
+
+template <>
+class _FmtTraits<decimal64> {
+public:
+        typedef _Context64                         _Context;
+        typedef decimal64                          _Fmt;
+        typedef _DecBase<_FmtTraits<decimal64> >   _Base;
+        typedef _DecBase<_FmtTraits<decimal64> > * _BasePtr;
+
+        static void _FromNumber(_BasePtr _Tgt, const _DecNumber & _Src)
+                {
+                _Context _Ctxt;
+                _Src._ToDecimal64(_Tgt, &_Ctxt);
+                }
+
+        static void _FromNumber(_BasePtr _Tgt, const _DecNumber & _Src,
+                                _Context * _Ctxt)
+                { _Src._ToDecimal64(_Tgt, _Ctxt); }
+
+        static const uint8_t _Zero[];
+        static const uint8_t _Max[];
+        static const uint8_t _Min[];
+        static const uint8_t _Epsilon[];
+        static const uint8_t _Denormalized_min[];
+        static const uint8_t _INF[];
+        static const uint8_t _NAN[];
+        static const uint8_t _SNAN[];
+
+        static const std::size_t _NumBytes = 8UL;
+};
+
+template <>
+class _FmtTraits<decimal128> {
+public:
+        typedef _Context128                         _Context;
+        typedef decimal128                          _Fmt;
+        typedef _DecBase<_FmtTraits<decimal128> >   _Base;
+        typedef _DecBase<_FmtTraits<decimal128> > * _BasePtr;
+
+        static void _FromNumber(_BasePtr _Tgt, const _DecNumber & _Src)
+                {
+                _Context _Ctxt;
+                _Src._ToDecimal128(_Tgt, &_Ctxt);
+                }
+
+        static void _FromNumber(_BasePtr _Tgt, const _DecNumber & _Src,
+                                _Context * _Ctxt)
+                { _Src._ToDecimal128(_Tgt, _Ctxt); }
+
+        static const uint8_t _Zero[];
+        static const uint8_t _Max[];
+        static const uint8_t _Min[];
+        static const uint8_t _Epsilon[];
+        static const uint8_t _Denormalized_min[];
+        static const uint8_t _INF[];
+        static const uint8_t _NAN[];
+        static const uint8_t _SNAN[];
+
+        static const std::size_t _NumBytes = 16UL;
+};
+
+template <uint32_t _Digits, uint32_t _Scale>
+class _FmtTraits<_PackedDecimal<_Digits, _Scale> > {
+public:
+        typedef _ContextDefault                 _Context;
+        typedef _PackedDecimal<_Digits, _Scale> _Fmt;
+        typedef _DecBase<_FmtTraits<_Fmt> >     _Base;
+        typedef _DecBase<_FmtTraits<_Fmt> > *   _BasePtr;
+
+        static void _FromNumber(_BasePtr _Tgt, const _DecNumber & _Src)
+                { _Src._ToPackedDecimal<_Digits, _Scale>(_Tgt); }
+
+        static void _FromNumber(_BasePtr _Tgt, const _DecNumber & _Src,
+                                _Context *)
+                { _Src._ToPackedDecimal<_Digits, _Scale>(_Tgt); }
+
+        static const std::size_t _NumBytes = _Digits/2 + 1;
+};
+
+// base class for decimal types:
+template <class _Tr>
+class _DecBase {
+        typedef typename _Tr::_Fmt   _Derived;
+        typedef typename _Tr::_Fmt & _DerivedRef;
+        typedef typename _Tr::_Fmt * _DerivedPtr;
+        typedef _DecBase<_Tr>        _MyType;
+public:
+        // constants (for <cdecfloat> and <limits>)
+        static _Derived _GetMax()
+                { return _Derived(_Tr::_Max); }
+
+        static _Derived _GetMin()
+                { return _Derived(_Tr::_Min); }
+
+        static _Derived _GetEpsilon()
+                { return _Derived(_Tr::_Epsilon); }
+
+        static _Derived _GetDenormalizedMin()
+                { return _Derived(_Tr::_Denormalized_min); }
+
+        static _Derived _GetNAN()
+                { return _Derived(_Tr::_NAN); }
+
+        static _Derived _GetSNAN()
+                { return _Derived(_Tr::_SNAN); }
+
+        static _Derived _GetINF()
+                { return _Derived(_Tr::_INF); }
+
+        // conversion operators
+        operator long long() const 
+                { return _DecNumber(*this)._ToSignedIntegral(); }
+
+        // increment, decrement
+        _DerivedRef operator++();
+        _Derived    operator++(int);
+        _DerivedRef operator--();
+        _Derived    operator--(int);
+
+        // compound assignment operators
+        template <class _T>
+        typename _Enable_if_int_or_dec<_T, _DerivedRef>::type
+        operator+=(_T _R)
+                {
+                typedef _DecNumber::_Add _Add;
+                _DecNumber::_BinaryOpInPlace<_Add, _Tr>(*this, _R, this);
+                return *static_cast<_DerivedPtr>(this);
+                }
+
+        _Derived & operator+=(long double _R) { _DEC_NO_MIXED_RADIX; }
+
+        template <class _T>
+        typename _Enable_if_int_or_dec<_T, _DerivedRef>::type
+        operator-=(_T _R)
+                {
+                typedef _DecNumber::_Sub _Sub;
+                _DecNumber::_BinaryOpInPlace<_Sub, _Tr>(*this, _R, this);
+                return *static_cast<_DerivedPtr>(this);
+                }
+
+        _Derived & operator-=(long double _R) { _DEC_NO_MIXED_RADIX; }
+
+        template <class _T>
+        typename _Enable_if_int_or_dec<_T, _DerivedRef>::type
+        operator*=(_T _R)
+                {
+                typedef _DecNumber::_Mul _Mul;
+                _DecNumber::_BinaryOpInPlace<_Mul, _Tr>(*this, _R, this);
+                return *static_cast<_DerivedPtr>(this);
+                }
+
+        _Derived & operator*=(long double _R) { _DEC_NO_MIXED_RADIX; }
+
+        template <class _T>
+        typename _Enable_if_int_or_dec<_T, _DerivedRef>::type
+        operator/=(_T _R)
+                {
+                typedef _DecNumber::_Div _Div;
+                _DecNumber::_BinaryOpInPlace<_Div, _Tr>(*this, _R, this);
+                return *static_cast<_DerivedPtr>(this);
+                }
+
+        _Derived & operator/=(long double _R) { _DEC_NO_MIXED_RADIX; }
+
+        void _FromCoefficientAndExponent(signed long long _Coeff, int _Exp);
+        void _FromCoefficientAndExponent(unsigned long long _Coeff, int _Exp);
+
+protected:
+        uint8_t _Bytes[_Tr::_NumBytes];
+
+        void _BitwiseInitialize(const uint8_t * _Arr)
+                { memcpy(_Bytes, _Arr, _Tr::_NumBytes); }
+
+        void _FromDecimal32 (const decimal32 &  _Q);
+        void _FromDecimal64 (const decimal64 &  _Q);
+        void _FromDecimal128(const decimal128 & _Q);
+        void _FromLongDouble(long double _Src);
+        void _FromUnsignedIntegral(unsigned long long _Src);
+        void _FromSignedIntegral(long long _Src);
+        void _FromString(const char * _Str);
+        void _FromString(const std::string & _Str);
+
+        template <uint32_t _Digits, uint32_t _Scale>
+        void _FromPackedDecimal(const _PackedDecimal<_Digits, _Scale> & _Q);
+};
+
+// increment, decrement
+template <class _Tr> inline
+typename _DecBase<_Tr>::_DerivedRef _DecBase<_Tr>::operator++()
+        {
+        typedef _DecNumber::_Add _Add;
+        _DecNumber::_BinaryOpInPlace<_Add, _Tr> (*this, _DecNumber(1), this);
+        return typename _DecBase<_Tr>::_DerivedRef(*this);
+        }
+
+template <class _Tr> inline
+typename _DecBase<_Tr>::_Derived _DecBase<_Tr>::operator++(int)
+        {
+        typedef _DecNumber::_Add _Add;
+        _DecNumber _Tmp1(*this);
+        _DecNumber::_BinaryOpInPlace<_Add, _Tr> (*this, _DecNumber(1), this);
+        typename _DecBase<_Tr>::_Derived _Tmp2;
+        _Tr::_FromNumber(&_Tmp2, _Tmp1);
+        return _Tmp2;
+        }
+
+template <class _Tr> inline
+typename _DecBase<_Tr>::_DerivedRef _DecBase<_Tr>::operator--()
+        {
+        typedef _DecNumber::_Sub _Sub;
+        _DecNumber::_BinaryOpInPlace<_Sub, _Tr> (*this, _DecNumber(1), this);
+        return typename _DecBase<_Tr>::_DerivedRef(*this);
+        }
+
+template <class _Tr> inline
+typename _DecBase<_Tr>::_Derived _DecBase<_Tr>::operator--(int)
+        {
+        typedef _DecNumber::_Sub _Sub;
+        _DecNumber _Tmp1(*this);
+        _DecNumber::_BinaryOpInPlace<_Sub, _Tr> (*this, _DecNumber(1), this);
+        typename _DecBase<_Tr>::_Derived _Tmp2;
+        _Tr::_FromNumber(&_Tmp2, _Tmp1);
+        return _Tmp2;
+        }
+
+// decimal arithmetic type decimal32
+class decimal32 : public _DecBase<_FmtTraits<decimal32> > {
+public:
+        typedef _DecBase<_FmtTraits<decimal32> > _MyBase;
+        friend class _DecBase<_FmtTraits<decimal32> >;
+
+        // constructors, assignment, and destructor
+        decimal32()
+                { _ZeroInitialize(); }
+
+        decimal32(const char * _Str)
+                { _FromString(_Str); }
+
+        decimal32(std::string _Str)
+                { _FromString(_Str); }
+
+        explicit decimal32(float _Q)
+                { _FromLongDouble(_Q); }
+
+        explicit decimal32(double _Q)
+                { _FromLongDouble(_Q); }
+
+        explicit decimal32(long double _Q)
+                { _FromLongDouble(_Q); }
+
+        decimal32(decimal64 _Q);
+        decimal32(decimal128 _Q);
+
+        decimal32(int _I)
+                { _FromSignedIntegral(_I); }
+
+        decimal32(unsigned int _I)
+                { _FromUnsignedIntegral(_I); }
+
+        decimal32(long _I)
+                { _FromSignedIntegral(_I); }
+
+        decimal32(unsigned long _I)
+                { _FromUnsignedIntegral(_I); }
+
+        decimal32(long long _I)
+                { _FromSignedIntegral(_I); }
+
+        decimal32(unsigned long long _I)
+                { _FromUnsignedIntegral(_I); }
+
+        template <uint32_t _Digits, uint32_t _Scale>
+        decimal32(_PackedDecimal<_Digits, _Scale> _Q)
+                { _FromPackedDecimal(_Q); }
+
+private:
+        decimal32(const uint8_t * _Arr)
+                { _BitwiseInitialize(_Arr); }
+
+        void _ZeroInitialize()
+                { _BitwiseInitialize(_FmtTraits<decimal32>::_Zero); }
+};
+
+inline long double decimal32_to_long_double(decimal32 _D)
+        { return _DecNumber(_D)._ToLongDouble(); }
+
+inline long double decimal_to_long_double(decimal32 _D)
+        { return decimal32_to_long_double(_D); }
+
+inline decimal32 make_decimal32(long long _Coeff, int _Exp)
+        {
+        decimal32 _Ret;
+        _Ret._FromCoefficientAndExponent(_Coeff, _Exp);
+        return _Ret;
+        }
+
+inline decimal32 make_decimal32(unsigned long long _Coeff, int _Exp)
+        {
+        decimal32 _Ret;
+        _Ret._FromCoefficientAndExponent(_Coeff, _Exp);
+        return _Ret;
+        }
+
+// decimal arithmetic type decimal64
+class decimal64 : public _DecBase<_FmtTraits<decimal64> > {
+public:
+        typedef _DecBase<_FmtTraits<decimal64> > _MyBase;
+        friend class _DecBase<_FmtTraits<decimal64> >;
+
+        // constructors, assignment, and destructor
+        decimal64()
+                { _ZeroInitialize(); }
+
+        decimal64(const char * _Str)
+                { _FromString(_Str); }
+
+        decimal64(std::string _Str)
+                { _FromString(_Str); }
+
+        explicit decimal64(float _Q)
+                { _FromLongDouble(_Q); }
+
+        explicit decimal64(double _Q)
+                { _FromLongDouble(_Q); }
+
+        explicit decimal64(long double _Q)
+                { _FromLongDouble(_Q); }
+
+        decimal64(decimal32 _Q)
+                { _FromDecimal32(_Q); }
+
+        decimal64(decimal128 _Q);
+
+        decimal64(int _I)
+                { _FromSignedIntegral(_I); }
+
+        decimal64(unsigned int _I)
+                { _FromUnsignedIntegral(_I); }
+
+        decimal64(long _I)
+                { _FromSignedIntegral(_I); }
+
+        decimal64(unsigned long _I)
+                { _FromUnsignedIntegral(_I); }
+
+        decimal64(long long _I)
+                { _FromSignedIntegral(_I); }
+
+        decimal64(unsigned long long _I)
+                { _FromUnsignedIntegral(_I); }
+
+        template <uint32_t _Digits, uint32_t _Scale>
+        decimal64(_PackedDecimal<_Digits, _Scale> _Q)
+                { _FromPackedDecimal(_Q); }
+
+private:
+        decimal64(const uint8_t * _Arr)
+                { _BitwiseInitialize(_Arr); }
+
+        void _ZeroInitialize()
+                { _BitwiseInitialize(_FmtTraits<decimal64>::_Zero); }
+};
+
+inline long double decimal64_to_long_double(decimal64 _D)
+        { return _DecNumber(_D)._ToLongDouble(); }
+
+inline long double decimal_to_long_double(decimal64 _D)
+        { return decimal64_to_long_double(_D); }
+
+inline decimal64 make_decimal64(long long _Coeff, int _Exp)
+        {
+        decimal64 _Ret;
+        _Ret._FromCoefficientAndExponent(_Coeff, _Exp);
+        return _Ret;
+        }
+
+inline decimal64 make_decimal64(unsigned long long _Coeff, int _Exp)
+        {
+        decimal64 _Ret;
+        _Ret._FromCoefficientAndExponent(_Coeff, _Exp);
+        return _Ret;
+        }
+
+// decimal arithmetic type decimal128
+class decimal128 : public _DecBase<_FmtTraits<decimal128> > {
+public:
+        typedef _DecBase<_FmtTraits<decimal128> > _MyBase;
+        friend class _DecBase<_FmtTraits<decimal128> >;
+
+        // constructors, assignment, and destructor
+        decimal128()
+                { _ZeroInitialize(); }
+
+        decimal128(const char * _Str)
+                { _FromString(_Str); }
+
+        decimal128(std::string _Str)
+                { _FromString(_Str); }
+
+        explicit decimal128(float _Q)
+                { _FromLongDouble(_Q); }
+
+        explicit decimal128(double _Q)
+                { _FromLongDouble(_Q); }
+
+        explicit decimal128(long double _Q)
+                { _FromLongDouble(_Q); }
+
+        decimal128(decimal32 _Q)
+                { _FromDecimal32(_Q); }
+
+        decimal128(decimal64 _Q)
+                { _FromDecimal64(_Q); }
+
+        decimal128(int _I)
+                { _FromSignedIntegral(_I); }
+
+        decimal128(unsigned int _I)
+                { _FromUnsignedIntegral(_I); }
+
+        decimal128(long _I)
+                { _FromSignedIntegral(_I); }
+
+        decimal128(unsigned long _I)
+                { _FromUnsignedIntegral(_I); }
+
+        decimal128(long long _I)
+                { _FromSignedIntegral(_I); }
+
+        decimal128(unsigned long long _I)
+                { _FromUnsignedIntegral(_I); }
+
+        template <uint32_t _Digits, uint32_t _Scale>
+        decimal128(_PackedDecimal<_Digits, _Scale> _Q)
+                { _FromPackedDecimal(_Q); }
+
+private:
+        decimal128(const uint8_t * _Arr)
+                { _BitwiseInitialize(_Arr); }
+
+        void _ZeroInitialize()
+                { _BitwiseInitialize(_FmtTraits<decimal128>::_Zero); }
+};
+
+// conversion to and from binary float
+inline long double decimal128_to_long_double(decimal128 _D)
+        { return _DecNumber(_D)._ToLongDouble(); }
+
+inline long double decimal_to_long_double(decimal128 _D)
+        { return decimal128_to_long_double(_D); }
+
+inline decimal128 make_decimal128(long long _Coeff, int _Exp)
+        {
+        decimal128 _Ret;
+        _Ret._FromCoefficientAndExponent(_Coeff, _Exp);
+        return _Ret;
+        }
+
+inline decimal128 make_decimal128(unsigned long long _Coeff, int _Exp)
+        {
+        decimal128 _Ret;
+        _Ret._FromCoefficientAndExponent(_Coeff, _Exp);
+        return _Ret;
+        }
+
+// packed decimal types
+template <uint32_t _Digits, uint32_t _Scale = 0U>
+class _PackedDecimal :
+        public _DecBase<_FmtTraits<_PackedDecimal<_Digits, _Scale> > > {
+
+public:
+        typedef _PackedDecimal<_Digits, _Scale> _MyType;
+        typedef _DecBase<_FmtTraits<_MyType> >  _MyBase;
+        typedef _FmtTraits<_PackedDecimal<_Digits, _Scale> > _Tr;
+
+        // constructors, assignment, and destructor
+        _PackedDecimal()
+                { _ZeroInitialize(); }
+
+        _PackedDecimal(const char * _Str)
+                { _MyBase::_FromString(_Str); }
+
+        _PackedDecimal(std::string _Str)
+                { _MyBase::_FromString(_Str); }
+
+        explicit _PackedDecimal(float _Q)
+                { _MyBase::_FromLongDouble(_Q); }
+
+        explicit _PackedDecimal(double _Q)
+                { _MyBase::_FromLongDouble(_Q); }
+
+        explicit _PackedDecimal(long double _Q)
+                { _MyBase::_FromLongDouble(_Q); }
+
+        _PackedDecimal(decimal32  _Q)
+                { _MyBase::_FromDecimal32(_Q); }
+        _PackedDecimal(decimal64  _Q)
+                { _MyBase::_FromDecimal64(_Q); }
+        _PackedDecimal(decimal128 _Q)
+                { _MyBase::_FromDecimal128(_Q); }
+
+        _PackedDecimal(int _I)
+                { _MyBase::_FromSignedIntegral(_I); }
+
+        _PackedDecimal(unsigned int _I)
+                { _MyBase::_FromUnsignedIntegral(_I); }
+
+        _PackedDecimal(long _I)
+                { _MyBase::_FromSignedIntegral(_I); }
+
+        _PackedDecimal(unsigned long _I)
+                { _MyBase::_FromUnsignedIntegral(_I); }
+
+        _PackedDecimal(long long _I)
+                { _MyBase::_FromSignedIntegral(_I); }
+
+        _PackedDecimal(unsigned long long _I)
+                { _MyBase::_FromUnsignedIntegral(_I); }
+
+        template <uint32_t _Digits2, uint32_t _Scale2>
+        _PackedDecimal(_PackedDecimal<_Digits2, _Scale2> _Q)
+                {
+                _DecNumber _D(_Q);
+                _Tr::_FromNumber(this, _D);
+                }
+
+        template <uint32_t _Digits2, uint32_t _Scale2>
+        _PackedDecimal & operator=(_PackedDecimal<_Digits2, _Scale2> _Q)
+                {
+                _DecNumber _D(_Q);
+                _Tr::_FromNumber(this, _D);
+                return *this;
+                }
+
+private:
+        _PackedDecimal(const uint8_t * _Arr)
+                { _MyBase::_BitwiseInitialize(_Arr); }
+
+        void _ZeroInitialize()
+                {
+                memset(_MyBase::_Bytes, 0x0, _Tr::_NumBytes - 1);
+                _MyBase::_Bytes[_Tr::_NumBytes - 1] = 0x0C;
+                }
+};
+
+// conversion to and from binary float
+template <uint32_t _Digits, uint32_t _Scale> inline
+long double _PackedDecimal_to_long_double(_PackedDecimal<_Digits, _Scale> _D)
+        { return _DecNumber(_D)._ToLongDouble(); }
+
+template <uint32_t _Digits, uint32_t _Scale> inline
+long double decimal_to_long_double(_PackedDecimal<_Digits, _Scale> _D)
+        { return _PackedDecimal_to_long_double(_D); }
+
+template <uint32_t _Digits, uint32_t _Scale> inline
+_PackedDecimal<_Digits, _Scale> make_PackedDecimal(long long _Coeff, int _Exp)
+        {
+        _PackedDecimal<_Digits, _Scale> _Ret;
+        _Ret._FromCoefficientAndExponent(_Coeff, _Exp);
+        return _Ret;
+        }
+
+template <uint32_t _Digits, uint32_t _Scale> inline
+_PackedDecimal<_Digits, _Scale> make_PackedDecimal(unsigned long long _Coeff,
+                                                int _Exp)
+        {
+        _PackedDecimal<_Digits, _Scale> _Ret;
+        _Ret._FromCoefficientAndExponent(_Coeff, _Exp);
+        return _Ret;
+        }
+
+// out-of-line-constructors
+inline decimal32::decimal32(decimal64 _Q)
+        { _FromDecimal64(_Q); }
+inline decimal32::decimal32(decimal128 _Q)
+        { _FromDecimal128(_Q); }
+inline decimal64::decimal64(decimal128 _Q)
+        { _FromDecimal128(_Q); }
+
+// conversions
+template <class _Tr> inline
+void _DecBase<_Tr>::_FromDecimal32(const decimal32 & _Q)
+        {
+        _DecNumber _D(_Q);
+        _Tr::_FromNumber(this, _D);
+        }
+
+template <class _Tr> inline
+void _DecBase<_Tr>::_FromDecimal64(const decimal64 & _Q)
+        {
+        _DecNumber _D(_Q);
+        _Tr::_FromNumber(this, _D);
+        }
+
+template <class _Tr> inline
+void _DecBase<_Tr>::_FromDecimal128(const decimal128 & _Q)
+        {
+        _DecNumber _D(_Q);
+        _Tr::_FromNumber(this, _D);
+        }
+
+template <class _Tr> inline
+void _DecBase<_Tr>::_FromLongDouble(long double _Src)
+        {
+        _DecNumber _Tmp(_Src);
+        _Tr::_FromNumber(this, _Tmp);
+        }
+
+template <class _Tr> inline
+void _DecBase<_Tr>::_FromUnsignedIntegral(unsigned long long _Src)
+        {
+        _DecNumber _Tmp(_Src);
+        _Tr::_FromNumber(this, _Tmp);
+        }
+
+template <class _Tr> inline
+void _DecBase<_Tr>::_FromSignedIntegral(long long _Src)
+        {
+        _DecNumber _Tmp(_Src);
+        _Tr::_FromNumber(this, _Tmp);
+        }
+
+template <class _Tr> inline
+void _DecBase<_Tr>::_FromCoefficientAndExponent(signed long long _Coeff,
+                                                int _Exp)
+        {
+        if (_Coeff < 0)
+                {
+                _DecNumber _Tmp(-_Coeff, _Exp, true);
+                _Tr::_FromNumber(this, _Tmp);
+                }
+        else
+                {
+                _DecNumber _Tmp(_Coeff, _Exp, false);
+                _Tr::_FromNumber(this, _Tmp);
+                }
+        }
+
+template <class _Tr> inline
+void _DecBase<_Tr>::_FromCoefficientAndExponent(unsigned long long _Coeff,
+                                                int _Exp)
+        {
+        _DecNumber _Tmp(_Coeff, _Exp, false);
+        _Tr::_FromNumber(this, _Tmp);
+        }
+
+template <class _Tr>
+template <uint32_t _Digits, uint32_t _Scale> inline
+void _DecBase<_Tr>::_FromPackedDecimal(const _PackedDecimal<_Digits, _Scale> &
+                                       _Q)
+        {
+        _DecNumber _D(_Q);
+        _Tr::_FromNumber(this, _D);
+        }
+
+// free functions for decimal arithmetic classes:
+
+template<class _RHS> inline
+typename _Enable_if_dec<_RHS>::type operator+(_RHS _R)
+        { return _DecNumber::_UnaryOp<_DecNumber::_Plus,
+                                      _FmtTraits<_RHS> >(_R); }
+
+template<class _RHS> inline
+typename _Enable_if_dec<_RHS>::type operator-(_RHS _R)
+        { return _DecNumber::_UnaryOp<_DecNumber::_Minus,
+                                      _FmtTraits<_RHS> >(_R); }
+
+#if defined(_DEC_HAS_SFINAE)
+
+template<class _LHS, class _RHS> inline
+typename _Arith_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator+(_LHS _L, _RHS _R)
+        {
+        typedef _FmtTraits<_RHS> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+template<class _LHS, class _RHS> inline
+typename _Arith_LHS_is_dfp_and_RHS_is_int_or_dfp<_LHS, _RHS>::type
+operator+(_LHS _L, _RHS _R)
+        {
+        typedef _FmtTraits<typename _PromotionTraits<_LHS, _RHS>::type> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+template <uint32_t _Digits, uint32_t _Scale> inline
+_PackedDecimal<_Digits, _Scale>
+operator+(_PackedDecimal<_Digits, _Scale> _L,
+          _PackedDecimal<_Digits, _Scale> _R)
+        {
+        typedef _FmtTraits<_PackedDecimal<_Digits, _Scale> > _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, _RHS>::type operator+(float, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, _RHS>::type operator+(double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, _RHS>::type operator+(long double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, _LHS>::type operator+(_LHS, float)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, _LHS>::type operator+(_LHS, double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, _LHS>::type operator+(_LHS, long double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS, class _RHS> inline
+typename _Arith_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator-(_LHS _L, _RHS _R)
+        {
+        typedef _FmtTraits<_RHS> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+template<class _LHS, class _RHS> inline
+typename _Arith_LHS_is_dfp_and_RHS_is_int_or_dfp<_LHS, _RHS>::type
+operator-(_LHS _L, _RHS _R)
+        {
+        typedef _FmtTraits<typename _PromotionTraits<_LHS, _RHS>::type> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+template <uint32_t _Digits, uint32_t _Scale> inline
+_PackedDecimal<_Digits, _Scale>
+operator-(_PackedDecimal<_Digits, _Scale> _L,
+          _PackedDecimal<_Digits, _Scale> _R)
+        {
+        typedef _FmtTraits<_PackedDecimal<_Digits, _Scale> > _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, _RHS>::type operator-(float, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, _RHS>::type operator-(double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, _RHS>::type operator-(long double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, _LHS>::type operator-(_LHS, float)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, _LHS>::type operator-(_LHS, double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, _LHS>::type operator-(_LHS, long double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS, class _RHS> inline
+typename _Arith_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator*(_LHS _L, _RHS _R)
+        {
+        typedef _FmtTraits<_RHS> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+template<class _LHS, class _RHS> inline
+typename _Arith_LHS_is_dfp_and_RHS_is_int_or_dfp<_LHS, _RHS>::type
+operator*(_LHS _L, _RHS _R)
+        {
+        typedef _FmtTraits<typename _PromotionTraits<_LHS, _RHS>::type> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+template <uint32_t _Digits, uint32_t _Scale> inline
+_PackedDecimal<_Digits, _Scale>
+operator*(_PackedDecimal<_Digits, _Scale> _L,
+          _PackedDecimal<_Digits, _Scale> _R)
+        {
+        typedef _FmtTraits<_PackedDecimal<_Digits, _Scale> > _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, _RHS>::type operator*(float, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, _RHS>::type operator*(double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, _RHS>::type operator*(long double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, _LHS>::type operator*(_LHS, float)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, _LHS>::type operator*(_LHS, double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, _LHS>::type operator*(_LHS, long double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS, class _RHS> inline
+typename _Arith_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator/(_LHS _L, _RHS _R)
+        {
+        typedef _FmtTraits<_RHS> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+template<class _LHS, class _RHS> inline
+typename _Arith_LHS_is_dfp_and_RHS_is_int_or_dfp<_LHS, _RHS>::type
+operator/(_LHS _L, _RHS _R)
+        {
+        typedef _FmtTraits<typename _PromotionTraits<_LHS, _RHS>::type> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+template <uint32_t _Digits, uint32_t _Scale> inline
+_PackedDecimal<_Digits, _Scale>
+operator/(_PackedDecimal<_Digits, _Scale> _L,
+          _PackedDecimal<_Digits, _Scale> _R)
+        {
+        typedef _FmtTraits<_PackedDecimal<_Digits, _Scale> > _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, _RHS>::type operator/(float, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, _RHS>::type operator/(double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, _RHS>::type operator/(long double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, _LHS>::type operator/(_LHS, float)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, _LHS>::type operator/(_LHS, double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, _LHS>::type operator/(_LHS, long double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS, class _RHS> inline
+typename _Compare_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator==(_LHS _L, _RHS _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+template<class _LHS, class _RHS> inline
+typename _Compare_LHS_is_dec_and_RHS_is_int_or_dec<_LHS, _RHS>::type
+operator==(_LHS _L, _RHS _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator==(float, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator==(double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator==(long double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator==(_LHS, float)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator==(_LHS, double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator==(_LHS, long double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS, class _RHS> inline
+typename _Compare_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator!=(_LHS _L, _RHS _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+template<class _LHS, class _RHS> inline
+typename _Compare_LHS_is_dec_and_RHS_is_int_or_dec<_LHS, _RHS>::type
+operator!=(_LHS _L, _RHS _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator!=(float, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator!=(double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator!=(long double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator!=(_LHS, float)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator!=(_LHS, double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator!=(_LHS, long double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS, class _RHS> inline
+typename _Compare_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator>(_LHS _L, _RHS _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+template<class _LHS, class _RHS> inline
+typename _Compare_LHS_is_dec_and_RHS_is_int_or_dec<_LHS, _RHS>::type
+operator>(_LHS _L, _RHS _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator>(float, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator>(double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator>(long double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator>(_LHS, float)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator>(_LHS, double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator>(_LHS, long double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS, class _RHS> inline
+typename _Compare_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator<(_LHS _L, _RHS _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+template<class _LHS, class _RHS> inline
+typename _Compare_LHS_is_dec_and_RHS_is_int_or_dec<_LHS, _RHS>::type
+operator<(_LHS _L, _RHS _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator<(float, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator<(double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator<(long double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator<(_LHS, float)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator<(_LHS, double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator<(_LHS, long double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS, class _RHS> inline
+typename _Compare_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator>=(_LHS _L, _RHS _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+template<class _LHS, class _RHS> inline
+typename _Compare_LHS_is_dec_and_RHS_is_int_or_dec<_LHS, _RHS>::type
+operator>=(_LHS _L, _RHS _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator>=(float, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator>=(double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator>=(long double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator>=(_LHS, float)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator>=(_LHS, double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator>=(_LHS, long double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS, class _RHS> inline
+typename _Compare_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator<=(_LHS _L, _RHS _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+template<class _LHS, class _RHS> inline
+typename _Compare_LHS_is_dec_and_RHS_is_int_or_dec<_LHS, _RHS>::type
+operator<=(_LHS _L, _RHS _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator<=(float, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator<=(double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, bool>::type operator<=(long double, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator<=(_LHS, float)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator<=(_LHS, double)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _LHS> inline
+typename _Constrain_if_dec<_LHS, bool>::type operator<=(_LHS, long double)
+        { _DEC_NO_MIXED_RADIX; }
+
+// compound assignment operators
+
+template<class _LHS, class _RHS> inline
+typename _Assign_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator+=(_LHS & _L, _RHS _R)
+        {
+        typedef _FmtTraits<_RHS> _Tr;
+        typename _Tr::_Fmt _Tmp;
+        _DecNumber::_BinaryOpInPlace<_DecNumber::_Add, _Tr>(_L, _R, &_Tmp);
+        _L = _Tmp;
+        return _L;
+        }
+
+template<class _LHS, class _RHS> inline
+typename _Assign_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator-=(_LHS & _L, _RHS _R)
+        {
+        typedef _FmtTraits<_RHS> _Tr;
+        typename _Tr::_Fmt _Tmp;
+        _DecNumber::_BinaryOpInPlace<_DecNumber::_Sub, _Tr>(_L, _R, &_Tmp);
+        _L = _Tmp;
+        return _L;
+        }
+
+template<class _LHS, class _RHS> inline
+typename _Assign_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator*=(_LHS & _L, _RHS _R)
+        {
+        typedef _FmtTraits<_RHS> _Tr;
+        typename _Tr::_Fmt _Tmp;
+        _DecNumber::_BinaryOpInPlace<_DecNumber::_Mul, _Tr>(_L, _R, &_Tmp);
+        _L = _Tmp;
+        return _L;
+        }
+
+template<class _LHS, class _RHS> inline
+typename _Assign_LHS_is_int_and_RHS_is_dec<_LHS, _RHS>::type
+operator/=(_LHS & _L, _RHS _R)
+        {
+        typedef _FmtTraits<_RHS> _Tr;
+        typename _Tr::_Fmt _Tmp;
+        _DecNumber::_BinaryOpInPlace<_DecNumber::_Div, _Tr>(_L, _R, &_Tmp);
+        _L = _Tmp;
+        return _L;
+        }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, float>::type operator+=(float &, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, double>::type operator+=(double &, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, long double>::type
+operator+=(long double &, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, float>::type operator-=(float &, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, double>::type operator-=(double &, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, long double>::type
+operator-=(long double &, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, float>::type operator*=(float &, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, double>::type operator*=(double &, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, long double>::type
+operator*=(long double &, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, float>::type operator/=(float &, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, double>::type operator/=(double &, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+template<class _RHS> inline
+typename _Constrain_if_dec<_RHS, long double>::type
+operator/=(long double &, _RHS)
+        { _DEC_NO_MIXED_RADIX; }
+
+#else /* defined(_DEC_HAS_SFINAE) */
+
+// addition
+inline
+decimal32 operator+(decimal32 _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(decimal64 _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(decimal128 _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(decimal32 _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(decimal64 _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(decimal32 _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(decimal128 _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(decimal64 _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(decimal128 _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator+(long long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator+(unsigned long long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator+(decimal32 _L, long long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator+(decimal32 _L, unsigned long long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(long long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(unsigned long long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(decimal64 _L, long long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(decimal64 _L, unsigned long long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(long long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(unsigned long long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(decimal128 _L, long long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(decimal128 _L, unsigned long long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator+(long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator+(unsigned long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator+(decimal32 _L, long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator+(decimal32 _L, unsigned long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(unsigned long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(decimal64 _L, long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(decimal64 _L, unsigned long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(unsigned long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(decimal128 _L, long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(decimal128 _L, unsigned long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator+(int _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator+(unsigned int _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator+(decimal32 _L, int _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator+(decimal32 _L, unsigned int _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(int _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(unsigned int _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(decimal64 _L, int _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator+(decimal64 _L, unsigned int _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(int _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(unsigned int _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(decimal128 _L, int _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator+(decimal128 _L, unsigned int _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Add, _Tr>(_L, _R);
+        }
+
+// illegal operations: these are intentionally not defined.
+void operator+(float, decimal32);
+void operator+(float, decimal64);
+void operator+(float, decimal128);
+void operator+(double, decimal32);
+void operator+(double, decimal64);
+void operator+(double, decimal128);
+void operator+(long double, decimal32);
+void operator+(long double, decimal64);
+void operator+(long double, decimal128);
+void operator+(decimal32, float);
+void operator+(decimal64, float);
+void operator+(decimal128, float);
+void operator+(decimal32, double);
+void operator+(decimal64, double);
+void operator+(decimal128, double);
+void operator+(decimal32, long double);
+void operator+(decimal64, long double);
+void operator+(decimal128, long double);
+
+// subtraction
+inline
+decimal32 operator-(decimal32 _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(decimal64 _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(decimal128 _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(decimal32 _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(decimal64 _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(decimal32 _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(decimal128 _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(decimal64 _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(decimal128 _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator-(long long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator-(unsigned long long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator-(decimal32 _L, long long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator-(decimal32 _L, unsigned long long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(long long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(unsigned long long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(decimal64 _L, long long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(decimal64 _L, unsigned long long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(long long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(unsigned long long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(decimal128 _L, long long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(decimal128 _L, unsigned long long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator-(long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator-(unsigned long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator-(decimal32 _L, long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator-(decimal32 _L, unsigned long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(unsigned long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(decimal64 _L, long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(decimal64 _L, unsigned long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(unsigned long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(decimal128 _L, long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(decimal128 _L, unsigned long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator-(int _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator-(unsigned int _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator-(decimal32 _L, int _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator-(decimal32 _L, unsigned int _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(int _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(unsigned int _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(decimal64 _L, int _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator-(decimal64 _L, unsigned int _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(int _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(unsigned int _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(decimal128 _L, int _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator-(decimal128 _L, unsigned int _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Sub, _Tr>(_L, _R);
+        }
+
+// illegal operations: these are intentionally not defined.
+void operator-(float, decimal32);
+void operator-(float, decimal64);
+void operator-(float, decimal128);
+void operator-(double, decimal32);
+void operator-(double, decimal64);
+void operator-(double, decimal128);
+void operator-(long double, decimal32);
+void operator-(long double, decimal64);
+void operator-(long double, decimal128);
+void operator-(decimal32, float);
+void operator-(decimal64, float);
+void operator-(decimal128, float);
+void operator-(decimal32, double);
+void operator-(decimal64, double);
+void operator-(decimal128, double);
+void operator-(decimal32, long double);
+void operator-(decimal64, long double);
+void operator-(decimal128, long double);
+
+// multiplication
+inline
+decimal32 operator*(decimal32 _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(decimal64 _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(decimal128 _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(decimal32 _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(decimal64 _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(decimal32 _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(decimal128 _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(decimal64 _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(decimal128 _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator*(long long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator*(unsigned long long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator*(decimal32 _L, long long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator*(decimal32 _L, unsigned long long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(long long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(unsigned long long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(decimal64 _L, long long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(decimal64 _L, unsigned long long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(long long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(unsigned long long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(decimal128 _L, long long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(decimal128 _L, unsigned long long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator*(long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator*(unsigned long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator*(decimal32 _L, long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator*(decimal32 _L, unsigned long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(unsigned long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(decimal64 _L, long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(decimal64 _L, unsigned long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(unsigned long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(decimal128 _L, long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(decimal128 _L, unsigned long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator*(int _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator*(unsigned int _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator*(decimal32 _L, int _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator*(decimal32 _L, unsigned int _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(int _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(unsigned int _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(decimal64 _L, int _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator*(decimal64 _L, unsigned int _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(int _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(unsigned int _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(decimal128 _L, int _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator*(decimal128 _L, unsigned int _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Mul, _Tr>(_L, _R);
+        }
+
+// illegal operations: these are intentionally not defined.
+void operator*(float, decimal32);
+void operator*(float, decimal64);
+void operator*(float, decimal128);
+void operator*(double, decimal32);
+void operator*(double, decimal64);
+void operator*(double, decimal128);
+void operator*(long double, decimal32);
+void operator*(long double, decimal64);
+void operator*(long double, decimal128);
+void operator*(decimal32, float);
+void operator*(decimal64, float);
+void operator*(decimal128, float);
+void operator*(decimal32, double);
+void operator*(decimal64, double);
+void operator*(decimal128, double);
+void operator*(decimal32, long double);
+void operator*(decimal64, long double);
+void operator*(decimal128, long double);
+
+// division
+inline
+decimal32 operator/(decimal32 _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(decimal64 _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(decimal128 _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(decimal32 _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(decimal64 _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(decimal32 _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(decimal128 _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(decimal64 _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(decimal128 _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator/(long long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator/(unsigned long long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator/(decimal32 _L, long long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator/(decimal32 _L, unsigned long long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(long long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(unsigned long long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(decimal64 _L, long long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(decimal64 _L, unsigned long long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(long long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(unsigned long long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(decimal128 _L, long long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(decimal128 _L, unsigned long long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator/(long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator/(unsigned long _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator/(decimal32 _L, long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator/(decimal32 _L, unsigned long _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(unsigned long _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(decimal64 _L, long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(decimal64 _L, unsigned long _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(unsigned long _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(decimal128 _L, long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(decimal128 _L, unsigned long _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator/(int _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator/(unsigned int _L, decimal32 _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator/(decimal32 _L, int _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal32 operator/(decimal32 _L, unsigned int _R)
+        {
+        typedef _FmtTraits<decimal32> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(int _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(unsigned int _L, decimal64 _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(decimal64 _L, int _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal64 operator/(decimal64 _L, unsigned int _R)
+        {
+        typedef _FmtTraits<decimal64> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(int _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(unsigned int _L, decimal128 _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(decimal128 _L, int _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+inline
+decimal128 operator/(decimal128 _L, unsigned int _R)
+        {
+        typedef _FmtTraits<decimal128> _Tr;
+        return _DecNumber::_BinaryOp<_DecNumber::_Div, _Tr>(_L, _R);
+        }
+
+// illegal operations: these are intentionally not defined.
+void operator/(float, decimal32);
+void operator/(float, decimal64);
+void operator/(float, decimal128);
+void operator/(double, decimal32);
+void operator/(double, decimal64);
+void operator/(double, decimal128);
+void operator/(long double, decimal32);
+void operator/(long double, decimal64);
+void operator/(long double, decimal128);
+void operator/(decimal32, float);
+void operator/(decimal64, float);
+void operator/(decimal128, float);
+void operator/(decimal32, double);
+void operator/(decimal64, double);
+void operator/(decimal128, double);
+void operator/(decimal32, long double);
+void operator/(decimal64, long double);
+void operator/(decimal128, long double);
+
+// equality
+inline
+bool operator==(decimal32 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal64 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal128 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal32 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal64 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal32 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal128 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal64 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal128 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(long long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(unsigned long long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal32 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal32 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(long long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(unsigned long long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal64 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal64 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(long long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(unsigned long long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal128 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal128 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(unsigned long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal32 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal32 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(unsigned long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal64 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal64 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(unsigned long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal128 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal128 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(int _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(unsigned int _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal32 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal32 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(int _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(unsigned int _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal64 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal64 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(int _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(unsigned int _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal128 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+inline
+bool operator==(decimal128 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Eq>(_L, _R); }
+
+// illegal operations: these are intentionally not defined.
+bool operator==(float, decimal32);
+bool operator==(float, decimal64);
+bool operator==(float, decimal128);
+bool operator==(double, decimal32);
+bool operator==(double, decimal64);
+bool operator==(double, decimal128);
+bool operator==(long double, decimal32);
+bool operator==(long double, decimal64);
+bool operator==(long double, decimal128);
+bool operator==(decimal32, float);
+bool operator==(decimal64, float);
+bool operator==(decimal128, float);
+bool operator==(decimal32, double);
+bool operator==(decimal64, double);
+bool operator==(decimal128, double);
+bool operator==(decimal32, long double);
+bool operator==(decimal64, long double);
+bool operator==(decimal64, long double);
+bool operator==(decimal128, long double);
+
+// not equal
+inline
+bool operator!=(decimal32 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal64 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal128 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal32 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal64 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal32 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal128 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal64 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal128 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(long long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(unsigned long long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal32 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal32 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(long long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(unsigned long long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal64 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal64 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(long long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(unsigned long long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal128 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal128 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(unsigned long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal32 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal32 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(unsigned long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal64 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal64 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(unsigned long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal128 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal128 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(int _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(unsigned int _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal32 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal32 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(int _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(unsigned int _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal64 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal64 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(int _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(unsigned int _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal128 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+inline
+bool operator!=(decimal128 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ne>(_L, _R); }
+
+
+// illegal operations: these are intentionally not defined.
+bool operator!=(float, decimal32);
+bool operator!=(float, decimal64);
+bool operator!=(float, decimal128);
+bool operator!=(double, decimal32);
+bool operator!=(double, decimal64);
+bool operator!=(double, decimal128);
+bool operator!=(long double, decimal32);
+bool operator!=(long double, decimal64);
+bool operator!=(long double, decimal128);
+bool operator!=(decimal32, float);
+bool operator!=(decimal64, float);
+bool operator!=(decimal128, float);
+bool operator!=(decimal32, double);
+bool operator!=(decimal64, double);
+bool operator!=(decimal128, double);
+bool operator!=(decimal32, long double);
+bool operator!=(decimal64, long double);
+bool operator!=(decimal128, long double);
+
+// less than
+inline
+bool operator<(decimal32 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal64 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal128 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal32 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal64 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal32 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal128 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal64 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal128 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(long long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(unsigned long long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal32 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal32 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(long long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(unsigned long long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal64 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal64 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(long long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(unsigned long long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal128 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal128 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(unsigned long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal32 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal32 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(unsigned long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal64 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal64 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(unsigned long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal128 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal128 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(int _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(unsigned int _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal32 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal32 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(int _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(unsigned int _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal64 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal64 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(int _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(unsigned int _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal128 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+inline
+bool operator<(decimal128 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Lt>(_L, _R); }
+
+// illegal operations: these are intentionally not defined.
+bool operator<(float, decimal32);
+bool operator<(float, decimal64);
+bool operator<(float, decimal128);
+bool operator<(double, decimal32);
+bool operator<(double, decimal64);
+bool operator<(double, decimal128);
+bool operator<(long double, decimal32);
+bool operator<(long double, decimal64);
+bool operator<(long double, decimal128);
+bool operator<(decimal32, float);
+bool operator<(decimal64, float);
+bool operator<(decimal128, float);
+bool operator<(decimal32, double);
+bool operator<(decimal64, double);
+bool operator<(decimal128, double);
+bool operator<(decimal32, long double);
+bool operator<(decimal64, long double);
+bool operator<(decimal128, long double);
+
+// less than or equal to
+inline
+bool operator<=(decimal32 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal64 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal128 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal32 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal64 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal32 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal128 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal64 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal128 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(long long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(unsigned long long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal32 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal32 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(long long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(unsigned long long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal64 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal64 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(long long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(unsigned long long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal128 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal128 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(unsigned long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal32 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal32 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(unsigned long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal64 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal64 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(unsigned long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal128 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal128 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(int _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(unsigned int _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal32 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal32 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(int _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(unsigned int _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal64 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal64 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(int _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(unsigned int _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal128 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+inline
+bool operator<=(decimal128 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Le>(_L, _R); }
+
+// illegal operations: these are intentionally not defined.
+bool operator<=(float, decimal32);
+bool operator<=(float, decimal64);
+bool operator<=(float, decimal128);
+bool operator<=(double, decimal32);
+bool operator<=(double, decimal64);
+bool operator<=(double, decimal128);
+bool operator<=(long double, decimal32);
+bool operator<=(long double, decimal64);
+bool operator<=(long double, decimal128);
+bool operator<=(decimal32, float);
+bool operator<=(decimal64, float);
+bool operator<=(decimal128, float);
+bool operator<=(decimal32, double);
+bool operator<=(decimal64, double);
+bool operator<=(decimal128, double);
+bool operator<=(decimal32, long double);
+bool operator<=(decimal64, long double);
+bool operator<=(decimal128, long double);
+
+// greater than
+inline
+bool operator>(decimal32 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal64 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal128 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal32 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal64 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal32 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal128 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal64 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal128 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(long long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(unsigned long long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal32 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal32 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(long long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(unsigned long long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal64 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal64 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(long long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(unsigned long long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal128 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal128 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(unsigned long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal32 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal32 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(unsigned long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal64 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal64 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(unsigned long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal128 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal128 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(int _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(unsigned int _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal32 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal32 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(int _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(unsigned int _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal64 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal64 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(int _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(unsigned int _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal128 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+inline
+bool operator>(decimal128 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Gt>(_L, _R); }
+
+// illegal operations: these are intentionally not defined.
+bool operator>(float, decimal32);
+bool operator>(float, decimal64);
+bool operator>(float, decimal128);
+bool operator>(double, decimal32);
+bool operator>(double, decimal64);
+bool operator>(double, decimal128);
+bool operator>(long double, decimal32);
+bool operator>(long double, decimal64);
+bool operator>(long double, decimal128);
+bool operator>(decimal32, float);
+bool operator>(decimal64, float);
+bool operator>(decimal128, float);
+bool operator>(decimal32, double);
+bool operator>(decimal64, double);
+bool operator>(decimal128, double);
+bool operator>(decimal32, long double);
+bool operator>(decimal64, long double);
+bool operator>(decimal128, long double);
+
+// greater than or equal to
+inline
+bool operator>=(decimal32 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal64 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal128 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal32 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal64 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal32 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal128 _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal64 _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal128 _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(long long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(unsigned long long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal32 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal32 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(long long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(unsigned long long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal64 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal64 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(long long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(unsigned long long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal128 _L, long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal128 _L, unsigned long long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(unsigned long _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal32 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal32 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(unsigned long _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal64 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal64 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(unsigned long _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal128 _L, long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal128 _L, unsigned long _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(int _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(unsigned int _L, decimal32 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal32 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal32 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(int _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(unsigned int _L, decimal64 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal64 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal64 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(int _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(unsigned int _L, decimal128 _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal128 _L, int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+inline
+bool operator>=(decimal128 _L, unsigned int _R)
+        { return _DecNumber::_Compare<_DecNumber::_Ge>(_L, _R); }
+
+// illegal operations: these are intentionally not defined.
+bool operator>=(float, decimal32);
+bool operator>=(float, decimal64);
+bool operator>=(float, decimal128);
+bool operator>=(double, decimal32);
+bool operator>=(double, decimal64);
+bool operator>=(double, decimal128);
+bool operator>=(long double, decimal32);
+bool operator>=(long double, decimal64);
+bool operator>=(long double, decimal128);
+bool operator>=(decimal32, float);
+bool operator>=(decimal64, float);
+bool operator>=(decimal128, float);
+bool operator>=(decimal32, double);
+bool operator>=(decimal64, double);
+bool operator>=(decimal128, double);
+bool operator>=(decimal32, long double);
+bool operator>=(decimal64, long double);
+bool operator>=(decimal128, long double);
+
+#endif /* defined(_DEC_HAS_SFINAE) */
+
+} // namespace decimal
+} // namespace std
+
+#if !defined(_DEC_NO_IO)
+#include "decIO.h"
+#endif /* !defined(_DEC_NO_IO) */
+
+#endif /* ndef _DECIMAL */

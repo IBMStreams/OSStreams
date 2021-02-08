@@ -1,0 +1,96 @@
+/*
+ * Copyright 2021 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+<%
+
+    use TCPSourceCommon;
+    TCPSourceCommon::verify($model);
+    my $role = $model->getParameterByName("role");
+    my $encoding = $model->getParameterByName("encoding");
+    $role = $role->getValueAt(0)->getSPLExpression() if defined $role;
+    my $reconnectionBound = $model->getParameterByName("reconnectionBound");
+    my $TCPconnector;
+    if ($role eq "client") {
+        $TCPconnector = "TCPClient";
+    } else {
+        $TCPconnector = "TCPServer";
+    }
+    $reconnectionBound = $reconnectionBound->getValueAt(0)->getCppExpression()
+        if defined $reconnectionBound;
+    my $defaultTuple = $model->getParameterByName("defaultTuple");
+    my $defaultTupleType = ($defaultTuple) ? $defaultTuple->getValueAt(0)->getCppType() : "";
+    my $readPunctuations = $model->getParameterByName("readPunctuations");
+    $readPunctuations = $readPunctuations ? $readPunctuations->getValueAt(0)->getSPLExpression() eq "true" : 0;
+    my $ckptKind = $model->getContext()->getCheckpointingKind();
+
+    my $sslConfigName = $model->getParameterByName("sslConfigName");
+    my $sslProtocol = $model->getParameterByName("sslProtocol");
+
+    my @includes;
+    push @includes, "#include <SPL/Toolkit/$TCPconnector.h>";
+    push @includes, "#include <SPL/Runtime/Common/Metric.h>";
+%>
+<%SPL::CodeGen::headerPrologue($model, \@includes);%>
+
+class MY_OPERATOR : public MY_BASE_OPERATOR<%if ($ckptKind ne "none") {%>, public StateHandler<%}%>
+{
+public:
+    MY_OPERATOR();
+
+    virtual void process(uint32_t index);
+
+    virtual void allPortsReady();
+
+    virtual void prepareToShutdown();
+
+private:
+   int _fd;
+   uint64_t _tupleNumber;
+   <%if (defined $reconnectionBound) {%>
+       uint32_t _reconnectsLeft;
+   <%}
+   if($defaultTuple) {%>
+       <%=$defaultTupleType%> _defaultTuple;
+   <%}
+   if ($encoding) {%>
+       std::string _encoding;
+   <%}%>
+   <%if ($readPunctuations) {%>
+       bool _sawFinal;
+   <%}%>
+   Metric& _numInvalidTuples;
+   Metric& _numReconnects;
+   Metric& _numConnections;
+   Metric& _numWireFormatHandshakesFailed;
+
+   <%if (defined $sslConfigName || defined $sslProtocol) {%>
+       class SecureSource;
+       class SecureSink;
+       class Security;
+
+       <%if ($role eq "client") {%>
+           class SecureTCPClient;
+           class SSLClient;
+           class UnencryptedTCPClient;
+       <%} else {%>
+           class SecureTCPServer;
+           class SSLServer;
+           class UnencryptedTCPServer;
+       <%}%>
+   <%}%>
+};
+
+<%SPL::CodeGen::headerEpilogue($model);%>

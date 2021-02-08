@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<sourceModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/sourceCode"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/sourceCode sourceCodeModel.xsd">
+  <sourceFile uri="sample/a.spl">
+    <compilationUnit>
+      <splNamespace column="11" line="2" name="sample"/>
+      <definitions/>
+    </compilationUnit>
+  </sourceFile>
+</sourceModel>

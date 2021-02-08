@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/runtime/utils"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/runtime/utils"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+<xs:element name="exception" type="exceptionType"/>
+<xs:element name="MessageElement" type="MessageElementType"/>
+<xs:element name="additionalExceptionData" type="additionalExceptionDataType"/>
+
+<!-- exceptionType -->
+  <xs:complexType name="exceptionType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure encodes information on an exception that was thrown by a server and is being relayed to a client.
+        It includes the type, location, msg, backtrace, exception code, and substitution code associated with the exception.
+        Note that the exceptionAdditionalData is defined here as a string rather than a additionalExceptionDataType
+        because the XSD header files are not shipped with the product and we cannot include the Exception.h generated header file
+        in DistilleryException.h (which is used by SPL generated code).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="type" type="xs:string"/>
+      <xs:element name="location" type="xs:string"/>
+      <xs:element name="msg" type="xs:string"/>
+      <xs:element name="backtrace" type="xs:string"/>
+      <xs:element name="exceptionCode" type="xs:string"/>
+      <xs:element name="substitutionText" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="exceptionAdditionalData" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- MessageElementType -->
+  <xs:complexType name="MessageElementType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure contains information pertaining to a translatable message.
+        The MessageCode is used to reference a message in the message bundle, and the substition text(s)
+        will be embedded in the displayed message by the message processing code.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="messageCode" type="xs:string"/>
+      <xs:element name="substitutionText" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- additionalExceptionDataType -->
+  <xs:complexType name="additionalExceptionDataType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure encodes information that provides additional explanation for the cause of an exception.
+        It consists of --
+          primaryInformation: This is an MessageElementType that is typically used to describe
+           additional exception data.
+          secondaryInforation: This is a sequence of 0..n MessageElementTypes that are used to
+           provide more detail related to the additional data.
+          nestedAdditionalExceptionData: This is a sequence of 0..n additionalExceptionDataTypes that can be used
+           to provide verbose detail related to the exception.  Note that it is not meant to be an additional
+           exception (with all of the associated data -- location, backtrace, etc).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="primaryInformation" type="MessageElementType"/>
+      <xs:element name="secondaryInformation" type="MessageElementType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="nestedAdditionalExceptionData" type="additionalExceptionDataType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

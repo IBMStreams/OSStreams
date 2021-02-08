@@ -1,0 +1,222 @@
+<?xml version="1.0" ?>
+<operatorModel
+  xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+  xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <cppOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$spl/op$spl.utility$Split.html">
+The `Split` operator is used to split a stream into one or more output streams,
+which are based on a user-specified split condition.
+
+# Checkpointed data
+
+When the `Split` operator is checkpointed, logic state variables (if present) are saved in checkpoint.
+
+# Behavior in a consistent region
+
+The `Split` operator can be an operator within the reachability graph of a consistent region.
+It cannot be the start of a consistent region.
+In a consistent region, a `Split` operator stores its state when a checkpoint is taken.
+When the region is reset, the operator restores the state from the checkpoint.
+
+# Checkpointing behavior in an autonomous region
+
+When the `Split` operator is in an autonomous region and configured with `config checkpoint : periodic(T)` clause, a background thread in SPL Runtime checkpoints the operator every T seconds, and such periodic checkpointing activity is asynchronous to tuple processing.
+Upon restart, the operator restores its state from the last checkpoint.
+
+When the `Split` operator is in an autonomous region and configured with `config checkpoint : operatorDriven` clause, no checkpoint is taken at runtime.
+Upon restart, the operator restores to its initial state.
+
+Such checkpointing behavior is subject to change in the future.
+
+# Exceptions
+
+The `Split` operator throws an exception in the following cases:
+*  The **file** mapping input file cannot be opened for reading.
+*  A line in the **file** map input file cannot be parsed.
+*  A key in the **file** map input file occurs more than once.
+*  The **key** cannot be matched, and there is no default mapping.
+
+# Examples
+
+This example uses the `Split` operator.
+
+    composite Main {
+      graph
+        stream&lt;rstring name, uint32 age&gt; Beat = Beacon() {}
+        // single index
+         (stream&lt;rstring name, uint32 age&gt; LeftBeat1;
+          stream&lt;rstring name, uint32 age&gt; RightBeat1)
+            = Split(Beat)
+        {
+          param index : hashCode(name);
+        }
+        // list of indices
+        (stream&lt;rstring name, uint32 age&gt; AllBeat2;
+         stream&lt;rstring name, uint32 age&gt; LeftBeat2;
+         stream&lt;rstring name, uint32 age&gt; RightBeat2)
+            = Split(Beat)
+        {
+          param index : [0, (age&lt;=30u)?1:2];
+        }
+        // from a file
+        (stream&lt;rstring name, uint32 age&gt; LeftBeat3;
+         stream&lt;rstring name, uint32 age&gt; RightBeat3)
+            = Split(Beat)
+         {
+          param file : "mapping.txt";
+                key  : name;
+        }
+    }
+      </description>
+      <iconUri size="16">split_16.gif</iconUri>
+      <iconUri size="32">split_32.gif</iconUri>
+      <libraryDependencies>
+        <library>
+          <cmn:description>spl-std-tk-lib</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:lib>streams-stdtk-runtime</cmn:lib>
+            <cmn:includePath>../../../impl/include</cmn:includePath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <providesSingleThreadedContext>Always</providesSingleThreadedContext>
+      <codeTemplates>
+        <codeTemplate name="Split with index">
+          <description>Split with index</description>
+          <template>(stream&lt;${inputStream}&gt; ${outputStream1};stream&lt;${inputStream}&gt; ${outputStream2}) = Split(${inputStream}) {
+            param
+              index : ${indexExpression}; ${cursor}
+        }</template>
+        </codeTemplate>
+        <codeTemplate name="Split with file/key">
+          <description>Split with file/key</description>
+          <template>(stream&lt;${inputStream}&gt; ${outputStream1};stream&lt;${inputStream}&gt; ${outputStream2}) = Split(${inputStream}) {
+            param
+              file : ${fileName}; ${cursor}
+              key  : ${keyExpression};
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+      <splExpressionTree param="true" cppCode="true"/>
+    </context>
+    <parameters>
+      <allowAny>false</allowAny>
+      <parameter>
+        <name>index</name>
+        <description>
+Specifies an expression of type int64 or uint64 or a list type of these (list&lt;int64&gt; or list&lt;uint64&gt;)
+to be used for forwarding input tuples to selected output ports.
+These parameter values are indices that determine the output ports to be used for forwarding.
+Indexing is 0 based. A negative index results in not forwarding the tuple.
+A modulo operation is performed on an index that is greater than the highest output port index and the number of output ports.
+A common use case is to evenly distribute the tuples across the output ports using the `&lt;any T&gt; uint64 hashCode(T k)` function
+and relying on the automatic modulo operation performed on the number of ports.
+A repeated index within a list of indices results in forwarding the tuple to the corresponding output port as many times as the index is repeated.
+
+If you do not specify this parameter, you must specify the **file** and **key** parameters.
+        </description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>file</name>
+        <description>
+Specifies a file name relative to the data directory to be used for looking up the mapping that determines
+how input tuples are forwarded to the output ports.
+The file is organized as a list of mappings, where each mapping is a line of text that
+contains a key (see the **key** parameter) and a list of indices.
+The indices determine the list of output ports to be used for forwarding a tuple that matches the associated key.
+The mapping from the input tuple to the key is specified by the **key** parameter.
+
+If you specify this parameter, you must also specify the **key** parameter.
+
+Each mapping line is formatted similar to a line in a csv file,
+yet different mappings can have a different number of comma-separated values (different number of indices).
+For more information about the rules that govern csv files, see the [spl.adapter::FileSource] operator.
+
+There is a special key value that is called `default`, which specifies the forwarding indices for tuples
+that do not map to a key in the file.
+By default, missing keys result in a run time exception.
+Repeated keys in the mapping file also result in a run time exception.
+The latter exception is thrown at mapping file load time, rather than look up time.
+
+The \# character can be used for commenting in the mapping file.
+Here is an example mapping file:
+
+    # mapping.txt
+    default, -1 # drop non-matching items
+    # when the default index line is absent,
+    # non-matching items will result in runtime error
+    # format: column 1 is the split key. The remaining columns
+    # represent the output port indices to be used for forwarding
+    "Harvey Smith", 0
+    "John Paul Jones", 0
+    "Ringo Starr", 0, 1   # send to multiple output ports
+    "Bugra Gedik", 1
+</description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>AttributeFree</expressionMode>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>key</name>
+        <description>
+Specifies a key value to be used for looking up a mapping from the mapping file
+that is specified by the **file** parameter.
+It is a single expression of any type.
+
+When you specify this parameter, you must also specify the **file** parameter.
+        </description>
+        <optional>true</optional>
+        <rewriteAllowed>true</rewriteAllowed>
+        <expressionMode>Expression</expressionMode>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `Split` operator is configurable with a single input port, which ingests tuples to be split.</description>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `Split` operator is configurable with one or more output ports.
+The first output port produces the split tuples.
+The `Split` operator requires that the stream type of the input port matches the stream types of the output ports.
+</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+      <outputPortOpenSet>
+        <description>Additional ports that produce the split tuples.
+The `Split` operator requires that the stream type of the input port matches the stream types of the output ports.</description>
+        <expressionMode>Nonexistent</expressionMode>
+        <autoAssignment>true</autoAssignment>
+        <completeAssignment>true</completeAssignment>
+        <rewriteAllowed>true</rewriteAllowed>
+        <windowPunctuationOutputMode>Preserving</windowPunctuationOutputMode>
+        <tupleMutationAllowed>false</tupleMutationAllowed>
+      </outputPortOpenSet>
+    </outputPorts>
+  </cppOperatorModel>
+</operatorModel>

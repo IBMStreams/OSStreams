@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <name>Streams Java Base Platform</name>
+
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <organization>
+    <name>IBM Corporation</name>
+    <url>http://www.ibm.com</url>
+  </organization>
+
+  <parent>
+    <groupId>com.ibm.streams</groupId>
+    <artifactId>streams</artifactId>
+    <version>${revision}</version>
+    <relativePath>../../../..</relativePath>
+  </parent>
+  <artifactId>streams.base</artifactId>
+  <version>${revision}</version>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.ibm.icu</groupId>
+      <artifactId>icu4j</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <directory>${target.directory}</directory>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>1.8</version>
+        <executions>
+          <execution>
+            <id>generate-exceptions</id>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <phase>generate-sources</phase>
+            <configuration>
+              <target>
+                <taskdef name="javaegen"
+                  classname="com.ibm.streams.build.exceptiongenerator.JavaEGen"/>
+                <javaegen genPath="${project.build.directory}/generated-sources/javaegen">
+                  <fileset dir="${basedir}/../../../cpp/NAM"/>
+                  <fileset dir="${basedir}/../../../cpp/SAM"/>
+                  <fileset dir="${basedir}/../../../cpp/SPL"/>
+                  <fileset dir="${basedir}/../../../cpp/TRC"/>
+                  <fileset dir="${basedir}/../../../cpp/UTILS"/>
+                </javaegen>
+              </target>
+            </configuration>
+          </execution>
+        </executions>
+        <dependencies>
+          <dependency>
+            <groupId>com.ibm.streams</groupId>
+            <artifactId>streams.build.exceptiongenerator</artifactId>
+            <version>${project.version}</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+      <!-- Mark the generated exception directory as a source directory -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>1.7</version>
+        <executions>
+          <execution>
+            <id>add-source</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${project.build.directory}/generated-sources/javaegen</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Generate the Java classes using XSD models -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>jaxb2-maven-plugin</artifactId>
+        <version>2.4</version>
+        <executions>
+          <execution>
+            <id>generate-platform-services</id>
+            <goals>
+              <goal>xjc</goal>
+            </goals>
+            <configuration>
+              <packageName>com.ibm.streams.platform.services</packageName>
+              <outputDirectory>
+                ${project.build.directory}/generated-sources/jaxb/platform.services
+              </outputDirectory>
+              <sources>
+                <source>${basedir}/../../../schema/SAM/SAMInterfaceTypes.xsd</source>
+                <source>${basedir}/../../../schema/SAM/augmentedApplicationModel.xsd</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>generate-platform-services-v4000</id>
+            <goals>
+              <goal>xjc</goal>
+            </goals>
+            <configuration>
+              <packageName>com.ibm.streams.platform.services.v4000</packageName>
+              <outputDirectory>
+                ${project.build.directory}/generated-sources/jaxb/platform.services.v4000
+              </outputDirectory>
+              <sources>
+                <source>${basedir}/../../../schema/SAM/v4000/adlModel.xsd</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>generate-platform-services-v4200</id>
+            <goals>
+              <goal>xjc</goal>
+            </goals>
+            <configuration>
+              <packageName>com.ibm.streams.platform.services.v4200</packageName>
+              <outputDirectory>
+                ${project.build.directory}/generated-sources/jaxb/platform.services.v4200
+              </outputDirectory>
+              <sources>
+                <source>${basedir}/../../../schema/SAM/v4200/adlModel.xsd</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Update the JAR manifest -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.1.0</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <addClasspath>true</addClasspath>
+              <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

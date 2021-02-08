@@ -1,0 +1,717 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+  xmlns="http://www.ibm.com/xmlns/prod/streams/application/augmented"
+  xmlns:mr="http://www.ibm.com/xmlns/prod/streams/runtime/utils/mr"
+  xmlns:base="http://www.ibm.com/xmlns/prod/streams/application"
+  xmlns:phys="http://www.ibm.com/xmlns/prod/streams/application/physical"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://www.ibm.com/xmlns/prod/streams/application/augmented"
+  elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/application"
+           schemaLocation="applicationModel.xsd"/>
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/application/physical"
+           schemaLocation="physicalApplicationModel.xsd"/>
+
+<xs:import namespace="http://www.ibm.com/xmlns/prod/streams/runtime/utils/mr"
+           schemaLocation="../UTILS/MessageRecordingTypes.xsd"/>
+
+<!-- top-level elements: for these elements we need the XSD compiler to create
+     XML serialization and de-serialization functions
+-->
+
+<xs:element name="augmentedApplicationSet" type="augmentedApplicationSetType"/>
+<xs:element name="augmentedPE" type="augmentedPEType"/>
+<xs:element name="augmentedPEInputPort" type="augmentedPEInputPortType"/>
+<xs:element name="augmentedPEOutputPort" type="augmentedPEOutputPortType"/>
+<xs:element name="managedPE" type="managedPEType"/>
+<xs:element name="job" type="jobType"/>
+<xs:element name="peIds" type="peIdsType"/>
+<xs:element name="peState" type="peStateType"/>
+<xs:element name="peStateReason" type="peStateReasonType"/>
+<xs:element name="jobHealth" type="jobHealthType"/>
+<xs:element name="peHealth" type="peHealthType"/>
+<xs:element name="streams" type="streamsType"/>
+<xs:element name="stream" type="streamType"/>
+<xs:element name="streamId" type="streamIdType"/>
+<xs:element name="nameValuePairs" type="nameValuePairsType"/>
+<xs:element name="streamView" type="streamViewType"/>
+<xs:element name="streamViews" type="streamViewsType"/>
+<xs:element name="importIndexes" type="importIndexesType"/>
+<xs:element name="connectionId" type="connectionIdType"/>
+
+<!-- augmentedApplicationSetType -->
+  <xs:complexType name="augmentedApplicationSetType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents the runtime management information about an application set, which is identified by an 'id', and associated with one or more job - the job collection is stored in the 'jobs' element. Each SPL application in an application set corresponds to a runtime job.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="phys:physApplicationSetType">
+        <xs:sequence>
+          <xs:element name="jobs" type="jobIdsType"/>
+        </xs:sequence>
+        <xs:attribute name="id" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="state" use="required" type="appSetStateType"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- jobIdsType -->
+  <xs:complexType name="jobIdsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of job identifiers.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="job" type="jobIdType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- jobIdType -->
+  <xs:complexType name="jobIdType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a job identifier.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="id" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- jobType -->
+  <xs:complexType name="jobType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information about a job, including the set of PEs associated with this job, its identifier, the application set it belongs to, its name, version, state, output, data and application directories, trace level, an owner user as well as submission time.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="base:contextType">
+        <xs:sequence>
+          <xs:element name="pes" type="peIdsType"/>
+          <xs:element name="health" type="jobHealthType" minOccurs="1" maxOccurs="1"/>
+          <xs:element name="hostpoolAllocations" type="hostpoolAllocationsType"/>
+        </xs:sequence>
+        <xs:attribute name="id" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="appsetId" use="required" type="xs:unsignedLong" />
+        <xs:attribute name="name" use="required" type="xs:token"/>
+        <xs:attribute name="applicationScope" use="required" type="xs:string"/>
+        <xs:attribute name="version" use="optional" type="xs:token"/>
+        <xs:attribute name="state" use="required" type="jobStateType"/>
+        <xs:attribute name="dataDirectory" use="optional" type="xs:string"/>
+        <xs:attribute name="applicationDirectory" use="required" type="xs:string"/>
+        <xs:attribute name="outputDirectory" use="required" type="xs:string"/>
+        <!-- logLevel has been deprecated. It controls trace level for old applications. -->
+        <xs:attribute name="logLevel" use="optional" type="base:logLevelType"/>
+        <xs:attribute name="user" use="required" type="xs:token"/>
+        <xs:attribute name="submitTime" use="required" type="xs:unsignedLong"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- hostpoolAllocationsType -->
+  <xs:complexType name="hostpoolAllocationsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of host pool allocations.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="hostpoolAllocation" type="hostpoolAllocationType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- hostpoolAllocationType -->
+  <xs:complexType name="hostpoolAllocationType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a host pool allocation. It includes the index of the host pool and a collection of host allocations.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="hostAllocation" type="hostAllocationType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- hostAllocationType -->
+  <xs:complexType name="hostAllocationType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a host allocation. It includes the name of the host and the index of the host within the pool.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="hostName" use="required" type="xs:string"/>
+    <xs:attribute name="hostIndexInPool" use="optional" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- augmentedPEsType  -->
+  <xs:complexType name="augmentedPEsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of PEs (with HC/SAM/SPL runtime information).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="pe" type="augmentedPEType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- augmentedPEType -->
+  <xs:complexType name="augmentedPEType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information about a PE. This includes all information the HC, PEC, and the SPL runtime must know about the PE. It includes the set of environment variables that should be set, the PE's executable program, the set of resources it requires, the operator instances the PE hosts, the PE's intput and output ports, operator definitions and custom metrics info(if any), its runtime id, the identifier of the job that own this PE, name of the job, id of user who submitted the job, the application scope the PE belongs to (the application scope is used both for scoping dynamic stream connections as well as for scoping source edge adapters), its tracing level, the programming language in which this PE code was generated, whether the PE is re-startable and relocatable, how many times it has been re-started, the PE data directory, the PE output directory, and an optional checkpoint directory (where the checkpointed state will be periodically deposited).
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="base:contextType">
+        <xs:sequence>
+          <xs:element name="envVars" type="base:envVarsType"/>
+          <xs:element name="executable" type="base:executableType"/>
+          <xs:element name="operInstances" type="base:operInstancesType"/>
+          <xs:element name="inputPorts" type="augmentedPEInputPortsType"/>
+          <xs:element name="outputPorts" type="augmentedPEOutputPortsType"/>
+          <xs:element name="operDefinitions" type="base:operDefinitionsType"/>
+          <xs:element name="customMetrics" type="base:customMetricsType" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="currentTracing" type="tracingEmploymentType" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="pendingTracing" type="tracingEmploymentType" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="nextTrcUpdtSeqNum" type="xs:unsignedLong" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="toolkitsMap" type="phys:toolkitsMapType"/>
+          <xs:element name="capability" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="id" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="jobId" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="jobName" use="required" type="xs:string"/>
+        <xs:attribute name="user" use="required" type="xs:string"/>
+        <xs:attribute name="applicationScope" use="required" type="xs:string"/>
+        <xs:attribute name="class" use="required" type="xs:token"/>
+        <!-- logLevel has been deprecated. It controls trace level for old applications. -->
+        <xs:attribute name="logLevel" use="optional" type="base:logLevelType"/>
+        <xs:attribute name="language" use="required" type="base:languageType"/>
+        <xs:attribute name="optimized" use="required" type="xs:boolean"/>
+        <xs:attribute name="restartable" use="required" type="xs:boolean"/>
+        <xs:attribute name="relocatable" use="required" type="xs:boolean"/>
+        <xs:attribute name="launchCount" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="dataDirectory" use="optional" type="xs:string"/>
+        <xs:attribute name="currentWorkingDirectory" use="optional" type="xs:string"/>
+        <xs:attribute name="applicationDirectory" use="required" type="xs:string"/>
+        <xs:attribute name="outputDirectory" use="required" type="xs:string"/>
+        <xs:attribute name="checkpointDirectory" use="optional" type="xs:string"/>
+        <xs:attribute name="display" use="required" type="xs:string"/>
+        <xs:attribute name="logicalIndex" use="required" type="xs:unsignedLong"/>
+        <!--xs:attribute name="channelIndex" use="optional" type="xs:int"/-->
+        <!--xs:attribute name="regionIndex" use="optional" type="xs:unsignedLong"/-->
+        <xs:attribute name="buildId" use="required" type="xs:string"/>
+        <xs:attribute name="bundle" use="required" type="xs:string"/>
+        <xs:attribute name="profileDirectory" use="optional" type="xs:string"/>
+        <xs:attribute name="version" use="required" type="xs:string"/>
+        <xs:attribute name="applicationName" use="required" type="xs:string"/>
+        <xs:attribute name="jobGroup" use="required" type="xs:string"/>
+        <xs:attribute name="avoidRuntimeYield" use="required" type="avoidRuntimeYieldType"/>
+        <xs:attribute name="execStreamsVersion" use="optional" type="xs:string"/>
+        <xs:attribute name="genId" use="optional" type="xs:unsignedLong"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- avoidRuntimeYieldType -->
+  <xs:simpleType name="avoidRuntimeYieldType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the allowed values for avoidRuntimeYield
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="auto"/>
+      <xs:enumeration value="yes"/>
+      <xs:enumeration value="no"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- tracingEmploymentType -->
+  <xs:complexType name="tracingEmploymentType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores information about tracing.  It contains the tracing config details, as well as a
+        number to indicate which sequential update this relates to.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+          <xs:element name="tracingUpdate" type="mr:tracingType" minOccurs="1" maxOccurs="1"/>
+          <xs:element name="tracingUpdateSequenceNum" type="xs:unsignedLong" minOccurs="1" maxOccurs="1"/>
+    </xs:sequence>
+  </xs:complexType>
+
+ <!-- managedPEType -->
+  <xs:complexType name="managedPEType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information about a PE. This includes all information SAM must know about the PE (it includes the information the HC, PEC, and the SPL runtime knows, via inheritance from the augmentedPEType), extended with an index (to related the PE in job to the PE in the SPL application), the host where the PE runs, its runtime state, the reason for being in this state, and whether the state is stale (because the host for the PE is down), as well as the number of re-launching attempts, the PE's Scheduler signature, and the PE data directory.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="augmentedPEType">
+        <xs:sequence>
+          <xs:element name="health" type="peHealthType" minOccurs="1" maxOccurs="1"/>
+        </xs:sequence>
+        <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="pid" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="host" use="required" type="xs:token"/>
+        <xs:attribute name="isHostValid" use="required" type="xs:boolean"/>
+        <xs:attribute name="state" use="required" type="peStateType"/>
+        <xs:attribute name="reason" use="required" type="peStateReasonType"/>
+        <xs:attribute name="isStateStale" use="required" type="xs:boolean"/>
+        <xs:attribute name="samRetryCount" use="required" type="xs:unsignedLong"/>
+        <xs:attribute name="schSignature" use="required" type="xs:string"/>
+        <xs:attribute name="lastRunTimestamp" use="optional" type="xs:unsignedLong"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+<!-- peIdsType -->
+  <xs:complexType name="peIdsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of PE identifiers.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="pe" type="peIdType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- peIdType -->
+  <xs:complexType name="peIdType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a PE identifier.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="id" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- streamViewIdsType -->
+  <xs:complexType name="streamViewIdsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of streamView identifiers.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="streamViewID" type="streamViewIdType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- streamViewIdType -->
+  <xs:complexType name="streamViewIdType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a streamView identifier.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="id" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- augmentedPEInputPortsType -->
+  <xs:complexType name="augmentedPEInputPortsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information about a collection of input ports (belonging to a particular PE)
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="inputPort" type="augmentedPEInputPortType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- augmentedPEInputPortType -->
+  <xs:complexType name="augmentedPEInputPortType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information about a particular PE input port. It includes the tuple type (i.e., the schema for streams that might be routed through this port), compile-time information on the imported streams, static stream connections indicating where the streams routed to this port are coming from, connection information on the operator whose port is directly connected to this input port, this port's identifier, index from ADL, the PE it belongs to, the type of encoding it employs as well as the transport layer used to create the physical stream connections.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="tupleType" type="base:tupleTypeType"/>
+      <xs:element name="importedStreams" type="base:importedStreamsType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="staticConnections" type="incomingStaticIPConnectionsType"/>
+      <xs:element name="operInstanceConnection" type="base:operInstancePEInputConnectionType"/>
+    </xs:sequence>
+    <xs:attribute name="id" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="peId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="encoding" use="required" type="base:encodingType"/>
+    <xs:attribute name="transport" use="required" type="base:transportType"/>
+  </xs:complexType>
+
+<!-- augmentedPEOutputPortsType -->
+  <xs:complexType name="augmentedPEOutputPortsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information about a collection of output ports (belonging to a particular PE)
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="outputPort" type="augmentedPEOutputPortType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- augmentedPEOutputPortType -->
+  <xs:complexType name="augmentedPEOutputPortType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information about a particular PE output port. It includes the tuple type (i.e., the schema for the stream this port produces), compile-time information on whether the stream produced by this port is exported, static stream connections indicating which PEs consume the stream originating from this port, connection information on the operator whose port is directly connected to this output port, this port's identifier, index from ADL, the PE it belongs to, the type of encoding it employs as well as the transport layer used to create the physical stream connections, and whether tuple submissions to this output port can be made from more than one operator thread.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="tupleType" type="base:tupleTypeType"/>
+      <xs:element name="exportedStream" type="base:exportedStreamType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="staticConnections" type="outgoingStaticOPConnectionsType"/>
+      <xs:element name="operInstanceConnection" type="base:operInstancePEOutputConnectionType"/>
+    </xs:sequence>
+    <xs:attribute name="id" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="index" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="peId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="encoding" use="required" type="base:encodingType"/>
+    <xs:attribute name="transport" use="required" type="base:transportType"/>
+    <xs:attribute name="singleThreadedOnOutput" use="required" type="xs:boolean"/>
+  </xs:complexType>
+
+<!-- outgoingStaticOPConnectionsType -->
+  <xs:complexType name="outgoingStaticOPConnectionsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information on the set of static stream connections indicating which PEs consume the stream originating from this port.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="staticConnection" type="outgoingStaticOPConnectionType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- outgoingStaticOPConnectionType -->
+  <xs:complexType name="outgoingStaticOPConnectionType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information on a particular static stream connection indicating which PE (given by the 'peId') and which of its input port (given by 'iportId' and 'iportIndex') consumes the stream originating from the output port.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="peId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="iportId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="iportIndex" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="iOperInstanceIndex" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="iOperInstancePortIndex" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- incomingStaticIPConnectionsType -->
+  <xs:complexType name="incomingStaticIPConnectionsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information on the set of static stream connections indicating which PEs produce the streams coming to this port.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="staticConnection" type="incomingStaticIPConnectionType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- incomingStaticIPConnectionType -->
+  <xs:complexType name="incomingStaticIPConnectionType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores runtime information on a particular static stream connection indicating which PE (given by the 'peId') and which of its output port (given by 'oportId' and 'oportIndex') produces the stream coming to the input port.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="peId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="oportId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="oportIndex" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- connectionIdsType -->
+  <xs:complexType name="connectionIdsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a collection of connection identifiers.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="connectionID" type="connectionIdType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- connectionIdType -->
+  <xs:complexType name="connectionIdType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores a Connection identifier.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="outPeId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="outPortId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="inPeId" use="required" type="xs:unsignedLong"/>
+    <xs:attribute name="inPortId" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- peStateType -->
+  <xs:simpleType name="peStateType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the states a PE might be in.
+      </xs:documentation>
+    </xs:annotation>
+     <xs:restriction base="xs:string">
+       <xs:enumeration value="CONSTRUCTED"/>
+       <xs:enumeration value="RESTARTING"/>
+       <xs:enumeration value="RUNNING"/>
+       <xs:enumeration value="STARTING"/>
+       <xs:enumeration value="SUBMITTED"/>
+       <xs:enumeration value="STOPPED"/>
+       <xs:enumeration value="STOPPING"/>
+     </xs:restriction>
+  </xs:simpleType>
+
+<!-- peStateReasonType -->
+  <xs:simpleType name="peStateReasonType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the reasons a PE might be in a particular state.
+      </xs:documentation>
+    </xs:annotation>
+     <xs:restriction base="xs:string">
+       <xs:enumeration value="AUTOMATIC"/>
+       <xs:enumeration value="CRASH"/>
+       <xs:enumeration value="FAILURE"/>
+       <xs:enumeration value="HOSTFAILURE"/>
+       <xs:enumeration value="NONE"/>
+       <xs:enumeration value="REQUEST"/>
+       <xs:enumeration value="VOLUNTARY"/>
+       <xs:enumeration value="NOFEASIBLEHOST"/>
+       <xs:enumeration value="SETCAPABILITIESFAILURE"/>
+     </xs:restriction>
+  </xs:simpleType>
+
+<!-- jobStateType -->
+  <xs:simpleType name="jobStateType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the states a job might be in. 'failed' indicates jobs which failed due to security violations and 'constructed' denotes a job that is no longer in the system or is not in the system yet (for status reporting purpose).
+      </xs:documentation>
+    </xs:annotation>
+     <xs:restriction base="xs:string">
+       <xs:enumeration value="FAILED"/>
+       <xs:enumeration value="CONSTRUCTED"/>
+       <xs:enumeration value="INSTANTIATED"/>
+       <xs:enumeration value="TERMINATED"/>
+       <xs:enumeration value="TERMINATING"/>
+     </xs:restriction>
+  </xs:simpleType>
+
+ <!-- appSetStateType -->
+  <xs:simpleType name="appSetStateType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the states an application set can be in.
+      </xs:documentation>
+    </xs:annotation>
+     <xs:restriction base="xs:string">
+       <xs:enumeration value="INSTANTIATED"/>
+       <xs:enumeration value="TERMINATING"/>
+     </xs:restriction>
+  </xs:simpleType>
+
+ <!-- jobHealthType -->
+  <xs:complexType name="jobHealthType">
+    <xs:annotation>
+      <xs:documentation>
+        This structure stores a boolean of job health and summary of pe health.  The pe health is the "minimum" health level of all of the job's PEs, where the maximum to minimum level ordering is: UP, PARTIAL_UP, DOWN.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="isHealthy" use="required" type="xs:boolean"/>
+    <xs:attribute name="peHealth" use="required" type="peHealthSummaryType"/>
+  </xs:complexType>
+
+ <!-- peHealthSummaryType -->
+  <xs:simpleType name="peHealthSummaryType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the health summary of a PE. It incorporates the PE's State as well as the health summary of its outgoing connections.  UP indicates everything is healthy  the PE's State==RUNNING AND !stale AND requiredConnectionsSummary==UP AND optionalConnectionsSummary==UP.  PARTIAL_UP indicates the PE's required parts are healthy but an optional part is not healthy  State==RUNNING AND !stale AND requiredConnectionsSummary==UP AND optionalConnectionsSummary!=UP. PARTIAL_DOWN indicates !DOWN AND a required part of the PE is not healthy  everything else.  DOWN indicates the PE is down or headed down  (State==STOPPING || State==STOPPED) AND !stale.
+      </xs:documentation>
+    </xs:annotation>
+     <xs:restriction base="xs:string">
+       <xs:enumeration value="UP"/>
+       <xs:enumeration value="PARTIAL_UP"/>
+       <xs:enumeration value="PARTIAL_DOWN"/>
+       <xs:enumeration value="DOWN"/>
+     </xs:restriction>
+  </xs:simpleType>
+
+ <!-- peHealthType -->
+  <xs:complexType name="peHealthType">
+    <xs:annotation>
+      <xs:documentation>
+        This structure stores a boolean of pe health and summary of pe health.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="isHealthy" use="required" type="xs:boolean"/>
+    <xs:attribute name="healthSummary" use="required" type="peHealthSummaryType"/>
+    <xs:attribute name="requiredConnectionsSummary" use="required" type="outgoingConnectionHealthSummaryType"/>
+    <xs:attribute name="optionalConnectionsSummary" use="required" type="outgoingConnectionHealthSummaryType"/>
+  </xs:complexType>
+
+ <!-- outgoingConnectionHealthSummaryType -->
+  <xs:simpleType name="outgoingConnectionHealthSummaryType">
+    <xs:annotation>
+      <xs:documentation>
+        This enumeration lists the summary of outgoing connection states a pe contains (for a particular category of connections - e.g., "required" vs "optional").  UP indicates all outgoing connections are connected or there are no outgoing connections.  PARTIAL_UP indicates "not UP or DOWN" (one or more, but not all, connections are connected).  DOWN indicates the there is at least one outgoing connection and none are connected.
+      </xs:documentation>
+    </xs:annotation>
+     <xs:restriction base="xs:string">
+       <xs:enumeration value="UP"/>
+       <xs:enumeration value="PARTIAL_UP"/>
+       <xs:enumeration value="DOWN"/>
+     </xs:restriction>
+  </xs:simpleType>
+
+ <!-- connectionStateType -->
+  <xs:simpleType name="connectionStateType">
+    <xs:annotation>
+      <xs:documentation><![CDATA[
+        This enumeration lists the possible connection state values.  The values are:
+        UNKNOWN      - The Streams application manager cannot determine the current state of the connection.
+        INITIAL      - The connection ports have not initated a connection yet.
+        CONNECTING   - The connection ports have initiated the connection, but the connection has not been established yet.
+        CONNECTED    - The connection ports are connected.
+        DISCONNECTED - The connection is broken.
+        CLOSED       - The connection has been shut down.
+      ]]></xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="UNKNOWN"/>
+      <xs:enumeration value="INITIAL"/>
+      <xs:enumeration value="CONNECTING"/>
+      <xs:enumeration value="CONNECTED"/>
+      <xs:enumeration value="DISCONNECTED"/>
+      <xs:enumeration value="CLOSED"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+<!-- streamIdType  -->
+  <xs:complexType name="streamIdType">
+    <xs:annotation>
+      <xs:documentation>
+        Stream identifier information
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="jobId" type="jobIdType" />
+      <xs:element name="peId" type="peIdType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="operInstanceName" use="required" type="xs:token"/>
+    <xs:attribute name="operInstanceIndex" use="optional" type="xs:unsignedLong"/>
+    <xs:attribute name="operInstanceOutputPortIndex" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- streamType  -->
+  <xs:complexType name="streamType">
+    <xs:annotation>
+      <xs:documentation>
+        Information about a stream. A stream can be 1 of the followng types:  normal stream (not in a parallel region), logical stream,or  physical stream.
+        Normal: isLogical = false;
+        Logical: isLogical = true; numChannels;
+        Physical: isLogical = false; logicalStreamName, logicalOperInstanceName, logicalOperInstanceOutputPortName, channelNum
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="id" type="streamIdType"/>
+      <xs:element name="tupleType" type="base:tupleTypeType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="operInstanceName" use="required" type="xs:token"/>
+    <xs:attribute name="operInstanceOutputPortName" use="required" type="xs:token"/>
+    <xs:attribute name="streamName" use="required" type="xs:token"/>
+    <xs:attribute name="isLogical" use="required" type="xs:boolean"/>
+    <xs:attribute name="numChannels" use="optional" type="xs:int"/>
+    <xs:attribute name="logicalStreamName" use="optional" type="xs:token"/>
+    <xs:attribute name="logicalOperInstanceName" use="optional" type="xs:token"/>
+    <xs:attribute name="channelNum" use="optional" type="xs:int"/>
+  </xs:complexType>
+
+<!-- streamsType  -->
+  <xs:complexType name="streamsType">
+    <xs:annotation>
+      <xs:documentation>
+        List of streamType objects.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="stream" type="streamType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- streamViewType  -->
+  <xs:complexType name="streamViewType">
+    <xs:annotation>
+      <xs:documentation>
+        Viewable stream information
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="streamId" type="streamIdType"/>
+      <xs:element name="properties" type="nameValuePairsType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="id" use="required" type="xs:unsignedLong"/>
+  </xs:complexType>
+
+<!-- streamViewsType  -->
+ <xs:complexType name="streamViewsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a sequence of streamView objects
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="streamView" type="streamViewType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- nameValuePairType  -->
+  <xs:complexType name="nameValuePairType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a name-value pair.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="value" type="xs:string" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" use="required" type="xs:token"/>
+  </xs:complexType>
+
+<!-- nameValuePairsType  -->
+  <xs:complexType name="nameValuePairsType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure represents a sequence of name-value pairs.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="namevalue" type="nameValuePairType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+<!-- importIndexesType -->
+  <xs:complexType name="importIndexesType">
+    <xs:annotation>
+      <xs:documentation>
+        This data structure stores indexes of import specifications for which the current dynamic connection is established.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="importIndex" type="xs:unsignedLong" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

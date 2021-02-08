@@ -1,0 +1,228 @@
+#!/usr/bin/env perl
+
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use warnings;
+
+use Getopt::Std;
+use Getopt::Long qw(:config no_ignore_case bundling);
+use FindBin;
+
+use lib $FindBin::Bin;
+use Objects;
+
+sub removeSubtree($);
+
+my %opts;
+my @options = ('help|h', 'file=s');
+GetOptions(\%opts, @options);
+die ("file not specified") if (!defined($opts{file}));
+
+my $startCollecting = 1;
+my %tokens = ();
+
+# Read all the token definitions
+my $tokenDefFile = "${FindBin::Bin}/../FrontEnd/grammars/SPL.tokens";
+$tokens{0} = "ERROR";
+open(TOKENFILE, $tokenDefFile) or die("Can't open token definition file ${tokenDefFile}");
+while (<TOKENFILE>) {
+   chomp;
+   /'?([^'=]*)'?=(.*)/;
+   $tokens{$2} = $1;
+}
+close(TOKENFILE);
+
+# main
+open(FILE, "$opts{file}") or die("Can't open $opts{file}");
+while(<FILE>) {
+   chomp;
+   if (/GlobalScope\((.*)\)/) {
+      $Globals::graphNodes{$1}->isGlobal();  # Mark this scope as global
+   }
+   elsif(/StartCollecting\(\)/) {
+       $startCollecting = 1;
+   }
+   elsif(/StopCollecting\(\)/) {
+       $startCollecting = 0;
+   }
+   elsif(/RunFrontEnd\(\)/) {
+       $startCollecting = 1;
+   }
+   elsif(/PhaseStart\(.*\)/) { # Ignore for now
+   }
+   elsif(/SetCurrentScope\(.*\)/) { # Ignore for now
+   }
+   elsif(/Visit\(.*\)/) { # Ignore for now
+   }
+   elsif(/PhaseEnd\(.*\)/) { # Ignore for now
+   }
+   elsif(/AddIndirectRef\((.*), (.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addIndirectRef($2, $3);
+   }
+   elsif (/AddToScope\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addSymbol($2);
+   }
+   elsif (/AddInputPort\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addInputPort($2);
+   }
+   elsif (/AddOutputPort\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addOutputPort($2);
+   }
+   elsif (/AddStream\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addStream($2);
+   }
+   elsif (/AddActualStream\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addActualStream($2);
+   }
+   elsif (/AddPrimitiveInstance\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addPrimitiveInstance($2);
+   }
+   elsif (/AddInputPortActualStream\((.*), (.*)\)/) {
+   }
+   elsif (/AddInputPortFormalStream\((.*), (.*)\)/) {
+   }
+   elsif (/ASTNode\((.*), (.*), (.*), (.*), (.*)\)/) {
+      my $tokenKind = $tokens{$2};
+#print STDERR "tokenKind is $tokenKind\n";
+      if ($tokenKind eq "NONE") {
+         $Globals::graphNodes{$1} = new NONE($1, $4, $5);
+      } elsif ($tokenKind eq "SPLDOC") {
+         $Globals::graphNodes{$1} = new SPLDOC($1, $4, $5);
+      } elsif ($tokenKind eq "ERROR") {
+         $Globals::graphNodes{$1} = new ERROR($1, $4, $5);
+      } elsif ($tokenKind eq "}") {
+         $Globals::graphNodes{$1} = new RBRACE($1, $4, $5);
+      } elsif ($tokenKind eq "ID") {
+         $Globals::graphNodes{$1} = new ID($1, $3, $4, $5);
+      } elsif ($tokenKind eq "STRING_LITERAL") {
+         $Globals::graphNodes{$1} = new STRING_LITERAL($1, $3, $4, $5);
+      } elsif ($tokenKind eq "INT_LITERAL") {
+         $Globals::graphNodes{$1} = new INT_LITERAL($1, $3, $4, $5);
+      } elsif ($tokenKind eq "COMPOSITEDEF") {
+         $Globals::graphNodes{$1} = new COMPOSITEDEF($1, $4, $5);
+      } else {
+         $Globals::graphNodes{$1} = new ASTNode($1, $tokenKind, $4, $5);
+      }
+      $Globals::graphNodes{$1}->setPhase("run") if ($startCollecting == 1 && defined($Globals::graphNodes{$1}));
+   }
+   elsif (/AddParallelPartition\((.*), (.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addParallelPartition($2, $3);
+   }
+   elsif (/AddChild\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addChild($2);
+   }
+   elsif (/AddExpression\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addExpression($2);
+   }
+   elsif (/ReplaceChild\((.*), (.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->replaceChild($2, $3);
+   }
+   elsif (/DefActual\((.*), (.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->defActual($2, $3);
+   }
+   elsif (/DefOutputPort\((.*), (.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->defOutputPort($2, $3);
+   }
+   elsif (/AddParam\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addParameter($2);
+   }
+   elsif (/AssociateSymbol\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->setSymbol($2) if ($Globals::graphNodes{$1});
+   }
+   elsif (/ReassociateSymbol\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->resetSymbol($2);
+   }
+   elsif (/AddUseDirective\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addUseDirective($2);
+   }
+   elsif (/AssociateErrorSymbol\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->setErrorSymbol($2);
+   }
+   elsif (/ClearSymbol\((.*)\)/) {
+      $Globals::graphNodes{$1}->clearSymbol($2);
+   }
+   elsif (/AssociateExpression\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->setExpression($2);
+   }
+   elsif (/ClearExpression\((.*)\)/) {
+      $Globals::graphNodes{$1}->clearExpression($2);
+   }
+   elsif (/ASTClone\((.*), (.*)\)/) {
+      $Globals::graphNodes{$1}->addClone($2);
+   }
+   elsif (/RemoveASTNode\((.*)\)/) {
+#     delete $Globals::graphNodes{$1};
+   }
+   elsif (/StaticCompositeBody\(.*\)/) {
+   }
+   elsif (/InstanceCompositeBody\((.*), (.*)\)/) {
+      # $1 is the ast, #2 is the new instance body
+      $Globals::graphNodes{$1}->setInstanceBody($2);
+   }
+   else {
+      /(.*)\(([^,\)]+)(?:, ([^,\)]*))?(?:, ([^,\)]*))?(?:, ([^,\)]*))?(?:, ([^,\)]*))?\)?/;
+      my $address = $2;
+
+      if (defined($6)) {
+         $Globals::graphNodes{$address} = new $1($2, $3, $4, $5, $6);
+      } elsif (defined($5)) {
+         $Globals::graphNodes{$address} = new $1($2, $3, $4, $5);
+      } elsif (defined($4)) {
+         $Globals::graphNodes{$address} = new $1($2, $3, $4);
+      } elsif (defined($3)) {
+         $Globals::graphNodes{$address} = new $1($2, $3);
+      } else {
+         $Globals::graphNodes{$address} = new $1($2);
+      }
+      $Globals::graphNodes{$address}->setPhase("run") if ($startCollecting == 1);
+   }
+}
+close(FILE);
+
+# draw the graph
+print "digraph G {\n";
+
+# Draw the graph nodes
+{
+   foreach my $address (keys %Globals::graphNodes) {
+      my $node = $Globals::graphNodes{$address};
+      $node->drawNode();
+   }
+}
+
+# Emit all the arcs
+{
+   foreach my $address (keys %Globals::graphNodes) {
+      my $node = $Globals::graphNodes{$address};
+      $node->drawArcs();
+   }
+}
+
+print "}\n";
+
+sub removeSubtree($)
+{
+   my ($address) = @_;
+   my $astNode = $Globals::graphNodes{$address};
+   my $count = $astNode->numChildren();
+   for (my $i = 0; $i < $count; ++$i) {
+      my $child = $astNode->child($i);
+      removeSubtree($child);
+   }
+   delete $Globals::graphNodes{$address};
+}

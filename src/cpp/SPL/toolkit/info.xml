@@ -1,0 +1,23 @@
+<toolkitInfoModel
+    xmlns="http://www.ibm.com/xmlns/prod/streams/spl/toolkitInfo"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/toolkitInfo toolkitInfoModel.xsd">
+  <identity>
+    <name>spl</name>
+    <description>
+The IBM Streams Processing Language (SPL) standard toolkit provides a set of operators,
+types, and functions that are specific to IBM Streams.
+
+</description>
+    <version>1.4.0</version>
+    <requiredProductVersion>4.2.3</requiredProductVersion>
+  </identity>
+  <dependencies/>
+  <sabFiles>
+    <exclude path="opt/icons/**"/>
+    <exclude path="impl/bin/JavaOp_vmpath.sh"/>
+    <exclude path="impl/lib/com.ibm.streams.control.internal.jar"/>
+    <exclude path="impl/lib/libstreams-stdtk-javaop.so.0"/>
+    <exclude path="impl/lib/libstreams-stdtk-runtime.so.0"/>
+  </sabFiles>
+</toolkitInfoModel>

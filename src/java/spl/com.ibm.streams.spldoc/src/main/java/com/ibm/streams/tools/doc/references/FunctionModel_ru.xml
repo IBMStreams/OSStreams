@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<reference id="spldoc_reference_function_model">
+<title>Модель функции SPL</title>
+<refbody>
+<section id="overview">
+<p>
+Файл модели функций структурирован как последовательность одного или нескольких элементов functionSet.
+Элемент functionSet представляет набор
+собственных функций, объявленных в файле заголовка C++ или включенных из этого файла.
+</p>
+</section>
+<section id="functionset">
+<dl>
+  <dlentry id="functionset__headerfilename">
+    <dt>Имя файла заголовка</dt>
+    <dd>Содержит имя файла заголовка, в котором объявляются функции C++ или содержатся другие файлы заголовков, их объявляющие.
+    </dd>
+  </dlentry>
+  <dlentry id="functionset__cppnamespacename">
+    <dt>Имя пространства имен CPP (необязательно)</dt>
+    <dd>Второй (необязательный) называется cppNamespacename, и он предоставляет пространство имен C++ для функций. Если элемента cppNamespacename нет, используется пространство имен SPL с символами ".", преобразованными в "::".
+    </dd>
+  </dlentry>
+  <dlentry id="functionset__functions">
+    <dt>Функции</dt>
+    <dd>Последовательность одного или нескольких элементов функции, каждый из которых представляет сигнатуру собственной функции в формате SPL.
+      <dl>
+        <dlentry id="functionset__functions__description">
+          <dt>Описание</dt>
+          <dd>Описание функции</dd>
+        </dlentry>
+        <dlentry id="functionset__functions__prototype">
+          <dt>Прототип</dt>
+          <dd>Прототип собственной функции.  Прототипы собственных функций объявлены с использованием синтаксиса SPL, что описано в  <i>Спецификации
+языков обработки IBMStreams.</i></dd>
+        </dlentry>
+        <dlentry id="functionset__functions__cppname">
+          <dt>Имя CPP (Необязательно)</dt>
+          <dd>Задает имя C++ для функции. Если не существует, то будет использоваться имя функции SPL.
+          </dd>
+        </dlentry>
+      </dl>
+    </dd>
+  </dlentry>
+  <dlentry id="functionset__dependencies">
+    <dt>Зависимости (необязательно)</dt>
+    <dd>Последовательность одного или нескольких элементов библиотеки, каждый из которых представляет зависимость библиотеки.
+Формат элемента
+библиотеки точно такой же, какой используется для моделей оператора.
+     <dl>
+        <dlentry id="functionset__dependencies__description">
+          <dt>Описание (необязательно)</dt>
+          <dd>Описание библиотеки.
+          </dd>
+        </dlentry>
+        <dlentry id="functionset__dependencies__managedlibrary">
+          <dt>Управляемая библиотека</dt>
+          <dd>Задает подробности отдельных артефактов библиотеки. Пути могут содержать переменные среды, заключенные
+между символами @ (например: <tt>@FOO_FFT_HOME@/lib</tt>), которые будут полностью разрешены компилятором SPL во
+время компиляции.
+            <dl>
+              <dlentry id="functionset__dependencies__managedlibrary_lib">
+                <dt>lib (необязательно)</dt>
+                <dd>Задает имя для передачи в аргумент компилятора C++ <tt>-l</tt> (например, <tt>fft,</tt> который будет переведен в <tt>-lfft</tt> при передаче компоновщику)
+                </dd>
+              </dlentry>
+              <dlentry id="functionset__dependencies__managedlibrary_libPath">
+                <dt>libPath (необязательно)</dt>
+                <dd>Задает путь для передачи в аргумент компилятора C++ <tt>-L</tt>.
+                </dd>
+              </dlentry>
+              <dlentry id="functionset__dependencies__managedlibrary_includePath">
+                <dt>includePath (необязательно)</dt>
+                <dd>Задает путь для передачи в аргумент компилятора C++ <tt>-I</tt>.
+                </dd>
+              </dlentry>
+              <dlentry id="functionset__dependencies__managedlibrary_command">
+                <dt>command (необязательно)</dt>
+                <dd>Путь программы, которая будет выполняться для получения информации <tt>includePath, libPath</tt> и <tt>lib</tt>. Если путь программы является относительным, будет считаться, что его корнем является каталог модели оператора. Программа выполняется трижды, каждый раз с разными аргументами, а именно: <tt>lib,
+libPath</tt> и <tt>includePath</tt>. Стандартная выходная информация от ее выполнений будет прочитана, и каждая строка (усеченная или с
+пробелами) будет добавлена в один из элементов <tt>lib,
+libPath</tt>и <tt>includePath</tt> в зависимости от типа выполнения. Строка, начинающаяся с #, будет проигнорирована. Будет считаться, что корнем относительных путей является каталог, в котором находится XML-документ модели оператора.
+                </dd>
+              </dlentry>
+            </dl>
+          </dd>
+        </dlentry>
+    </dl>
+    </dd>
+  </dlentry>
+</dl>
+</section>
+<section id="example">
+  <title outputclass="splhead-1">Пример</title>
+  <!-- START NON-TRANSLATABLE -->
+  <pre>
+  &lt;functionModel
+   xmlns="http://www.ibm.com/xmlns/prod/streams/spl/function"
+   xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/function functionModel.xsd"&gt;
+  &lt;functionSet&gt;
+    &lt;!-- header file to include from within C++ code --&gt;
+    &lt;headerFileName&gt;Sample.h&lt;/headerFileName&gt;
+    &lt;!-- functions lists the SPL prototypes of the functions implemented in this library --&gt;
+    &lt;functions&gt;
+      &lt;!-- use of CDATA allows easy use of &lt; in the prototypyes --&gt;
+      &lt;function&gt;
+        &lt;description&gt;Increment all list elements by a given amount&lt;/description&gt;
+        &lt;prototype cppName="increment_by"&gt;&lt;![CDATA[ void incrementBy(mutable list&lt;int32&gt; l, int32 incr) ]]&gt;&lt;/prototype&gt;
+      &lt;/function&gt;
+      &lt;function&gt;
+        &lt;description&gt;Join two lists&lt;/description&gt;
+        &lt;prototype&gt;&lt;![CDATA[ list&lt;int32&gt; joinLists(list&lt;int32&gt; a, list&lt;int32&gt; b) ]]&gt;&lt;/prototype&gt;
+      &lt;/function&gt;
+    &lt;/functions&gt;
+    &lt;dependencies&gt;
+      &lt;!-- This library can have several dependencies. We only use one here --&gt;
+      &lt;library&gt;
+        &lt;!-- A description for this library --&gt;
+        &lt;cmn:description&gt;Sample-Functions&lt;/cmn:description&gt;
+        &lt;cmn:managedLibrary&gt;
+          &lt;!-- the name of the library for linking. Will be used as -lSample --&gt;
+          &lt;cmn:lib&gt;Sample&lt;/cmn:lib&gt;
+          &lt;!-- Where to find the library. Relative to the current directory.
+               Will be used as -L&lt;dir&gt;/lib --&gt;
+          &lt;cmn:libPath&gt;lib&lt;/cmn:libPath&gt;
+          &lt;!-- Where to find the include file. Relative to the current directory.
+               Will be used as -I&lt;dir&gt; --&gt;
+          &lt;cmn:includePath&gt;./&lt;/cmn:includePath&gt;
+        &lt;/cmn:managedLibrary&gt;
+      &lt;/library&gt;
+    &lt;/dependencies&gt;
+  &lt;/functionSet&gt;
+&lt;/functionModel&gt;
+</pre>
+<!-- END NON-TRANSLATABLE -->
+</section>
+</refbody>
+</reference>
