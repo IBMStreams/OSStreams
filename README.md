@@ -1,7 +1,7 @@
 # Open-source Streams (6.x.x.x)
 
 Open-source, Cloud-native version of [IBM Streams](https://www.ibm.com/support/knowledgecenter/SSCRJU_4.3.0/com.ibm.streams.welcome.doc/doc/ibminfospherestreams-introduction.html). Is is designed to natively run
-on top of Kuberetes, leveraging the [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) to manage its internal
+on top of Kubernetes, leveraging the [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) to manage its internal
 resources like _Jobs_ or _Processing Elements_.
 
 ## Building Streams
