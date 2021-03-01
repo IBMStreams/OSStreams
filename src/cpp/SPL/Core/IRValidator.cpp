@@ -580,7 +580,7 @@ void IRValidator::validateParameterExpressionIsConstant(Expression const& irExpr
     ExpressionEvaluator ee(CompilerConfiguration::instance());
     auto_ptr<Expression> clone(&irExpr.clone());
     clone.reset(Expression::simplify(clone.release(), ee));
-    if (clone->getKind() != Expression::Lit) {
+    if (clone->getKind() != Expression::Lit && clone->getKind() != Expression::Cast) {
         SysOut::errorln(SPL_CORE_PARAMETER_EXPRESSION_NOT_CONSTANT(
                           irExpr.toString(), omParameter.getName(), ir.getNames()[0]),
                         irExpr.getLocation());
