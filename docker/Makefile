@@ -15,8 +15,8 @@
 #
 
 DOCKER_ARCH ?= $(shell uname -m)
-DOCKER_NAMESPACE ?= $(USER)
-DOCKER_REGISTRY ?= localhost:5000
+DOCKER_NAMESPACE ?= openstreams
+DOCKER_REGISTRY ?= docker.io
 
 # Build parameters
 #

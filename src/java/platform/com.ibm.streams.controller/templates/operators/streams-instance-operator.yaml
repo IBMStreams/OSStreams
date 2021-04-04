@@ -44,7 +44,7 @@ spec:
         runAsGroup: 2015
       containers:
         - name: controller
-          image: us.icr.io/spl_team/streams-runtime:6.release
+          image: docker.io/openstreams/streams-runtime:6.release
           imagePullPolicy: Always
           command:
             - java
@@ -58,9 +58,9 @@ spec:
               cpu: "250m"
           env:
             - name: DOCKER_REGISTRY
-              value: us.icr.io
+              value: docker.io
             - name: DOCKER_NAMESPACE
-              value: spl_team
+              value: openstreams
             - name: STREAMS_CHECKPOINT_PATH
               value: /tmp
             - name: STREAMS_DATA_PATH
@@ -82,7 +82,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.uid
         - name: repository
-          image: us.icr.io/spl_team/streams-runtime:6.release
+          image: docker.io/openstreams/streams-runtime:6.release
           imagePullPolicy: Always
           command:
             - redis-server
