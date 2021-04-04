@@ -23,15 +23,15 @@ import java.util.Optional;
 public abstract class CommonEnvironment {
 
   public String getRegistry() {
-    return Optional.ofNullable(System.getenv("DOCKER_REGISTRY")).orElse("us.icr.io");
+    return Optional.ofNullable(System.getenv("DOCKER_REGISTRY")).orElse("docker.io");
   }
 
   public String getRegistryNameSpace() {
-    return Optional.ofNullable(System.getenv("DOCKER_NAMESPACE")).orElse("spl_team");
+    return Optional.ofNullable(System.getenv("DOCKER_NAMESPACE")).orElse("openstreams");
   }
 
   public String getBuildType() {
-    return Optional.ofNullable(System.getenv("STREAMS_BUILD_TYPE")).orElse("debug");
+    return Optional.ofNullable(System.getenv("STREAMS_BUILD_TYPE")).orElse("release");
   }
 
   public String getStreamsInstall() {
